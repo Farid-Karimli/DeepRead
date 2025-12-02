@@ -5,6 +5,7 @@ description = "A tool to score the reproducibility readiness of ML code reposito
 readme = "README_REPLICODE.md"
 requires-python = ">=3.8"
 dependencies = [
+    "pygithub>=2.8.1",
     "rich>=10.0.0",
 ]
 authors = [
