@@ -39,3 +39,12 @@ Thumbs.db
 # Project specific
 *.json
 !example_repos/**/*.json
+
+
+# Papers
+papers/
+
+# Code
+code/
+
+.claude

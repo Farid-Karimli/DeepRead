@@ -1,4 +1,5 @@
 from github import Github
+from github.ContentFile import ContentFile
 
 def get_repo_contents(repo_name: str) -> list:
     """
@@ -10,16 +11,16 @@ def get_repo_contents(repo_name: str) -> list:
     contents = []
 
     try:
-        file_content = repo.get_contents("")
+        file_content: list[ContentFile] = repo.get_contents("")
     except Exception as e:
         print(f"Could not access file: {e}")
 
-    while contents:
-        file_content = contents.pop(0)
-        if file_content.type == "dir":
-            contents.extend(repo.get_contents(file_content.path))
+    while file_content:
+        file = file_content.pop(0)
+        if file.type == "dir":
+            contents.extend(repo.get_contents(file.path))
         else:
-            contents.append(file_content)
+            contents.append(file)
 
 
     return contents
@@ -27,6 +28,7 @@ def get_repo_contents(repo_name: str) -> list:
 
 
 if __name__ == "__main__":
-    repo_name = "Farid-Karimli/RepliCode"
+    repo_name = "dvlab-research/ControlNeXt"    
     contents = get_repo_contents(repo_name)
+    print(F"Found {len(contents)} files.")
     print(contents)

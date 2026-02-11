@@ -3,8 +3,11 @@ name = "replicode"
 version = "0.1.0"
 description = "A tool to score the reproducibility readiness of ML code repositories"
 readme = "README_REPLICODE.md"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 dependencies = [
+    "claude-agent-sdk==0.1.33",
+    "datasets>=4.5.0",
+    "google-genai>=1.62.0",
     "pygithub>=2.8.1",
     "rich>=10.0.0",
 ]
