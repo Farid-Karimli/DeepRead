@@ -8,7 +8,31 @@ DeepRead is an augmented research consumption system designed to eliminate the "
 
 This project is currently being developed at Boston University. We aim to evaluate how DeepRead reduces cognitive load and improves implementation accuracy for graduate-level researchers.
 
-## Features
+## Get Started
+
+This project uses [uv](https://docs.astral.sh/uv/#projects) and the [Claude Code SDK](https://platform.claude.com/docs/en/agent-sdk/overview). Follow the respective instructions to these up.
+
+To start using DeepRead:
+
+```{python}
+git clone https://github.com/Farid-Karimli/DeepRead.git
+cd DeepRead
+uv sync
+source .venv/bin/activate # If on Windows, .venv\Scripts\Activate
+```
+
+Run the test scripts:
+
+```{python}
+uv run python deepread/main.py
+```
+
+**Something to be aware of**:
+
+There's a bug in Claude Code SDK where the LLM ignores explicitly set output schema. For that reason, you might see 'No result found...', but the print result should show the result. Often times, Claude adds a little text before providing JSON, like "Based on the context, here is the...".
+
+
+## Planned Features
 
 - Semantic Cross-Linking: Click an equation or a paragraph in the PDF to instantly highlight the corresponding implementation in the repository.
 
@@ -27,3 +51,4 @@ This project is currently being developed at Boston University. We aim to evalua
 - Alignment Engine: Uses a combination of LLMs and static analysis to map mathematical symbols and method descriptions to specific code snippets.
 
 - Interactive UI: A split-pane web interface for synchronized reading and code exploration.
+  
