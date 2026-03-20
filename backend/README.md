@@ -2,7 +2,7 @@
 
 Bridging the Gap Between Academic Theory and Implementation.
 
-DeepRead is an augmented research consumption system designed to eliminate the "documentation debt" in ML and HCI research. It creates a live, bidirectional mapping between a research PDF and its source code, allowing researchers to see exactly how abstract equations and methods are implemented in practice. 
+DeepRead is an augmented research consumption system designed to eliminate the "documentation debt" in ML and HCI research. It creates a live, bidirectional mapping between a research PDF and its source code, allowing researchers to see exactly how abstract equations and methods are implemented in practice.
 
 ## Status
 
@@ -30,7 +30,6 @@ uv run python deepread/main.py
 **Something to be aware of**:
 
 There's a bug in Claude Code SDK where the LLM ignores explicitly set output schema. For that reason, you might see 'No result found...', but the print result should show the result. Often times, Claude adds a little text before providing JSON, like "Based on the context, here is the...".
-
 
 ## Planned Features
 

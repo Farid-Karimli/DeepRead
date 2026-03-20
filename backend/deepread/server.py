@@ -1,0 +1,100 @@
+import io
+
+from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+
+import pypdf
+
+from deepread.celery_tasks import analyze_paper_task, celery, test_task
+
+app = FastAPI()
+
+origins = [
+    "http://localhost",
+    "http://localhost:3000",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+def _normalize_whitespace(text: str) -> str:
+    lines = text.split("\n")
+    text = "\n".join(lines)
+    return " ".join(text.split())
+
+
+def _paper_bytes_to_text(raw: bytes, filename: str | None = None) -> str:
+    """
+    Plain text: UTF-8 (with replacement if needed).
+    PDF: extract text via pypdf (not OCR; scanned PDFs may be empty).
+    """
+    if raw.startswith(b"%PDF-"):
+        from pypdf import PdfReader
+
+        reader = PdfReader(io.BytesIO(raw))
+        parts: list[str] = []
+        for page in reader.pages:
+            t = page.extract_text()
+            if t:
+                parts.append(t)
+        extracted = "\n\n".join(parts).strip()
+        if not extracted:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "Could not extract text from this PDF (it may be scanned or image-only). "
+                    "Try a text-based PDF or upload a .txt export."
+                ),
+            )
+        return extracted
+
+    try:
+        return raw.decode("utf-8")
+    except UnicodeDecodeError:
+        return raw.decode("utf-8", errors="replace")
+
+
+@app.get("/")
+def read_root():
+    return {"message": "Hello, World!"}
+
+@app.get("/tasks/{task_id}")
+def task_status(task_id):
+    task = celery.AsyncResult(task_id)
+    response = {"status": task.status}
+    if task.ready():
+        response["result"] = task.result
+    return response
+
+##########################################
+##### Test Tasks ########################
+##########################################
+
+@app.get("/test")
+def test():
+    task = test_task.delay()
+    return {"task_id": task.id}
+
+##########################################
+##### Paper Content Upload #######################
+##########################################
+
+@app.post("/analyze")
+def analyze_paper(paper: UploadFile = File(...)):
+    raw = paper.file.read()
+    paper_content = _paper_bytes_to_text(raw, paper.filename)
+    paper_content = _normalize_whitespace(paper_content)
+
+    task = analyze_paper_task.delay(paper_content=paper_content)
+    return {"task_id": task.id}
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)

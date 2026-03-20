@@ -7,7 +7,7 @@ from agent import Agent, _print_event
 async def _test_run_agent() -> None:
     agent = Agent()
 
-    result = await agent.identify_key_sections("./../papers/controlnext.pdf")
+    result = await agent.identify_key_sections(paper_path="./../papers/controlnext.pdf")
     if result is not None:
         print(f"********* Key Sections *********")
         pprint.pprint(result)
@@ -15,7 +15,7 @@ async def _test_run_agent() -> None:
         with open("key_sections.json", "w") as f:
             json.dump(result, f, indent=4)
         try:
-            code_result = await agent.map_key_sections_to_code(result, "./../code/ControlNeXt")
+            code_result = await agent.map_key_sections_to_code(key_sections=result, code_path="./../code/ControlNeXt")
         except asyncio.CancelledError as e:
             # Surface SDK cancellation in a clearer way instead of an opaque traceback
             print("map_key_sections_to_code was cancelled:", repr(e))

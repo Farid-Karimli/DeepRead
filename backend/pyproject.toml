@@ -1,18 +1,22 @@
 [project]
-name = "replicode"
+name = "deepread"
 version = "0.1.0"
-description = "A tool to score the reproducibility readiness of ML code repositories"
+description = "Bridging the Gap Between Papers and Implementation"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
+    "celery>=5.6.2",
     "claude-agent-sdk==0.1.33",
     "datasets>=4.5.0",
+    "fastapi>=0.135.1",
     "google-genai>=1.62.0",
+    "pypdf>=5.0.0",
     "pygithub>=2.8.1",
+    "redis>=7.3.0",
     "rich>=10.0.0",
 ]
 authors = [
-    { name = "RepliCode Team" }
+    { name = "DeepRead Team" }
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
