@@ -12,6 +12,7 @@ app = FastAPI()
 origins = [
     "http://localhost",
     "http://localhost:3000",
+    "http://localhost:5173",
 ]
 
 app.add_middleware(
@@ -86,9 +87,9 @@ def test():
 ##########################################
 
 @app.post("/analyze")
-def analyze_paper(paper: UploadFile = File(...)):
-    raw = paper.file.read()
-    paper_content = _paper_bytes_to_text(raw, paper.filename)
+def analyze_paper(file: UploadFile = File(...)):
+    raw = file.file.read()
+    paper_content = _paper_bytes_to_text(raw, file.filename)
     paper_content = _normalize_whitespace(paper_content)
 
     task = analyze_paper_task.delay(paper_content=paper_content)
