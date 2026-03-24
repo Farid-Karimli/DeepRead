@@ -51,3 +51,6 @@ papers/
 code/
 
 .claude
+
+.pids/
+logs/
