@@ -1,4 +1,6 @@
+import hashlib
 import io
+import os
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,15 +11,24 @@ from deepread.celery_tasks import analyze_paper_task, celery, test_task
 
 app = FastAPI()
 
-origins = [
-    "http://localhost",
-    "http://localhost:3000",
-    "http://localhost:5173",
-]
+
+def _cors_origins() -> list[str]:
+    raw = os.getenv("CORS_ORIGINS", "").strip()
+    if raw:
+        return [o.strip() for o in raw.split(",") if o.strip()]
+    return [
+        "http://localhost",
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:5178",
+        "http://127.0.0.1:5178",
+    ]
+
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=_cors_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -89,13 +100,19 @@ def test():
 @app.post("/analyze")
 def analyze_paper(file: UploadFile = File(...)):
     raw = file.file.read()
+    # Stable id for caching: same bytes => same key (filename alone can collide).
+    paper_id = hashlib.sha256(raw).hexdigest()
     paper_content = _paper_bytes_to_text(raw, file.filename)
     paper_content = _normalize_whitespace(paper_content)
 
-    task = analyze_paper_task.delay(paper_content=paper_content)
-    return {"task_id": task.id}
+    task = analyze_paper_task.delay(
+        paper_content=paper_content,
+        paper_id=paper_id,
+        original_filename=file.filename,
+    )
+    return {"task_id": task.id, "paper_id": paper_id}
 
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=9000)
