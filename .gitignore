@@ -36,6 +36,9 @@ env/
 .DS_Store
 Thumbs.db
 
+# Secrets (e.g. Docker Compose)
+.env
+
 # Project specific
 *.json
 !example_repos/**/*.json
