@@ -51,7 +51,7 @@
 }
 
 #root {
-  width: 1126px;
+  width: 100%;
   max-width: 100%;
   margin: 0 auto;
   text-align: center;
@@ -95,7 +95,14 @@ p {
   margin: 0;
 }
 
-code,
+code {
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 135%;
+}
+
+/* Inline code only — `pre > code` (e.g. Shiki) must stay block-level or tokens flex into one row */
+:not(pre) > code,
 .counter {
   font-family: var(--mono);
   display: inline-flex;
@@ -103,9 +110,16 @@ code,
   color: var(--text-h);
 }
 
-code {
-  font-size: 15px;
-  line-height: 135%;
+:not(pre) > code {
   padding: 4px 8px;
   background: var(--code-bg);
+}
+
+pre {
+  white-space: pre-wrap;       /* CSS3 */
+  white-space: -moz-pre-wrap;  /* Firefox */
+  white-space: -pre-wrap;      /* Opera <7 */
+  white-space: -o-pre-wrap;    /* Opera 7 */
+  word-wrap: break-word;       /* IE */
+  overflow-x: auto;            /* Scroll horizontally if it still overflows */
 }

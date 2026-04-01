@@ -1,10 +1,18 @@
 const API_URL: string =
   import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8000";
 
-/** Matches backend `code_section_schema` in agent.py (map_key_sections_to_code output shape). */
+/**
+ * One section row after `analyze_paper`: code mapping fields plus paper anchors merged
+ * from identify_key_sections (`paper_*` may be absent if matching failed).
+ * 
+ */
+
 interface codeSection {
     section_name: string;
     section_description: string;
+    paper_start_line?: number;
+    paper_end_line?: number;
+    paper_section_description?: string;
     code_snippet: string;
     code_filepath: string;
     code_start_line: number;
@@ -22,7 +30,7 @@ interface paperSubmitResponse {
 
 interface paperAnalysisStatusResponse {
     status: string;
-    /** Celery success payload: full agent dict `{ key_sections, code_result }` or cached equivalent */
+    /** Celery success payload: `{ github_repo_url, code_result }` or cached equivalent */
     result?: unknown;
 }
 

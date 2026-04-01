@@ -2,12 +2,13 @@ import { useState, useEffect } from 'react'
 import './App.css'
 import Home from './components/Home';
 import PaperView from './components/PaperView.tsx';
+import { SidePanelProvider } from './context/SidePanelContext.tsx';
 
 import { submitPaperAnalysis, getPaperAnalysisStatus, type paperSubmitResponse, type paperAnalysisStatusResponse, type codeSectionsResult } from './api/main';
 
-/** Celery stores the agent return value: `{ key_sections, code_result }`. */
+/** Celery stores the agent return value: `{ github_repo_url, code_result }`. */
 type AgentTaskResult = {
-  key_sections?: unknown;
+  github_repo_url?: string;
   code_result?: codeSectionsResult;
 };
 
@@ -27,6 +28,10 @@ function App() {
   const [analysisResult, setAnalysisResult] = useState<codeSectionsResult | undefined>(() => {
     const analysisResult = localStorage.getItem('analysisResult');
     return analysisResult ? JSON.parse(analysisResult) : undefined;
+  });
+  const [paperId, setPaperId] = useState<string | null>(() => {
+    const paperId = localStorage.getItem('paperId');
+    return paperId ?? null;
   });
   const [paperFile, setPaperFile] = useState<File | undefined>(undefined);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -98,6 +103,7 @@ function App() {
     try {
       const response: paperSubmitResponse = await submitPaperAnalysis(formData);
       setPaperFile(file);
+      setPaperId(response.paper_id ?? null);
       setTaskId(response.task_id);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Upload failed';
@@ -114,11 +120,13 @@ function App() {
 
   if (analysisResult) {
     return (
-      <PaperView
-        analysisResult={analysisResult}
-        clearEnvironment={clearEnvironment}
-        paperFile={paperFile}
-      />
+      <SidePanelProvider>
+        <PaperView
+          analysisResult={analysisResult}
+          clearEnvironment={clearEnvironment}
+          paperFile={paperFile}
+        />
+      </SidePanelProvider>  
     );
   }
 
