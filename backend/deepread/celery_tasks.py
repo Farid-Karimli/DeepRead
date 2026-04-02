@@ -7,15 +7,15 @@ from celery import Celery
 
 from deepread.agent import Agent
 from deepread.paper_analysis_cache import get_cached_result, set_cached_result
+from deepread.config import REDIS_URL
 
 logger = logging.getLogger(__name__)
 
-_redis_url = os.getenv("REDIS_URL", "redis://127.0.0.1:6379/0")
 
 celery = Celery(
     __name__,
-    broker=_redis_url,
-    backend=_redis_url,
+    broker=REDIS_URL,
+    backend=REDIS_URL,
 )
 
 @celery.task(name="test_task")
