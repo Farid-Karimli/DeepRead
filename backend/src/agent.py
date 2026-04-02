@@ -7,35 +7,6 @@ from claude_agent_sdk.types import StreamEvent
 
 from deepread.utils import clone_repo_to_temp_dir, delete_temp_dir
 
-async def _print_event(event: StreamEvent, tool_state: dict) -> None:
-    if isinstance(event, StreamEvent):
-        event = event.event
-        event_type = event.get("type")
-        if event_type == "content_block_delta":
-            delta = event.get("delta", {})
-            if delta.get("type") == "text_delta":
-                print(delta.get("text", ""), end="", flush=True)
-        if event_type == "content_block_start":
-            print("\n")
-            content_block = event.get("content_block", {})
-            if content_block.get("type") == "tool_use":
-                tool_state["current_tool"] = content_block.get("name")
-                tool_state["tool_input"] = ""
-                print(f"Starting tool: {tool_state['current_tool']}\n")
-        elif event_type == "content_block_delta":
-                delta = event.get("delta", {})
-                if delta.get("type") == "input_json_delta":
-                    # Accumulate JSON input as it streams in
-                    chunk = delta.get("partial_json", "")
-                    tool_state["tool_input"] += chunk
-        elif event_type == "content_block_stop":
-                # Tool call complete - show final input
-                if tool_state["current_tool"]:
-                    print(f"Tool {tool_state['current_tool']} called with: {tool_state['tool_input']}")
-                    tool_state["current_tool"] = None
-
-
-
 # Currently unused, output format is ignored by Claude Code. https://github.com/anthropics/claude-code/issues/18536
 key_section_schema = {
     "type": "object",
@@ -150,6 +121,126 @@ def _parse_json_result(raw_text: str) -> dict | None:
         except json.JSONDecodeError:
             return None
 
+
+def _normalize_section_title(name: str) -> str:
+    return " ".join(name.split()) if isinstance(name, str) else ""
+
+
+_LEGACY_SECTION_SNIPPET_KEYS = (
+    "code_snippet",
+    "code_filepath",
+    "code_start_line",
+    "code_end_line",
+)
+
+
+def _normalize_snippet_dict(snip: dict) -> dict | None:
+    """One code_snippets entry: content, filepath, start_line, end_line."""
+    content = snip.get("content")
+    if content is None:
+        content = snip.get("code_snippet")
+    filepath = snip.get("filepath")
+    if filepath is None:
+        filepath = snip.get("code_filepath")
+    sl = snip.get("start_line")
+    if sl is None:
+        sl = snip.get("code_start_line")
+    el = snip.get("end_line")
+    if el is None:
+        el = snip.get("code_end_line")
+    row: dict = {}
+    if isinstance(content, str):
+        row["content"] = content
+    if isinstance(filepath, str):
+        row["filepath"] = filepath
+    if isinstance(sl, int):
+        row["start_line"] = sl
+    if isinstance(el, int):
+        row["end_line"] = el
+    return row if row else None
+
+
+def _normalize_section_to_code_shape(section: dict) -> dict:
+    """
+    Canonical shape for map_key_sections_to_code / frontend:
+    section_name, section_description, code_snippets[{content, filepath, start_line, end_line}].
+    Accepts legacy flat code_* fields or per-snippet aliases.
+    """
+    out = dict(section)
+    for k in _LEGACY_SECTION_SNIPPET_KEYS:
+        out.pop(k, None)
+
+    raw_list = section.get("code_snippets")
+    normalized: list[dict] = []
+    if isinstance(raw_list, list):
+        for snip in raw_list:
+            if isinstance(snip, dict):
+                row = _normalize_snippet_dict(snip)
+                if row is not None:
+                    normalized.append(row)
+        out["code_snippets"] = normalized
+    else:
+        row = _normalize_snippet_dict(section)
+        out["code_snippets"] = [row] if row is not None else []
+
+    return out
+
+
+def _merge_key_sections_into_code_result(
+    key_sections: dict | None, code_result: dict | None
+) -> dict | None:
+    """
+    Normalize each section to code_snippets[] shape, then copy paper-side fields
+    from identify_key_sections onto each section row.
+    Matches by normalized section_name, or by index when both lists have the same length.
+    """
+    if code_result is None:
+        return None
+    raw_sections = code_result.get("sections")
+    if not isinstance(raw_sections, list):
+        return code_result
+
+    ks_list: list[dict] = []
+    if isinstance(key_sections, dict):
+        ks_raw = key_sections.get("sections")
+        if isinstance(ks_raw, list):
+            ks_list = [x for x in ks_raw if isinstance(x, dict)]
+
+    by_norm: dict[str, dict] = {}
+    for row in ks_list:
+        sn = row.get("section_name")
+        if isinstance(sn, str):
+            norm = _normalize_section_title(sn)
+            if norm and norm not in by_norm:
+                by_norm[norm] = row
+
+    merged: list[dict] = []
+    for i, item in enumerate(raw_sections):
+        if not isinstance(item, dict):
+            merged.append(item)
+            continue
+        out = _normalize_section_to_code_shape(item)
+        name = out.get("section_name")
+        matched: dict | None = None
+        if isinstance(name, str):
+            matched = by_norm.get(_normalize_section_title(name))
+        if matched is None and len(ks_list) == len(raw_sections) and i < len(ks_list):
+            matched = ks_list[i]
+        if isinstance(matched, dict):
+            sl = matched.get("start_line")
+            el = matched.get("end_line")
+            if isinstance(sl, int):
+                out["paper_start_line"] = sl
+            if isinstance(el, int):
+                out["paper_end_line"] = el
+            desc = matched.get("description")
+            if isinstance(desc, str) and desc.strip():
+                out["paper_section_description"] = desc
+        merged.append(out)
+
+    return {**code_result, "sections": merged}
+
+
 class Agent:
     """
     Early implementation of an agent that maps key sections of a research paper
@@ -186,6 +277,10 @@ class Agent:
         Also, extract the GitHub repository URL from the paper, if it is present.
 
         Provide JUST the section names, and start and end lines, short descriptions of the section, and the GitHub repository URL, no other text.
+
+        IMPORTANT: Make sure that the section names are exact matches to the section names in the paper. Do not make up section names and do not add
+        descriptive text to the section names. Sections should include subsections within sections, marked with a sub-section number. If there is no sub-section number, 
+        append a sub-section number to the section name with a period.
 
         ### Paper Content ###
         {paper_content_to_analyze}
@@ -263,17 +358,24 @@ class Agent:
         Provide JUST the code snippets and the line numbers in a JSON object, no other text. 
 
         Return only a JSON object. First character must be {{ and last must be }}. No prose.
-    
+
+        IMPORTANT: Make sure that the section names are exact matches to the section names in the key sections. Do not make up section names and do not add
+        descriptive text to the section names.
+
         Example:
         {{
             "sections": [
                 {{
                     "section_name": "Section 1",
                     "section_description": "A short description of the section",
-                    "code_snippet": "print('Hello, world!')",
-                    "code_filepath": "path/to/code/file.py",
-                    "code_start_line": 10,
-                    "code_end_line": 20
+                    "code_snippets": [
+                        {{
+                            "content": "print('Hello, world!')",
+                            "filepath": "path/to/code/file.py",
+                            "start_line": 10,
+                            "end_line": 20
+                        }},
+                    ],
                 }}
             ]
         }}
@@ -338,7 +440,8 @@ class Agent:
 
         delete_temp_dir(repo_local_dir)
 
+        merged = _merge_key_sections_into_code_result(key_sections, code_result)
         return {
-            "key_sections": key_sections,
-            "code_result": code_result
+            "github_repo_url": key_sections.get("github_repo_url"),
+            "code_result": merged,
         }

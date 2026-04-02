@@ -1,7 +1,14 @@
+import json
+from claude_agent_sdk.types import StreamEvent
 import os
-import shutil
 import subprocess
+import shutil
 
+async def print_event(event: StreamEvent, tool_state: dict) -> None:
+    if isinstance(event, StreamEvent):
+        event = event.event
+        print(json.dumps(event, indent=4))
+    return None
 
 def clone_repo_to_temp_dir(repo_url: str) -> str:
     """
