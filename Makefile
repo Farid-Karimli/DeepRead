@@ -51,7 +51,7 @@ up:
 			fi; \
 		fi; \
 		( cd "$(BACKEND_DIR)" && \
-		  { nohup uv run python -m uvicorn deepread.server:app \
+		  { nohup uv run python -m uvicorn src.server:app \
 		    --host 127.0.0.1 --port $(BACKEND_PORT) --reload \
 		    >> "$(BACKEND_LOG)" 2>&1 & echo $$! > "$(BACKEND_PID)"; } ); \
 		sleep 0.6; \
@@ -67,7 +67,7 @@ up:
 		echo "starting celery worker..."; \
 		rm -f "$(CELERY_PID)"; \
 		( cd "$(BACKEND_DIR)" && \
-		  { nohup uv run python -m celery -A deepread.server.celery worker --loglevel=info \
+		  { nohup uv run python -m celery -A src.server.celery worker --loglevel=info \
 		    >> "$(CELERY_LOG)" 2>&1 & echo $$! > "$(CELERY_PID)"; } ); \
 		sleep 0.6; \
 		if [ -f "$(CELERY_PID)" ] && kill -0 "$$(cat "$(CELERY_PID)")" 2>/dev/null; then \
