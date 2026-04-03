@@ -5,12 +5,11 @@ import time
 
 from celery import Celery
 
-from deepread.agent import Agent
-from deepread.paper_analysis_cache import get_cached_result, set_cached_result
-from deepread.config import REDIS_URL
+from src.agent import Agent
+from src.paper_analysis_cache import get_cached_result, set_cached_result
+from src.config import REDIS_URL
 
 logger = logging.getLogger(__name__)
-
 
 celery = Celery(
     __name__,

@@ -13,7 +13,6 @@ from typing import Any
 
 import redis
 
-DEFAULT_REDIS_URL = "redis://127.0.0.1:6379/0"
 CACHE_KEY_PREFIX = "deepread:paper_analysis:v1:"
 
 # How long to keep cached analysis JSON (seconds). Override with env.
@@ -21,7 +20,7 @@ DEFAULT_TTL_SECONDS = 7 * 24 * 60 * 60
 
 
 def _redis_url() -> str:
-    return os.getenv("REDIS_URL", DEFAULT_REDIS_URL)
+    return os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
 
 def _ttl_seconds() -> int:

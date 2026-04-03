@@ -5,7 +5,7 @@ from typing import Callable
 from claude_agent_sdk import ClaudeAgentOptions, query, ResultMessage
 from claude_agent_sdk.types import StreamEvent
 
-from deepread.utils import clone_repo_to_temp_dir, delete_temp_dir
+from src.utils import clone_repo_to_temp_dir, delete_temp_dir
 
 # Currently unused, output format is ignored by Claude Code. https://github.com/anthropics/claude-code/issues/18536
 key_section_schema = {
@@ -52,17 +52,27 @@ code_section_schema = {
                         "type": "string",
                     },
                     "code_snippet": {
-                        "type": "string",
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "content": {
+                                    "type": "string",
+                                },
+                                "filepath": {
+                                    "type": "string",
+                                },
+                                "start_line": {
+                                    "type": "integer",
+                                },
+                                "end_line": {
+                                    "type": "integer",
+                                },
+                            },
+                            "required": ["content", "filepath", "start_line", "end_line"],
+                        },
                     },
-                    "code_filepath": {
-                        "type": "string",
-                    },
-                    "code_start_line": {
-                        "type": "integer",
-                    },
-                    "code_end_line": {
-                        "type": "integer",
-                    },
+                   
                 },
                 "required": ["section_name", "section_description", "code_snippet", "code_filepath", "code_start_line", "code_end_line"]
             }
@@ -251,6 +261,18 @@ class Agent:
                  stream_events: bool = False):
         self.model = model
         self.stream_events = stream_events
+
+    async def _test_claude_code(self) -> None:
+        prompt = "What is the capital of France?"
+        options = ClaudeAgentOptions(
+            allowed_tools=["Bash", "Glob"],
+            cwd=".",
+        )
+        result = None
+        async for message in query(prompt=prompt, options=options):
+            if isinstance(message, ResultMessage):
+                result = message.result
+        return result
 
     async def identify_key_sections(
         self,

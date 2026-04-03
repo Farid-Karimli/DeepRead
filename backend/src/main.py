@@ -2,7 +2,7 @@ import asyncio
 import json
 import pprint
 
-from agent import Agent, _print_event
+from src.agent import Agent, _print_event
 
 async def _test_run_agent() -> None:
     agent = Agent()

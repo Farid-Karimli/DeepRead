@@ -6,8 +6,10 @@ from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
 import pypdf
+import asyncio
 
-from deepread.celery_tasks import analyze_paper_task, celery, test_task
+from src.agent import Agent
+from src.celery_tasks import analyze_paper_task, celery, test_task
 
 app = FastAPI()
 
@@ -92,6 +94,12 @@ def task_status(task_id):
 def test():
     task = test_task.delay()
     return {"task_id": task.id}
+
+@app.get("/test-claude-code")
+def test_claude_code():
+    agent = Agent()
+    result = asyncio.run(agent._test_claude_code())
+    return {"result": result}
 
 ##########################################
 ##### Paper Content Upload #######################
