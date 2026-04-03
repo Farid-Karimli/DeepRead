@@ -13,6 +13,8 @@ dependencies = [
     "redis>=7.3.0",
     "rich>=10.0.0",
     "pydantic>=2.12.5",
+    "python-dotenv>=1.2.1",
+    "uvicorn>=0.34.0",
 ]
 authors = [
     { name = "DeepRead Team" }
