@@ -1,0 +1,14 @@
+.claude
+
+.venv
+.env
+
+code
+
+papers
+
+*.json
+
+src/evals
+src/vectorize
+src/__pycache__

@@ -10,10 +10,10 @@ RUN pnpm install --frozen-lockfile
 COPY . .
 
 # Browser calls this URL (host port mapped in docker-compose)
-ARG VITE_API_URL=http://127.0.0.1:8000
+ARG VITE_API_URL=https://server-871113564150.us-east1.run.app
 ENV VITE_API_URL=$VITE_API_URL
 
-RUN pnpm run build
+RUN pnpm exec vite build
 
 FROM nginx:1.27-alpine
 
