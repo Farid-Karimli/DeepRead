@@ -8,17 +8,25 @@ interface HomeProps {
 export default function Home({ handlePaperSubmit, errorMessage }: HomeProps) {
     return (    
         <>
-            <section id="center">
-                <h1>Analyze a Paper</h1>
-                <p>Upload a paper to get started.</p>
+            <section id="center" className="home-upload">
+                <h1 className="home-upload__title">Analyze a Paper with DeepRead</h1>
+                <p className="home-upload__lead">Upload a paper to get started.</p>
                 {errorMessage ? (
-                    <p role="alert" style={{ color: 'var(--accent, #c00)', maxWidth: 480, textAlign: 'center' }}>
+                    <p className="home-upload__alert" role="alert">
                         {errorMessage}
                     </p>
                 ) : null}
-                <form onSubmit={handlePaperSubmit}>
-                <input type="file" accept=".pdf" name="file" required />
-                <button type="submit">Analyze</button>
+                <form className="home-upload__form" onSubmit={handlePaperSubmit}>
+                    <input
+                        className="home-upload__file"
+                        type="file"
+                        accept=".pdf"
+                        name="file"
+                        required
+                    />
+                    <button className="outline-action-btn" type="submit">
+                        Analyze
+                    </button>
                 </form>
             </section>
         </>

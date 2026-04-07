@@ -7,6 +7,8 @@ import {
   HighlightOverlay,
   TransformContext,
 } from '@allenai/pdf-components';
+import { SlArrowLeft, SlArrowRight } from "react-icons/sl";
+
 
 import * as React from 'react';
 import { createPortal } from 'react-dom';
@@ -14,8 +16,13 @@ import { useSidePanel } from '../context/SidePanelContext.tsx';
 
 /** Geometry matches `BoundingBox`; `tooltip` is shown on hover (native + optional floating). */
 export type BoundingBoxWithTooltip = BoundingBoxType & {
-  file_info: string;
-  code: string;
+  file_infos: string[];
+  code_snippets: {
+    content: string;
+    filepath: string;
+    start_line: number;
+    end_line: number;
+  }[];
   hitKey: string;
 };
 
@@ -43,6 +50,8 @@ function PdfBoundingHitTarget({
   const leaveTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { showCode } = useSidePanel();
+
+  const [codeIndex, setCodeIndex] = React.useState(0);
 
   if (box.page !== pageIndex) {
     return null;
@@ -100,8 +109,42 @@ function PdfBoundingHitTarget({
           setFloating(null);
         }}
       >
-        {box.file_info}
-        <button onClick={() => showCode(box.code)}>View Code</button>
+        <div className="pdf-hit-tooltip__path">{box.file_infos[codeIndex]}</div>
+        <div className="pdf-hit-tooltip__actions">
+          {box.code_snippets.length > 1 ? (
+            <button
+              type="button"
+              className="pdf-hit-tooltip__icon-btn"
+              aria-label="Previous code snippet"
+              onClick={() =>
+                setCodeIndex((codeIndex - 1 + box.code_snippets.length) % box.code_snippets.length)
+              }
+            >
+              <SlArrowLeft />
+            </button>
+          ) : (
+            <span className="pdf-hit-tooltip__icon-spacer" aria-hidden />
+          )}
+          <button
+            type="button"
+            className="pdf-hit-tooltip__text-btn"
+            onClick={() => showCode(box.code_snippets[codeIndex].content)}
+          >
+            View code
+          </button>
+          {box.code_snippets.length > 1 ? (
+            <button
+              type="button"
+              className="pdf-hit-tooltip__icon-btn"
+              aria-label="Next code snippet"
+              onClick={() => setCodeIndex((codeIndex + 1) % box.code_snippets.length)}
+            >
+              <SlArrowRight />
+            </button>
+          ) : (
+            <span className="pdf-hit-tooltip__icon-spacer" aria-hidden />
+          )}
+        </div>
       </div>,
       document.body,
     );
@@ -110,7 +153,6 @@ function PdfBoundingHitTarget({
     <>
       <div
         style={style}
-        title={box.code}
         role="button"
         tabIndex={0}
         onMouseEnter={(e) => {

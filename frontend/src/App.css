@@ -70,6 +70,83 @@
   }
 }
 
+.home-upload__title {
+  margin: 0;
+  font-size: clamp(1.75rem, 4vw, 2.25rem);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+  color: var(--text-h);
+}
+
+.home-upload__lead {
+  margin: 0;
+  max-width: 28rem;
+  text-align: center;
+  color: var(--text);
+  line-height: 1.45;
+}
+
+.home-upload__alert {
+  margin: 0;
+  max-width: 30rem;
+  text-align: center;
+  line-height: 1.45;
+  color: var(--accent);
+}
+
+.home-upload__form {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 16px;
+  width: 100%;
+  max-width: 22rem;
+  margin-top: 4px;
+}
+
+.home-upload__file {
+  width: 100%;
+  font: inherit;
+  font-size: 0.875rem;
+  color: var(--text);
+  line-height: 1.35;
+}
+
+.home-upload__file::file-selector-button {
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin-right: 12px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--social-bg);
+  color: var(--text-h);
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.home-upload__file::file-selector-button:hover {
+  border-color: var(--accent-border);
+  background: var(--accent-bg);
+}
+
+.home-upload__file:focus-visible {
+  outline: none;
+}
+
+.home-upload__file:focus-visible::file-selector-button {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.home-upload__form .outline-action-btn {
+  width: 100%;
+}
+
 #next-steps {
   display: flex;
   border-top: 1px solid var(--border);
@@ -204,4 +281,219 @@
    layout/mask IDs, but hide the dimming layer. Hit targets in CodeOverlay stay as-is. */
 .paper-viewer .pdf-reader__page-highlight-overlay svg.page-mask > rect {
   opacity: 0;
+}
+
+/* PaperView: viewport-height split; PDF and code each scroll inside their own pane (no body scroll chaining). */
+.paper-view-layout {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-around;
+  align-items: stretch;
+  box-sizing: border-box;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.paper-view-layout__pdf-panel {
+  width: 60%;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  overscroll-behavior: contain;
+}
+
+.paper-view-layout__pdf-toolbar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 16px;
+  flex-wrap: wrap;
+  padding: 12px 16px 10px;
+  box-sizing: border-box;
+}
+
+.paper-view-layout__toolbar-title {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+
+/* Shared outline control (PaperView toolbars, Home submit, etc.) */
+.outline-action-btn {
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.25;
+  cursor: pointer;
+  flex-shrink: 0;
+  border-radius: 8px;
+  padding: 8px 16px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.outline-action-btn:hover {
+  background: var(--social-bg);
+  border-color: var(--accent-border);
+  color: var(--text-h);
+}
+
+.outline-action-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.outline-action-btn:active {
+  transform: translateY(0.5px);
+}
+
+.paper-view-layout__pdf-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  overscroll-behavior: contain;
+}
+
+.paper-view-layout__pdf-inner.paper-viewer {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  max-width: 900px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.paper-view-layout__doc-shell {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.paper-view-layout__doc-shell > * {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.paper-view-layout__pdf-inner .reader__page-list {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.paper-view-layout__code-panel {
+  width: 40%;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-left: 1px solid var(--border, #333);
+  box-sizing: border-box;
+  overscroll-behavior: contain;
+}
+
+.paper-view-layout__code-toolbar {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 12px 16px 10px;
+  box-sizing: border-box;
+}
+
+.paper-view-layout__code-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 16px;
+  padding-top: 8px;
+}
+
+/* PDF hit-target tooltip: path + ghost actions (no default gray buttons) */
+.pdf-hit-tooltip__path {
+  word-break: break-word;
+}
+
+.pdf-hit-tooltip__actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.pdf-hit-tooltip__icon-spacer {
+  display: inline-flex;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+}
+
+.pdf-hit-tooltip button {
+  font: inherit;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: #d4d4d8;
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.pdf-hit-tooltip button:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fafafa;
+}
+
+.pdf-hit-tooltip button:focus-visible {
+  outline: 2px solid rgba(129, 140, 248, 0.9);
+  outline-offset: 2px;
+}
+
+.pdf-hit-tooltip__icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.pdf-hit-tooltip__icon-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.pdf-hit-tooltip__text-btn {
+  padding: 6px 10px;
+  color: #a5b4fc;
+  font-weight: 500;
+}
+
+.pdf-hit-tooltip__text-btn:hover {
+  color: #c7d2fe;
 }

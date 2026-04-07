@@ -13,10 +13,12 @@ interface codeSection {
     paper_start_line?: number;
     paper_end_line?: number;
     paper_section_description?: string;
-    code_snippet: string;
-    code_filepath: string;
-    code_start_line: number;
-    code_end_line: number;
+    code_snippets: {
+        content: string;
+        filepath: string;
+        start_line: number;
+        end_line: number;
+    }[];
   }
   /** Root object: `{ "sections": [ ... ] }` */
   interface codeSectionsResult {
@@ -24,8 +26,10 @@ interface codeSection {
   }
 
 interface paperSubmitResponse {
-    task_id: string;
-    paper_id?: string;
+    status: 'complete' | 'pending';
+    task_id?: string;
+    paper_id: string;
+    result?: codeSectionsResult;
 }
 
 interface paperAnalysisStatusResponse {

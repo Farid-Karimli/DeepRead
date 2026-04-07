@@ -102,9 +102,18 @@ function App() {
     }
     try {
       const response: paperSubmitResponse = await submitPaperAnalysis(formData);
+      console.log(response);
       setPaperFile(file);
-      setPaperId(response.paper_id ?? null);
-      setTaskId(response.task_id);
+      if (response.status === 'complete') {
+        const sections = extractCodeSections(response.result);
+        if (sections) {
+          setAnalysisResult(sections);
+          return;
+        }
+        setSubmitError('Analysis finished but the result format was unexpected.');
+      } else {
+        setTaskId(response.task_id ?? null);
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Upload failed';
       setSubmitError(`${message}. Check the browser console and backend logs.`);

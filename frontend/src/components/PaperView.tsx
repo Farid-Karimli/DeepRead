@@ -128,8 +128,8 @@ function PdfPageList({ analysisResult, scrollRef }: { analysisResult: codeSectio
                         width:  (unionRight  - unionLeft)   * scaleX,
                         height: (unionBottom - unionTop)    * scaleY * 1.5,
                         hitKey: `p${pageIndexZeroBased}-h${hitSeq++}`,
-                        file_info: `${section.code_filepath}:${section.code_start_line}-${section.code_end_line}`,
-                        code: section.code_snippet,
+                        file_infos: section.code_snippets.map((snippet) => `${snippet.filepath}:${snippet.start_line}-${snippet.end_line}`),
+                        code_snippets: section.code_snippets,
                     });
                 }
             }
@@ -166,46 +166,57 @@ export default function PaperView({ analysisResult: _analysisResult, clearEnviro
 
     const hasRealFile = paperFile instanceof File && paperFile.size > 0;
 
-    const { codeContent, showCode, hideCode } = useSidePanel();
+    const { codeContent, hideCode } = useSidePanel();
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-around' }}>
-            <section id="paper-viewer" style={{ width: '60%' }}>
-                <h1>Paper View</h1>
-                <button type="button" onClick={clearEnvironment}>
-                    Clear Environment
-                </button>
+        <div className="paper-view-layout">
+            <section id="paper-viewer" className="paper-view-layout__pdf-panel">
+                <div className="paper-view-layout__pdf-toolbar">
+                    <h1 className="paper-view-layout__toolbar-title">Paper View</h1>
+                    <button
+                        type="button"
+                        className="outline-action-btn"
+                        onClick={clearEnvironment}
+                    >
+                        Clear Environment
+                    </button>
+                </div>
 
                 {!hasRealFile ? (
-                    <p role="status">
+                    <p role="status" style={{ padding: '0 1rem' }}>
                         No PDF file in memory. That often happens after a refresh (the browser cannot
                         restore file uploads from storage). Go back, upload your PDF again, then analyze.
                     </p>
                 ) : (
-                    <div className="paper-viewer" style={{ width: '100%', maxWidth: 900, minHeight: 480 }}>
-                        <ContextProvider>
-                            <DocumentWrapper
-                                className="pdf-document"
-                                file={fileForViewer}
-                                renderType={RENDER_TYPE.SINGLE_CANVAS}
-                                inputRef={pdfContentRef}
-                            >
-                                <PdfPageList analysisResult={_analysisResult} scrollRef={pdfScrollableRef} />
-                            </DocumentWrapper>
-                        </ContextProvider>
+                    <div className="paper-view-layout__pdf-scroll">
+                        <div className="paper-view-layout__pdf-inner paper-viewer">
+                            <ContextProvider>
+                                <DocumentWrapper
+                                    className="pdf-document paper-view-layout__doc-shell"
+                                    file={fileForViewer}
+                                    renderType={RENDER_TYPE.SINGLE_CANVAS}
+                                    inputRef={pdfContentRef}
+                                >
+                                    <PdfPageList analysisResult={_analysisResult} scrollRef={pdfScrollableRef} />
+                                </DocumentWrapper>
+                            </ContextProvider>
+                        </div>
                     </div>
                 )}
             </section>
 
-            {codeContent && 
-                ( 
-                <aside style={{ width: '40%', borderLeft: '1px solid #333', overflow: 'auto', padding: 16 }}>
-                    <button style={{ marginBottom: 16 }} onClick={hideCode}>Close</button>
-                    <CodeSidePanel codeContent={codeContent} />
-                  </aside>
-                  )
-            }
-
+            {codeContent && (
+                <aside className="paper-view-layout__code-panel">
+                    <div className="paper-view-layout__code-toolbar">
+                        <button type="button" className="outline-action-btn" onClick={hideCode}>
+                            Close
+                        </button>
+                    </div>
+                    <div className="paper-view-layout__code-scroll">
+                        <CodeSidePanel codeContent={codeContent} />
+                    </div>
+                </aside>
+            )}
         </div>
     );
 }
