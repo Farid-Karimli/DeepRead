@@ -6,8 +6,9 @@ import time
 from celery import Celery
 
 from src.agent import Agent
+from src.db import update_paper_metadata
 from src.paper_analysis_cache import get_cached_result, set_cached_result
-from src.config import REDIS_URL
+from src.config import REDIS_URL, SUPABASE_URL, SUPABASE_KEY
 
 logger = logging.getLogger(__name__)
 
@@ -53,4 +54,19 @@ def analyze_paper_task(
     agent = Agent()
     result = asyncio.run(agent.analyze_paper(paper_content))
     set_cached_result(paper_id, result)
+    if isinstance(result, dict):
+        title = result.get("paper_title")
+        link = result.get("github_repo_url")
+        code_result = result.get("code_result")
+        if not link and isinstance(code_result, dict):
+            link = code_result.get("github_repo_url")
+        if not title and isinstance(code_result, dict):
+            ct = code_result.get("paper_title")
+            if isinstance(ct, str):
+                title = ct
+        update_paper_metadata(
+            paper_id,
+            paper_title=title if isinstance(title, str) else None,
+            github_link=link if isinstance(link, str) else None,
+        )
     return result

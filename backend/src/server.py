@@ -10,7 +10,8 @@ import asyncio
 
 from src.agent import Agent
 from src.celery_tasks import analyze_paper_task, celery, test_task
-from src.paper_analysis_cache import get_cached_result, set_cached_result
+from src.db import get_file_url, upload_paper_to_storage
+from src.paper_analysis_cache import get_cached_result, iter_cached_results, set_cached_result
 
 app = FastAPI()
 
@@ -74,7 +75,6 @@ def _paper_bytes_to_text(raw: bytes, filename: str | None = None) -> str:
     except UnicodeDecodeError:
         return raw.decode("utf-8", errors="replace")
 
-
 @app.get("/")
 def read_root():
     return {"message": "Hello, World!"}
@@ -85,6 +85,9 @@ def task_status(task_id):
     response = {"status": task.status}
     if task.ready():
         response["result"] = task.result
+    if task.status == "FAILURE":
+        exc = task.result
+        response["error"] = str(exc) if exc is not None else "Unknown error"
     return response
 
 ##########################################
@@ -98,10 +101,12 @@ def test():
 
 @app.get("/debug-env")
 async def debug_env():
-    key = os.getenv("ANTHROPIC_API_KEY")
-    if key:
+    anthropic_key = os.getenv("ANTHROPIC_API_KEY")
+    db_url = os.getenv("SUPABASE_URL")
+    db_key = os.getenv("SUPABASE_KEY")
+    if anthropic_key and db_url and db_key:
         # Just show the first 4 characters to confirm it's there
-        return {"status": "Loaded", "prefix": f"{key[:4]}..."}
+        return {"status": "Loaded", "prefix": f"{anthropic_key[:4]}...", "db_url": f"{db_url[:4]}...", "db_key": f"{db_key[:4]}..."}
     return {"status": "Not Found"}
 
 @app.get("/test-claude-code")
@@ -114,16 +119,63 @@ def test_claude_code():
 ##### Paper Content Upload #######################
 ##########################################
 
+
+def _paper_list_item(paper_id: str, result: dict) -> dict:
+    """Lightweight row for the home page (full result available via GET /papers/{id})."""
+    github = result.get("github_repo_url")
+    title = result.get("paper_title")
+    code_result = result.get("code_result") or {}
+    sections = code_result.get("sections") if isinstance(code_result, dict) else None
+    n_sections = len(sections) if isinstance(sections, list) else 0
+    label = None
+    if isinstance(title, str) and title.strip():
+        label = title.strip()
+    elif n_sections and isinstance(sections[0], dict):
+        label = sections[0].get("section_name")
+    return {
+        "paper_id": paper_id,
+        "paper_title": title if isinstance(title, str) else None,
+        "github_repo_url": github,
+        "section_count": n_sections,
+        "label": label,
+    }
+
+
+@app.get("/papers")
+def list_papers():
+    rows = [_paper_list_item(pid, res) for pid, res in iter_cached_results()]
+    rows.sort(key=lambda r: r["paper_id"])
+    return {"papers": rows}
+
+
+@app.get("/papers/{paper_id}")
+def get_paper_by_id(paper_id: str):
+    cached_result = get_cached_result(paper_id)
+    url = get_file_url(paper_id) # Raw file bytes for viewing
+    if url is None:
+        raise HTTPException(status_code=404, detail="Unknown paper_id or file not found")
+
+    if cached_result is None:
+        raise HTTPException(status_code=404, detail="Unknown paper_id or cache expired")
+    return {"paper_id": paper_id, "result": cached_result, "file_url": url}
+
+
 @app.post("/analyze")
 def analyze_paper(file: UploadFile = File(...)):
     raw = file.file.read()
     paper_id = hashlib.sha256(raw).hexdigest()
+    filename = file.filename
+
+    try:
+        upload_paper_to_storage(paper_name=filename, paper_id=paper_id, paper_content=raw)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
     cached = get_cached_result(paper_id)
     if cached is not None:
         return {"paper_id": paper_id, "status": "complete", "result": cached}
 
-    paper_content = _paper_bytes_to_text(raw, file.filename)
+    paper_content = _paper_bytes_to_text(raw, filename)
     paper_content = _normalize_whitespace(paper_content)
 
     task = analyze_paper_task.delay(

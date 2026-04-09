@@ -59,3 +59,55 @@ def set_cached_result(paper_id: str, result: dict[str, Any]) -> None:
         r.setex(cache_key_for_paper_id(paper_id), _ttl_seconds(), payload)
     except redis.RedisError:
         pass
+
+
+def paper_id_from_cache_key(key: str) -> str | None:
+    if not key.startswith(CACHE_KEY_PREFIX):
+        return None
+    return key[len(CACHE_KEY_PREFIX) :]
+
+
+def iter_cached_results() -> list[tuple[str, dict[str, Any]]]:
+    """
+    Walk all paper-analysis cache entries using SCAN (cursor iteration), not KEYS.
+
+    Returns (paper_id, parsed_result) for each key that exists and decodes as JSON.
+    """
+    try:
+        r = _client()
+    except redis.RedisError:
+        return []
+
+    keys: list[str] = []
+    try:
+        for key in r.scan_iter(match=f"{CACHE_KEY_PREFIX}*", count=200):
+            keys.append(key)
+    except redis.RedisError:
+        return []
+
+    if not keys:
+        return []
+
+    out: list[tuple[str, dict[str, Any]]] = []
+    # Pipeline GETs in fixed batches to avoid huge single commands.
+    batch = 50
+    for i in range(0, len(keys), batch):
+        chunk = keys[i : i + batch]
+        try:
+            pipe = r.pipeline()
+            for k in chunk:
+                pipe.get(k)
+            raw_vals = pipe.execute()
+        except redis.RedisError:
+            continue
+        for key, raw in zip(chunk, raw_vals, strict=True):
+            pid = paper_id_from_cache_key(key)
+            if pid is None or raw is None:
+                continue
+            try:
+                parsed = json.loads(raw)
+            except (json.JSONDecodeError, TypeError):
+                continue
+            if isinstance(parsed, dict):
+                out.append((pid, parsed))
+    return out
