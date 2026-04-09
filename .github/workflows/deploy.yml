@@ -51,5 +51,3 @@ jobs:
           service: frontend
           region: ${{ env.REGION }}
           source: ./frontend
-          build_environment_variables: |
-            VITE_API_URL=${{ secrets.VITE_API_URL }}
