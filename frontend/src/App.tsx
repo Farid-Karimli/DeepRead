@@ -4,7 +4,16 @@ import Home from './components/Home';
 import PaperView from './components/PaperView.tsx';
 import { SidePanelProvider } from './context/SidePanelContext.tsx';
 
-import { submitPaperAnalysis, getPaperAnalysisStatus, type paperSubmitResponse, type paperAnalysisStatusResponse, type codeSectionsResult } from './api/main';
+import {
+  submitPaperAnalysis,
+  getPaperAnalysisStatus,
+  getCachedPaperById,
+  type paperSubmitResponse,
+  type paperAnalysisStatusResponse,
+  type codeSectionsResult,
+  type paperByIdResponse,
+  type Paper,
+} from './api/main';
 
 /** Celery stores the agent return value: `{ github_repo_url, code_result }`. */
 type AgentTaskResult = {
@@ -47,7 +56,12 @@ function App() {
     } else {
       localStorage.removeItem('analysisResult');
     }
-  }, [taskId, analysisResult, paperFile]);
+    if (paperId) {
+      localStorage.setItem('paperId', paperId);
+    } else {
+      localStorage.removeItem('paperId');
+    }
+  }, [taskId, analysisResult, paperFile, paperId]);
 
   useEffect(() => {
     if (!taskId || analysisResult) return;
@@ -72,7 +86,7 @@ function App() {
         }
 
         if (status.status === 'FAILURE') {
-          setSubmitError('Analysis failed. Check the Celery worker logs.');
+          setSubmitError(status.error ?? 'Analysis failed. Check the Celery worker logs.');
           setTaskId(null);
           return;
         }
@@ -104,6 +118,7 @@ function App() {
       const response: paperSubmitResponse = await submitPaperAnalysis(formData);
       console.log(response);
       setPaperFile(file);
+      setPaperId(response.paper_id);
       if (response.status === 'complete') {
         const sections = extractCodeSections(response.result);
         if (sections) {
@@ -124,7 +139,26 @@ function App() {
     setTaskId(null);
     setAnalysisResult(undefined);
     setPaperFile(undefined);
+    setPaperId(null);
     setSubmitError(null);
+  };
+
+  const openCachedPaper = async (id: string) => {
+    setSubmitError(null);
+    try {
+      const response: Paper = await getCachedPaperById(id);
+      const { result, file } = response;
+      const sections = extractCodeSections(result);
+      if (sections) {
+        setPaperId(id);
+        setPaperFile(new File([file.buffer as ArrayBuffer], id, { type: 'application/pdf' }));
+        setAnalysisResult(sections);
+        return;
+      }
+      setSubmitError('Cached result format was unexpected.');
+    } catch {
+      setSubmitError('Could not load that paper from the server.');
+    }
   };
 
   if (analysisResult) {
@@ -152,7 +186,13 @@ function App() {
     );
   }
 
-  return <Home handlePaperSubmit={handlePaperSubmit} errorMessage={submitError} />;
+  return (
+    <Home
+      handlePaperSubmit={handlePaperSubmit}
+      onOpenCachedPaper={openCachedPaper}
+      errorMessage={submitError}
+    />
+  );
 }
 
 export default App;

@@ -1,42 +1,14 @@
+import type { 
+    paperSubmitResponse, 
+    paperAnalysisStatusResponse, 
+    codeSectionsResult, 
+    paperByIdResponse, 
+    cachedPaperSummary, 
+    listCachedPapersResponse 
+} from './types';
+
 const API_URL: string =
   import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8000";
-
-/**
- * One section row after `analyze_paper`: code mapping fields plus paper anchors merged
- * from identify_key_sections (`paper_*` may be absent if matching failed).
- * 
- */
-
-interface codeSection {
-    section_name: string;
-    section_description: string;
-    paper_start_line?: number;
-    paper_end_line?: number;
-    paper_section_description?: string;
-    code_snippets: {
-        content: string;
-        filepath: string;
-        start_line: number;
-        end_line: number;
-    }[];
-  }
-  /** Root object: `{ "sections": [ ... ] }` */
-  interface codeSectionsResult {
-    sections: codeSection[];
-  }
-
-interface paperSubmitResponse {
-    status: 'complete' | 'pending';
-    task_id?: string;
-    paper_id: string;
-    result?: codeSectionsResult;
-}
-
-interface paperAnalysisStatusResponse {
-    status: string;
-    /** Celery success payload: `{ github_repo_url, code_result }` or cached equivalent */
-    result?: unknown;
-}
 
 const submitPaperAnalysis = async (formData: FormData): Promise<paperSubmitResponse> => {
     const URL: string = API_URL + "/analyze";
@@ -69,4 +41,54 @@ const getPaperAnalysisStatus = async (taskId: string): Promise<paperAnalysisStat
     return responseJSON;
 }
 
-export { submitPaperAnalysis, getPaperAnalysisStatus, type paperSubmitResponse, type paperAnalysisStatusResponse, type codeSectionsResult };
+const listCachedPapers = async (): Promise<cachedPaperSummary[]> => {
+    const response: Response = await fetch(`${API_URL}/papers`);
+    if (!response.ok) {
+        console.error(response);
+        throw new Error("Failed to list cached papers");
+    }
+    const body: listCachedPapersResponse = await response.json();
+    return body.papers ?? [];
+};
+
+interface Paper {
+    result: codeSectionsResult;
+    file: Uint8Array;
+}
+
+const getCachedPaperById = async (paperId: string): Promise<Paper> => {
+    // Returns the cached paper result and the file URL
+    const response: Response = await fetch(`${API_URL}/papers/${encodeURIComponent(paperId)}`);
+    if (!response.ok) {
+        console.error(response);
+        throw new Error("Failed to load cached paper");
+    }
+    const responseJSON: paperByIdResponse = await response.json();
+    const fileUrl = responseJSON.file_url;
+    const file = await getFileByUrl(fileUrl);
+    return { result: responseJSON.result, file: file };
+};
+
+const getFileByUrl = async (url: string): Promise<Uint8Array> => {
+    const response: Response = await fetch(url);
+    if (!response.ok) {
+        console.error(response);
+        throw new Error("Failed to get file by URL");
+    }
+    const responseBuffer: ArrayBuffer = await response.arrayBuffer();
+    return new Uint8Array(responseBuffer);
+};
+
+export {
+    submitPaperAnalysis,
+    getPaperAnalysisStatus,
+    listCachedPapers,
+    getCachedPaperById,
+    type paperSubmitResponse,
+    type paperAnalysisStatusResponse,
+    type codeSectionsResult,
+    type cachedPaperSummary,
+    type paperByIdResponse,
+    type listCachedPapersResponse,
+    type Paper,
+};

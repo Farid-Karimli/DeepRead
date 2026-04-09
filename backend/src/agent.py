@@ -289,6 +289,10 @@ class Agent:
 
         paper_content_to_analyze = paper_content if paper_content is not None else Path(paper_path).read_text(encoding="utf-8")
 
+        # What if link not present in the paper
+
+        github_link_present = "https://github.com/" in paper_content_to_analyze
+
         prompt = f"""
         Identify the key sections of the implementation content in the following research paper.
         Focus on sections that have a high likelihood of being implemented in the code repository. These sections
@@ -386,6 +390,8 @@ class Agent:
 
         Example:
         {{
+            "paper_title": "The Title of the Paper",
+            "github_repo_url": "https://github.com/your-repo/your-repo.git",
             "sections": [
                 {{
                     "section_name": "Section 1",
@@ -454,7 +460,14 @@ class Agent:
         if key_sections is None:
             raise ValueError("No key sections found.")
 
-        repo_local_dir = clone_repo_to_temp_dir(key_sections['github_repo_url'])
+        github_repo_url = key_sections.get('github_repo_url')
+        if not github_repo_url:
+            raise ValueError(
+                "No GitHub repository URL found in this paper. "
+                "DeepRead requires a paper that links to a public GitHub repository."
+            )
+
+        repo_local_dir = clone_repo_to_temp_dir(github_repo_url)
 
         code_result = await self.map_key_sections_to_code(key_sections=key_sections, code_path=repo_local_dir, on_event=on_event)
         if code_result is None:
@@ -463,7 +476,13 @@ class Agent:
         delete_temp_dir(repo_local_dir)
 
         merged = _merge_key_sections_into_code_result(key_sections, code_result)
+        paper_title = ""
+        if isinstance(merged, dict):
+            pt = merged.get("paper_title")
+            if isinstance(pt, str) and pt.strip():
+                paper_title = pt.strip()
         return {
+            "paper_title": paper_title,
             "github_repo_url": key_sections.get("github_repo_url"),
             "code_result": merged,
         }
