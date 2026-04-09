@@ -1,0 +1,55 @@
+name: Deploy to Cloud Run
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  PROJECT_ID: deepread-492217
+  REGION: us-east1
+
+jobs:
+  deploy-backend:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write  # required for Workload Identity
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+
+      - uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: server
+          region: ${{ env.REGION }}
+          source: ./backend
+
+  deploy-frontend:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+
+      - uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: frontend
+          region: ${{ env.REGION }}
+          source: ./frontend
+          build_environment_variables: |
+            VITE_API_URL=${{ secrets.VITE_API_URL }}
