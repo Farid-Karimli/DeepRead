@@ -40,7 +40,7 @@ Thumbs.db
 .env
 
 # Project specific
-*.json
+backend/*.json
 !example_repos/**/*.json
 
 
