@@ -3,6 +3,7 @@ from claude_agent_sdk.types import StreamEvent
 import os
 import subprocess
 import shutil
+import requests
 
 async def print_event(event: StreamEvent, tool_state: dict) -> None:
     if isinstance(event, StreamEvent):
@@ -26,6 +27,13 @@ def clone_repo_to_temp_dir(repo_url: str) -> str:
         print(f"Repository already cloned to {repo_dir}")
 
     return repo_dir
+
+def download_file(url: str) -> bytes:
+    """
+    Downloads a file from a URL.
+    """
+    response = requests.get(url)
+    return response.content
 
 
 def delete_temp_dir(repo_dir: str) -> None:

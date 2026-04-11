@@ -79,11 +79,21 @@ const getFileByUrl = async (url: string): Promise<Uint8Array> => {
     return new Uint8Array(responseBuffer);
 };
 
+const downloadFile = async (link: string): Promise<Blob> => {
+    const response: Response = await fetch(`${API_URL}/download_file?link=${link}`);
+    if (!response.ok) {
+        console.error(response);
+        throw new Error("Failed to download file");
+    }
+    return response.blob();
+};
+
 export {
     submitPaperAnalysis,
     getPaperAnalysisStatus,
     listCachedPapers,
     getCachedPaperById,
+    downloadFile,
     type paperSubmitResponse,
     type paperAnalysisStatusResponse,
     type codeSectionsResult,

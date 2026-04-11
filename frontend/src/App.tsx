@@ -8,6 +8,7 @@ import {
   submitPaperAnalysis,
   getPaperAnalysisStatus,
   getCachedPaperById,
+  downloadFile,
   type paperSubmitResponse,
   type paperAnalysisStatusResponse,
   type codeSectionsResult,
@@ -109,14 +110,20 @@ function App() {
     e.preventDefault();
     setSubmitError(null);
     const formData = new FormData(e.currentTarget);
-    const file = formData.get('file');
+    let file = formData.get('file');
+ 
     if (!(file instanceof File) || file.size === 0) {
-      setSubmitError('Please choose a PDF file.');
-      return;
+      const link = formData.get('link') as string;
+      if (!link || !link.startsWith('http')) {
+        setSubmitError('Please choose a PDF file or provide a link.');
+        return;
+      }
+      const blob: Blob = await downloadFile(link);
+      file = new File([blob], link.split('/').pop() ?? 'paper.pdf', { type: 'application/pdf' });
+      formData.set('file', file);
     }
     try {
       const response: paperSubmitResponse = await submitPaperAnalysis(formData);
-      console.log(response);
       setPaperFile(file);
       setPaperId(response.paper_id);
       if (response.status === 'complete') {

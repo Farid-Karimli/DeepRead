@@ -39,7 +39,7 @@ export default function Home({ handlePaperSubmit, onOpenCachedPaper, errorMessag
         <>
             <section id="center" className="home-upload">
                 <h1 className="home-upload__title">Analyze a Paper with DeepRead</h1>
-                <p className="home-upload__lead">Upload a paper to get started.</p>
+                <p className="home-upload__lead">Upload file or provide a link to get started.</p>
                 {errorMessage ? (
                     <p className="home-upload__alert" role="alert">
                         {errorMessage}
@@ -51,7 +51,12 @@ export default function Home({ handlePaperSubmit, onOpenCachedPaper, errorMessag
                         type="file"
                         accept=".pdf"
                         name="file"
-                        required
+                    />
+                    <input
+                        className="home-upload__file"
+                        type="text"
+                        name="link"
+                        placeholder="https://..."
                     />
                     <button className="outline-action-btn" type="submit">
                         Analyze

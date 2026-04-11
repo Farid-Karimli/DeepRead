@@ -2,7 +2,7 @@ import hashlib
 import io
 import os
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, HTTPException, UploadFile, Response
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import pypdf
@@ -12,6 +12,7 @@ from src.agent import Agent
 from src.celery_tasks import analyze_paper_task, celery, test_task
 from src.db import get_file_url, upload_paper_to_storage
 from src.paper_analysis_cache import get_cached_result, iter_cached_results, set_cached_result
+from src.utils import download_file as download_file_from_url
 
 app = FastAPI()
 
@@ -161,8 +162,11 @@ def get_paper_by_id(paper_id: str):
 
 
 @app.post("/analyze")
-def analyze_paper(file: UploadFile = File(...)):
-    raw = file.file.read()
+def analyze_paper(file: UploadFile = File(...)): 
+    if not file.file:
+        raw = download_file(file.link)
+    else:
+        raw = file.file.read()
     paper_id = hashlib.sha256(raw).hexdigest()
     filename = file.filename
 
@@ -185,6 +189,9 @@ def analyze_paper(file: UploadFile = File(...)):
     )
     return {"paper_id": paper_id, "status": "pending", "task_id": task.id}
 
+@app.get("/download_file")
+def download_file(link: str) -> Response:
+    return Response(content=download_file_from_url(link), media_type="application/pdf")
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
