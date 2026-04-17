@@ -4,7 +4,8 @@ import type {
     codeSectionsResult, 
     paperByIdResponse, 
     cachedPaperSummary, 
-    listCachedPapersResponse 
+    listCachedPapersResponse,
+    githubRepoTreeResponse,
 } from './types';
 
 const API_URL: string =
@@ -88,6 +89,26 @@ const downloadFile = async (link: string): Promise<Blob> => {
     return response.blob();
 };
 
+const getGithubRepoTree = async (githubRepoUrl: string): Promise<githubRepoTreeResponse> => {
+    const response: Response = await fetch(`${API_URL}/repos/tree?url=${githubRepoUrl}`);
+    if (!response.ok) {
+        console.error(response);
+        throw new Error("Failed to get github repo tree");
+    }
+    const responseJSON: githubRepoTreeResponse = await response.json();
+    return responseJSON;
+};
+
+const getGithubFileFromBlobUrl = async (githubBlobUrl: string): Promise<string> => {
+    const response: Response = await fetch(`${API_URL}/repos/file?github_blob_url=${githubBlobUrl}`);
+    if (!response.ok) {
+        console.error(response);
+        throw new Error("Failed to get github file from blob url");
+    }
+    const responseJSON: string = await response.text();
+    return responseJSON;
+};
+
 export {
     submitPaperAnalysis,
     getPaperAnalysisStatus,
@@ -101,4 +122,7 @@ export {
     type paperByIdResponse,
     type listCachedPapersResponse,
     type Paper,
+    type githubRepoTreeResponse,
+    getGithubRepoTree,
+    getGithubFileFromBlobUrl,
 };

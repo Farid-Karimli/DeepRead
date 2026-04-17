@@ -49,4 +49,15 @@ interface listCachedPapersResponse {
     papers: cachedPaperSummary[];
 }
 
-export type { codeSection, codeSectionsResult, paperSubmitResponse, paperAnalysisStatusResponse, paperByIdResponse, cachedPaperSummary, listCachedPapersResponse };
+interface githubRepoTreeResponse {
+    sha: string;
+    url: string;
+    tree: {
+        path: string;
+        mode: string; // 100644 for file, 40000 for directory
+        url: string;
+    }[];
+    truncated: boolean;
+}
+
+export type { codeSection, codeSectionsResult, paperSubmitResponse, paperAnalysisStatusResponse, paperByIdResponse, cachedPaperSummary, listCachedPapersResponse, githubRepoTreeResponse };
