@@ -49,7 +49,7 @@ function PdfBoundingHitTarget({
   const [hover, setHover] = React.useState(false);
   const leaveTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const { showCode } = useSidePanel();
+  const { showCode, codeInfo } = useSidePanel();
 
   const [codeIndex, setCodeIndex] = React.useState(0);
 
@@ -128,7 +128,12 @@ function PdfBoundingHitTarget({
           <button
             type="button"
             className="pdf-hit-tooltip__text-btn"
-            onClick={() => showCode(box.code_snippets[codeIndex].content)}
+            onClick={() => showCode(
+              box.code_snippets[codeIndex].content,
+              box.code_snippets[codeIndex].filepath,
+              box.code_snippets[codeIndex].start_line,
+              box.code_snippets[codeIndex].end_line,
+            )}
           >
             View code
           </button>
