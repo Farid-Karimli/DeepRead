@@ -17,7 +17,7 @@ const RepoView = ({ tree }: RepoViewProps) => {
     const [currentPath, setCurrentPath] = useState(() => tree.tree[0]?.path ?? "");
     const [currentFile, setCurrentFile] = useState<string | null>(null);
     const [highlightRange, setHighlightRange] = useState<{ start: number; end: number } | null>(null);
-    const { codeInfo, showCode, hideCode } = useSidePanel();
+    const { codeInfo } = useSidePanel();
 
     const getFileURLByPath = (path: string) => {
         return tree.tree.find((obj, _) => obj.path === path)?.url;

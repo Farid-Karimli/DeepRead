@@ -167,7 +167,7 @@ export default function PaperView({ analysisResult: _analysisResult, clearEnviro
 
     const hasRealFile = paperFile instanceof File && paperFile.size > 0;
 
-    const { codeInfo, hideCode } = useSidePanel();
+    const { hideCode } = useSidePanel();
 
     return (
         <div className="paper-view-layout">

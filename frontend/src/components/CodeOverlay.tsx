@@ -49,7 +49,7 @@ function PdfBoundingHitTarget({
   const [hover, setHover] = React.useState(false);
   const leaveTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const { showCode, codeInfo } = useSidePanel();
+  const { showCode } = useSidePanel();
 
   const [codeIndex, setCodeIndex] = React.useState(0);
 

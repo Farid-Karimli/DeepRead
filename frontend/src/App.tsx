@@ -13,7 +13,6 @@ import {
   type paperSubmitResponse,
   type paperAnalysisStatusResponse,
   type codeSectionsResult,
-  type paperByIdResponse,
   type Paper,
   type githubRepoTreeResponse,
 } from './api/main';
