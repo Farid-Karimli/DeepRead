@@ -1,255 +1,12 @@
-import json
+import asyncio
 import os
 from pathlib import Path
-from typing import Callable
 from claude_agent_sdk import ClaudeAgentOptions, query, ResultMessage
-from claude_agent_sdk.types import StreamEvent
+import pypdf
 
 from src.utils import clone_repo_to_temp_dir, delete_temp_dir
-
-# Currently unused, output format is ignored by Claude Code. https://github.com/anthropics/claude-code/issues/18536
-key_section_schema = {
-    "type": "object",
-    "properties": {
-        "sections": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "section_name": {
-                        "type": "string",
-                    },
-                    "start_line": {
-                        "type": "integer",
-                    },
-                    "end_line": {
-                        "type": "integer",
-                    }
-                },
-                "required": ["section_name", "start_line", "end_line"]
-            }
-        },
-        "github_repo_url": {
-            "type": "string",
-            "format": "uri",
-        }
-    },
-    "required": ["sections", "github_repo_url"]
-}
-
-code_section_schema = {
-    "type": "object",
-    "properties": {
-        "sections": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "section_name": {
-                        "type": "string",
-                    },
-                    "section_description": {
-                        "type": "string",
-                    },
-                    "code_snippet": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "content": {
-                                    "type": "string",
-                                },
-                                "filepath": {
-                                    "type": "string",
-                                },
-                                "start_line": {
-                                    "type": "integer",
-                                },
-                                "end_line": {
-                                    "type": "integer",
-                                },
-                            },
-                            "required": ["content", "filepath", "start_line", "end_line"],
-                        },
-                    },
-                   
-                },
-                "required": ["section_name", "section_description", "code_snippet", "code_filepath", "code_start_line", "code_end_line"]
-            }
-        },
-        
-    },
-    "required": ["sections"]
-}
-
-
-EventCallback = Callable[[StreamEvent], None]
-
-
-def _extract_first_json_object(text: str) -> str | None:
-    start = text.find("{")
-    if start == -1:
-        return None
-
-    depth = 0
-    in_string = False
-    escape = False
-
-    for idx in range(start, len(text)):
-        ch = text[idx]
-        if in_string:
-            if escape:
-                escape = False
-            elif ch == "\\":
-                escape = True
-            elif ch == '"':
-                in_string = False
-            continue
-
-        if ch == '"':
-            in_string = True
-        elif ch == "{":
-            depth += 1
-        elif ch == "}":
-            depth -= 1
-            if depth == 0:
-                return text[start:idx + 1]
-
-    return None
-
-
-def _parse_json_result(raw_text: str) -> dict | None:
-    cleaned = raw_text.replace("```json", "").replace("```", "").strip()
-    try:
-        return json.loads(cleaned)
-    except json.JSONDecodeError:
-        candidate = _extract_first_json_object(cleaned)
-        if candidate is None:
-            return None
-        try:
-            return json.loads(candidate)
-        except json.JSONDecodeError:
-            return None
-
-
-def _normalize_section_title(name: str) -> str:
-    return " ".join(name.split()) if isinstance(name, str) else ""
-
-
-_LEGACY_SECTION_SNIPPET_KEYS = (
-    "code_snippet",
-    "code_filepath",
-    "code_start_line",
-    "code_end_line",
-)
-
-
-def _normalize_snippet_dict(snip: dict) -> dict | None:
-    """One code_snippets entry: content, filepath, start_line, end_line."""
-    content = snip.get("content")
-    if content is None:
-        content = snip.get("code_snippet")
-    filepath = snip.get("filepath")
-    if filepath is None:
-        filepath = snip.get("code_filepath")
-    sl = snip.get("start_line")
-    if sl is None:
-        sl = snip.get("code_start_line")
-    el = snip.get("end_line")
-    if el is None:
-        el = snip.get("code_end_line")
-    row: dict = {}
-    if isinstance(content, str):
-        row["content"] = content
-    if isinstance(filepath, str):
-        row["filepath"] = filepath
-    if isinstance(sl, int):
-        row["start_line"] = sl
-    if isinstance(el, int):
-        row["end_line"] = el
-    return row if row else None
-
-
-def _normalize_section_to_code_shape(section: dict) -> dict:
-    """
-    Canonical shape for map_key_sections_to_code / frontend:
-    section_name, section_description, code_snippets[{content, filepath, start_line, end_line}].
-    Accepts legacy flat code_* fields or per-snippet aliases.
-    """
-    out = dict(section)
-    for k in _LEGACY_SECTION_SNIPPET_KEYS:
-        out.pop(k, None)
-
-    raw_list = section.get("code_snippets")
-    normalized: list[dict] = []
-    if isinstance(raw_list, list):
-        for snip in raw_list:
-            if isinstance(snip, dict):
-                row = _normalize_snippet_dict(snip)
-                if row is not None:
-                    normalized.append(row)
-        out["code_snippets"] = normalized
-    else:
-        row = _normalize_snippet_dict(section)
-        out["code_snippets"] = [row] if row is not None else []
-
-    return out
-
-
-def _merge_key_sections_into_code_result(
-    key_sections: dict | None, code_result: dict | None
-) -> dict | None:
-    """
-    Normalize each section to code_snippets[] shape, then copy paper-side fields
-    from identify_key_sections onto each section row.
-    Matches by normalized section_name, or by index when both lists have the same length.
-    """
-    if code_result is None:
-        return None
-    raw_sections = code_result.get("sections")
-    if not isinstance(raw_sections, list):
-        return code_result
-
-    ks_list: list[dict] = []
-    if isinstance(key_sections, dict):
-        ks_raw = key_sections.get("sections")
-        if isinstance(ks_raw, list):
-            ks_list = [x for x in ks_raw if isinstance(x, dict)]
-
-    by_norm: dict[str, dict] = {}
-    for row in ks_list:
-        sn = row.get("section_name")
-        if isinstance(sn, str):
-            norm = _normalize_section_title(sn)
-            if norm and norm not in by_norm:
-                by_norm[norm] = row
-
-    merged: list[dict] = []
-    for i, item in enumerate(raw_sections):
-        if not isinstance(item, dict):
-            merged.append(item)
-            continue
-        out = _normalize_section_to_code_shape(item)
-        name = out.get("section_name")
-        matched: dict | None = None
-        if isinstance(name, str):
-            matched = by_norm.get(_normalize_section_title(name))
-        if matched is None and len(ks_list) == len(raw_sections) and i < len(ks_list):
-            matched = ks_list[i]
-        if isinstance(matched, dict):
-            sl = matched.get("start_line")
-            el = matched.get("end_line")
-            if isinstance(sl, int):
-                out["paper_start_line"] = sl
-            if isinstance(el, int):
-                out["paper_end_line"] = el
-            desc = matched.get("description")
-            if isinstance(desc, str) and desc.strip():
-                out["paper_section_description"] = desc
-        merged.append(out)
-
-    return {**code_result, "sections": merged}
-
+from src.search import search_github
+from src.agent_utils import extract_paper_info, key_section_schema, code_section_schema, _merge_key_sections_into_code_result, _parse_json_result, EventCallback
 
 class Agent:
     """
@@ -274,6 +31,26 @@ class Agent:
                 result = message.result
         return result
 
+    async def find_github_repo(self,
+        paper_content: str = None,
+        paper_path: str = None,
+    ) -> str:
+
+        paper_info = extract_paper_info(paper_content)
+        if paper_info is None:
+            raise ValueError("No paper info found.")
+        title = paper_info.get("title")
+        if title is None:
+            raise ValueError("No title found in paper info.")
+        authors = paper_info.get("authors")
+        if authors is None:
+            raise ValueError("No authors found in paper info.")
+
+        search_results = search_github(query=f"{title} {authors}")
+        if len(search_results) == 0:
+            raise ValueError("No search results found.")
+        return search_results[0].get("url")
+
     async def identify_key_sections(
         self,
         paper_content: str = None,
@@ -289,9 +66,11 @@ class Agent:
 
         paper_content_to_analyze = paper_content if paper_content is not None else Path(paper_path).read_text(encoding="utf-8")
 
-        # What if link not present in the paper
-
+        # What if link not present in the paper?
+        github_repository_url = None
         github_link_present = "https://github.com/" in paper_content_to_analyze
+        if not github_link_present:
+            github_repository_url = await self.find_github_repo(paper_content=paper_content_to_analyze, paper_path=paper_path)
 
         prompt = f"""
         Identify the key sections of the implementation content in the following research paper.
@@ -311,6 +90,11 @@ class Agent:
         ### Paper Content ###
         {paper_content_to_analyze}
         ### End Paper Content ###
+
+        ### GitHub Repository URL ###
+        In case the repository URL is not present in the paper, it is provided here. Note that this may be empty is the URL is present in the paper already.
+        {github_repository_url}
+        ### End GitHub Repository URL ###
 
         Example:
         {{ "sections": [
@@ -486,3 +270,11 @@ class Agent:
             "github_repo_url": key_sections.get("github_repo_url"),
             "code_result": merged,
         }
+
+
+if __name__ == "__main__":
+    agent = Agent()
+    reader = pypdf.PdfReader("./papers/linear_bandits.pdf")
+    paper_content = reader.pages[0].extract_text()
+    result = asyncio.run(agent.identify_key_sections(paper_content=paper_content))
+    print(result)

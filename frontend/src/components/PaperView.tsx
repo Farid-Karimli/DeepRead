@@ -1,4 +1,4 @@
-import { type codeSectionsResult } from '../api/main.ts';
+import { type codeSectionsResult, type githubRepoTreeResponse } from '../api/main.ts';
 import {
     ContextProvider,
     DocumentContext,
@@ -11,13 +11,14 @@ import {
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { textItemToBoundingBoxLike, type PdfTextItemLike } from '../utils/pdfTextItemToBoundingBox.ts';
 import { HighlightOverlayDemo, type BoundingBoxWithTooltip } from './CodeOverlay.tsx';
-import CodeSidePanel from './CodeSidePanel.tsx';
 import { useSidePanel } from '../context/SidePanelContext.tsx';
+import RepoView from './RepoView.tsx';
 
 interface PaperViewProps {
     analysisResult: codeSectionsResult;
     clearEnvironment: () => void;
     paperFile: File | undefined;
+    tree: githubRepoTreeResponse | undefined;
 }
 
 /**
@@ -157,7 +158,7 @@ function PdfPageList({ analysisResult, scrollRef }: { analysisResult: codeSectio
     );
 }
 
-export default function PaperView({ analysisResult: _analysisResult, clearEnvironment, paperFile }: PaperViewProps) {
+export default function PaperView({ analysisResult: _analysisResult, clearEnvironment, paperFile, tree }: PaperViewProps) {
     const pdfContentRef = useRef<HTMLDivElement>(null);
     const pdfScrollableRef = useRef<HTMLDivElement>(null);
 
@@ -166,7 +167,7 @@ export default function PaperView({ analysisResult: _analysisResult, clearEnviro
 
     const hasRealFile = paperFile instanceof File && paperFile.size > 0;
 
-    const { codeContent, hideCode } = useSidePanel();
+    const { hideCode } = useSidePanel();
 
     return (
         <div className="paper-view-layout">
@@ -205,15 +206,15 @@ export default function PaperView({ analysisResult: _analysisResult, clearEnviro
                 )}
             </section>
 
-            {codeContent && (
+            {tree && (
                 <aside className="paper-view-layout__code-panel">
                     <div className="paper-view-layout__code-toolbar">
-                        <button type="button" className="outline-action-btn" onClick={hideCode}>
+                        {/* <button type="button" className="outline-action-btn" onClick={hideCode}>
                             Close
-                        </button>
+                        </button> */}
                     </div>
                     <div className="paper-view-layout__code-scroll">
-                        <CodeSidePanel codeContent={codeContent} />
+                        {<RepoView tree={tree} />}
                     </div>
                 </aside>
             )}

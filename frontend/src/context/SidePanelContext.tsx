@@ -1,25 +1,33 @@
 // src/context/SidePanelContext.tsx
 import React, { createContext, useContext, useState, type ReactNode } from 'react';
 
+type CodeInfo = {
+  code: string;
+  filePath: string;
+  startLine: number;
+  endLine: number;
+};
+
 type sidePanelContext = {
-  codeContent: string | null;
-  showCode: (code: string) => void;
+  codeInfo: CodeInfo | null;
+  showCode: (code: string, filePath: string, startLine: number, endLine: number) => void;
   hideCode: () => void;
 };
 
 const sidePanelContext = createContext<sidePanelContext>({
-  codeContent: null,
+  codeInfo: null,
   showCode: () => {},
   hideCode: () => {},
 });
 
 export function SidePanelProvider({ children }: { children: ReactNode }) {
-  const [codeContent, setCodeContent] = useState<string | null>(null);
+  const [codeInfo, setCodeInfo] = useState<CodeInfo | null>(null);
   return (
     <sidePanelContext.Provider value={{
-      codeContent,
-      showCode: setCodeContent,
-      hideCode: () => setCodeContent(null),
+      codeInfo,
+      showCode: (code: string, filePath: string, startLine: number, endLine: number) =>
+        setCodeInfo({ code, filePath, startLine, endLine }),
+      hideCode: () => setCodeInfo(null),
     }}>
       {children}
     </sidePanelContext.Provider>

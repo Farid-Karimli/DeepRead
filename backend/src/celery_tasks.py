@@ -4,6 +4,7 @@ import os
 import time
 
 from celery import Celery
+from pydantic import BaseModel
 
 from src.agent import Agent
 from src.db import update_paper_metadata
@@ -18,6 +19,11 @@ celery = Celery(
     backend=REDIS_URL,
 )
 
+class AgentTaskResult(BaseModel):
+    paper_title: str | None = None
+    github_repo_url: str | None = None
+    code_result: dict | None = None
+    
 @celery.task(name="test_task")
 def test_task():
     print(f"Waiting for 5 seconds...")

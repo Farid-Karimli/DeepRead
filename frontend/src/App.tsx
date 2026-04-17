@@ -9,18 +9,27 @@ import {
   getPaperAnalysisStatus,
   getCachedPaperById,
   downloadFile,
+  getGithubRepoTree,
   type paperSubmitResponse,
   type paperAnalysisStatusResponse,
   type codeSectionsResult,
-  type paperByIdResponse,
   type Paper,
+  type githubRepoTreeResponse,
 } from './api/main';
 
 /** Celery stores the agent return value: `{ github_repo_url, code_result }`. */
-type AgentTaskResult = {
-  github_repo_url?: string;
-  code_result?: codeSectionsResult;
+interface AgentTaskResult {
+  paper_title: string | null;
+  github_repo_url: string | null;
+  code_result: codeSectionsResult | null;
 };
+
+function extractGithubRepoUrl(result: unknown): string | null {
+  if (!result || typeof result !== 'object') return null;
+  const r = result as AgentTaskResult;
+  if (!r.github_repo_url) return null;
+  return r.github_repo_url as string;
+}
 
 function extractCodeSections(result: unknown): codeSectionsResult | null {
   if (!result || typeof result !== 'object') return null;
@@ -38,6 +47,10 @@ function App() {
   const [analysisResult, setAnalysisResult] = useState<codeSectionsResult | undefined>(() => {
     const analysisResult = localStorage.getItem('analysisResult');
     return analysisResult ? JSON.parse(analysisResult) : undefined;
+  });
+  const [githubRepoTree, setGithubRepoTree] = useState<githubRepoTreeResponse | undefined>(() => {
+    const githubRepoTree = localStorage.getItem('githubRepoTree');
+    return githubRepoTree ? JSON.parse(githubRepoTree) : undefined;
   });
   const [paperId, setPaperId] = useState<string | null>(() => {
     const paperId = localStorage.getItem('paperId');
@@ -62,7 +75,12 @@ function App() {
     } else {
       localStorage.removeItem('paperId');
     }
-  }, [taskId, analysisResult, paperFile, paperId]);
+    if (githubRepoTree) {
+      localStorage.setItem('githubRepoTree', JSON.stringify(githubRepoTree));
+    } else {
+      localStorage.removeItem('githubRepoTree');
+    }
+  }, [taskId, analysisResult, paperFile, paperId, githubRepoTree]);
 
   useEffect(() => {
     if (!taskId || analysisResult) return;
@@ -76,8 +94,18 @@ function App() {
         if (cancelled) return;
 
         if (status.status === 'SUCCESS' && status.result !== undefined && status.result !== null) {
-          const sections = extractCodeSections(status.result);
-          if (sections) {
+          const sections: codeSectionsResult | null = extractCodeSections(status.result);
+          const githubRepoUrl: string | null = extractGithubRepoUrl(status.result);
+          if (githubRepoUrl === null) {
+            setSubmitError('Could not extract GitHub repository URL from the result.');
+            setTaskId(null);
+            return;
+          }
+          console.log('githubRepoUrl', githubRepoUrl);
+          const tree: githubRepoTreeResponse = await getGithubRepoTree(githubRepoUrl);
+          if (sections !== null && tree !== undefined) {
+            setGithubRepoTree(tree); 
+            console.log('tree', tree);
             setAnalysisResult(sections);
             return;
           }
@@ -156,7 +184,15 @@ function App() {
       const response: Paper = await getCachedPaperById(id);
       const { result, file } = response;
       const sections = extractCodeSections(result);
-      if (sections) {
+      console.log('sections', sections);
+      const githubRepoUrl = extractGithubRepoUrl(result);
+      console.log('githubRepoUrl', githubRepoUrl);
+      if (sections && githubRepoUrl) {
+        const tree: githubRepoTreeResponse = await getGithubRepoTree(githubRepoUrl);
+        if (tree) {
+          setGithubRepoTree(tree);
+          console.log('tree', tree);
+        }
         setPaperId(id);
         setPaperFile(new File([file.buffer as ArrayBuffer], id, { type: 'application/pdf' }));
         setAnalysisResult(sections);
@@ -168,13 +204,14 @@ function App() {
     }
   };
 
-  if (analysisResult) {
+  if (analysisResult && githubRepoTree) {
     return (
       <SidePanelProvider>
         <PaperView
           analysisResult={analysisResult}
           clearEnvironment={clearEnvironment}
           paperFile={paperFile}
+          tree={githubRepoTree}
         />
       </SidePanelProvider>  
     );
