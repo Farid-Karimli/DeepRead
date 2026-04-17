@@ -209,9 +209,9 @@ export default function PaperView({ analysisResult: _analysisResult, clearEnviro
             {tree && (
                 <aside className="paper-view-layout__code-panel">
                     <div className="paper-view-layout__code-toolbar">
-                        <button type="button" className="outline-action-btn" onClick={hideCode}>
+                        {/* <button type="button" className="outline-action-btn" onClick={hideCode}>
                             Close
-                        </button>
+                        </button> */}
                     </div>
                     <div className="paper-view-layout__code-scroll">
                         {<RepoView tree={tree} />}
