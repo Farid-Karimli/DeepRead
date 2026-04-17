@@ -360,8 +360,9 @@
 .paper-view-layout {
   display: flex;
   flex-direction: row;
-  justify-content: space-around;
+  justify-content: flex-start;
   align-items: stretch;
+  gap: 0;
   box-sizing: border-box;
   height: 100vh;
   height: 100dvh;
@@ -370,7 +371,7 @@
 }
 
 .paper-view-layout__pdf-panel {
-  width: 60%;
+  flex: 0 0 53%;
   min-width: 0;
   min-height: 0;
   display: flex;
@@ -383,7 +384,7 @@
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 12px 16px;
   flex-wrap: wrap;
   padding: 12px 16px 10px;
@@ -445,7 +446,6 @@
   flex: 1;
   min-height: 0;
   width: 100%;
-  max-width: 900px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -475,7 +475,7 @@
 }
 
 .paper-view-layout__code-panel {
-  width: 40%;
+  flex: 1 1 47%;
   min-width: 0;
   min-height: 0;
   display: flex;
@@ -500,8 +500,8 @@
   min-height: 0;
   overflow: auto;
   overscroll-behavior: contain;
-  padding: 16px;
-  padding-top: 8px;
+  padding: 8px 12px 12px 14px;
+  scrollbar-gutter: stable;
 }
 
 /* PDF hit-target tooltip: path + ghost actions (no default gray buttons) */
@@ -569,4 +569,142 @@
 
 .pdf-hit-tooltip__text-btn:hover {
   color: #c7d2fe;
+}
+
+/* ── Repo Tree (GitHub-style file browser) ── */
+
+.repo-tree {
+  text-align: left;
+  font-size: 0.875rem;
+  font-family: var(--sans);
+}
+
+.repo-tree__heading {
+  margin: 0 0 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.repo-tree__breadcrumb {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 8px 0;
+  font-size: 0.8125rem;
+  color: var(--text);
+}
+
+.repo-tree__list {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.repo-tree__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border);
+  transition: background-color 0.1s ease;
+}
+
+.repo-tree__icon {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+}
+
+.repo-tree__icon--dir {
+  color: var(--accent);
+}
+
+.repo-tree__icon--file {
+  color: var(--text);
+  opacity: 0.7;
+}
+
+.repo-tree__row:last-child {
+  border-bottom: none;
+}
+
+.repo-tree__row:hover {
+  background: var(--social-bg);
+}
+
+.repo-tree__link {
+  color: var(--accent);
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-family: var(--mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.repo-tree__link:hover {
+  text-decoration: underline;
+}
+
+/* Code viewer */
+.code-viewer {
+  height: 100%;
+  text-align: left;
+  font-family: var(--mono);
+  padding: 8px;
+  padding-top: 0;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  font-size: 0.75rem;
+  overflow: auto;
+}
+
+.code-viewer pre {
+  white-space: pre;
+  word-wrap: normal;
+}
+
+/* Code viewer: highlighted snippet lines */
+.code-viewer__highlighted-line {
+  background: rgba(192, 132, 252, 0.12);
+  border-left: 3px solid var(--accent);
+  padding-left: 13px;
+  margin-left: -16px;
+}
+
+/* Scrollbar styling (PDF pane + code pane + code viewer) */
+.paper-view-layout__pdf-inner .reader__page-list,
+.paper-view-layout__code-scroll,
+.code-viewer {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(128, 128, 128, 0.45) transparent;
+}
+
+.paper-view-layout__pdf-inner .reader__page-list::-webkit-scrollbar,
+.paper-view-layout__code-scroll::-webkit-scrollbar,
+.code-viewer::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.paper-view-layout__pdf-inner .reader__page-list::-webkit-scrollbar-track,
+.paper-view-layout__code-scroll::-webkit-scrollbar-track,
+.code-viewer::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.paper-view-layout__pdf-inner .reader__page-list::-webkit-scrollbar-thumb,
+.paper-view-layout__code-scroll::-webkit-scrollbar-thumb,
+.code-viewer::-webkit-scrollbar-thumb {
+  background-color: rgba(128, 128, 128, 0.45);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.paper-view-layout__pdf-inner .reader__page-list::-webkit-scrollbar-thumb:hover,
+.paper-view-layout__code-scroll::-webkit-scrollbar-thumb:hover,
+.code-viewer::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(128, 128, 128, 0.7);
 }
