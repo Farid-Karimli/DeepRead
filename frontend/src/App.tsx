@@ -101,11 +101,9 @@ function App() {
             setTaskId(null);
             return;
           }
-          console.log('githubRepoUrl', githubRepoUrl);
           const tree: githubRepoTreeResponse = await getGithubRepoTree(githubRepoUrl);
           if (sections !== null && tree !== undefined) {
             setGithubRepoTree(tree); 
-            console.log('tree', tree);
             setAnalysisResult(sections);
             return;
           }

@@ -33,13 +33,31 @@ def clone_repo_to_temp_dir(repo_url: str) -> str:
 
 def get_repo_tree(repo_url: str) -> list:
     repo_name = repo_url.split("/")[-1]
+    repo_name = repo_name.replace(".git", "")
     repo_owner = repo_url.split("/")[-2]
-    github_trees_api_url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/git/trees/main"
 
-    response = requests.get(github_trees_api_url, params={"recursive": 1}, headers={
+    headers = {
         "Accept": "application/vnd.github+json",
-        "X-GitHub-Api-Version": "2026-03-10"
-    })
+        "X-GitHub-Api-Version": "2026-03-10",
+    }
+
+    repo_info_url = f"https://api.github.com/repos/{repo_owner}/{repo_name}"
+    repo_info = requests.get(repo_info_url, headers=headers).json()
+    default_branch = repo_info.get("default_branch")
+    if not default_branch:
+        raise Exception(
+            f"Could not resolve default branch for {repo_owner}/{repo_name}: {repo_info}"
+        )
+
+    github_trees_api_url = (
+        f"https://api.github.com/repos/{repo_owner}/{repo_name}/git/trees/{default_branch}"
+    )
+
+    response = requests.get(
+        github_trees_api_url,
+        params={"recursive": 1},
+        headers=headers,
+    )
 
     return response.json()
 
@@ -73,7 +91,7 @@ def delete_temp_dir(repo_dir: str) -> None:
 
 
 if __name__=="__main__":
-    github_url = 'https://github.com/gnobitab/RectifiedFlow'
+    github_url = 'https://github.com/dojeon-ai/Atari-PB'
 
     git_tree = get_repo_tree(github_url)
 

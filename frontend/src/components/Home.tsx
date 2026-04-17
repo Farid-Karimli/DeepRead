@@ -18,10 +18,6 @@ export default function Home({ handlePaperSubmit, onOpenCachedPaper, errorMessag
         setPapersError(null);
         listCachedPapers()
             .then((rows) => {
-                console.log(`Found ${rows.length} cached papers`);
-                for (const row of rows) {
-                    console.log(`Paper ${row.paper_id} has ${row.section_count} sections`);
-                }
                 if (!cancelled) setPapers(rows);
             })
             .catch(() => {
