@@ -1,9 +1,12 @@
 import json
-from claude_agent_sdk.types import StreamEvent
 import os
 import subprocess
 import shutil
 import requests
+import base64
+
+from claude_agent_sdk.types import StreamEvent
+from pprint import pprint
 
 async def print_event(event: StreamEvent, tool_state: dict) -> None:
     if isinstance(event, StreamEvent):
@@ -28,6 +31,31 @@ def clone_repo_to_temp_dir(repo_url: str) -> str:
 
     return repo_dir
 
+def get_repo_tree(repo_url: str) -> list:
+    repo_name = repo_url.split("/")[-1]
+    repo_owner = repo_url.split("/")[-2]
+    github_trees_api_url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/git/trees/main"
+
+    response = requests.get(github_trees_api_url, params={"recursive": 1}, headers={
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2026-03-10"
+    })
+
+    return response.json()
+
+def get_file_content(file_github_url: str):
+
+    try:
+        github_blob = requests.get(file_github_url).json()
+        base64_content = github_blob['content']
+
+        decoded_content = base64.b64decode(base64_content)
+        text = decoded_content.decode('utf-8')
+        return text
+    except Exception as e:
+        print(F"Failed to retrieve github blob: {e}")
+        return None
+
 def download_file(url: str) -> bytes:
     """
     Downloads a file from a URL.
@@ -42,3 +70,16 @@ def delete_temp_dir(repo_dir: str) -> None:
     """
     if os.path.exists(repo_dir):
         shutil.rmtree(repo_dir) 
+
+
+if __name__=="__main__":
+    github_url = 'https://github.com/gnobitab/RectifiedFlow'
+
+    git_tree = get_repo_tree(github_url)
+
+    pprint(git_tree)
+
+    first_file = "https://api.github.com/repos/gnobitab/RectifiedFlow/git/blobs/4a5fd0eda4250faf218d6b65fd858de055956252"
+
+    content = get_file_content(first_file)
+    print(content)

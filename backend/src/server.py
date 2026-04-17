@@ -3,6 +3,7 @@ import io
 import os
 
 from fastapi import FastAPI, File, HTTPException, UploadFile, Response
+from fastapi.responses import JSONResponse, PlainTextResponse
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import pypdf
@@ -12,7 +13,7 @@ from src.agent import Agent
 from src.celery_tasks import analyze_paper_task, celery, test_task
 from src.db import get_file_url, upload_paper_to_storage
 from src.paper_analysis_cache import get_cached_result, iter_cached_results, set_cached_result
-from src.utils import download_file as download_file_from_url
+from src.utils import download_file as download_file_from_url, get_file_content, get_repo_tree
 
 app = FastAPI()
 
@@ -192,6 +193,20 @@ def analyze_paper(file: UploadFile = File(...)):
 @app.get("/download_file")
 def download_file(link: str) -> Response:
     return Response(content=download_file_from_url(link), media_type="application/pdf")
+
+##########################################
+##### Repository Content #######################
+##########################################
+
+@app.get('/repos/tree')
+def repo_tree(url: str) -> JSONResponse:
+    tree = get_repo_tree(url)
+    return JSONResponse(content=tree)
+
+@app.get('/repos/file')
+def repo_file(github_blob_url: str) -> PlainTextResponse:
+    content = get_file_content(github_blob_url)
+    return PlainTextResponse(content=content)
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
