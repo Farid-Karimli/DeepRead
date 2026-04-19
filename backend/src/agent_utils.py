@@ -259,6 +259,45 @@ def _merge_key_sections_into_code_result(
     return {**code_result, "sections": merged}
 
 
+def _combine_section_mapping_results(
+    partials: list[dict | None],
+    key_sections: dict | None,
+) -> dict | None:
+    """
+    Merge per-section code-mapping dicts (each with sections length 1) into one
+    result in the same order as key_sections["sections"].
+    """
+    if key_sections is None or not isinstance(key_sections, dict):
+        return None
+    ks_sections = key_sections.get("sections")
+    if not isinstance(ks_sections, list):
+        return None
+    if len(partials) != len(ks_sections):
+        return None
+
+    combined_sections: list[dict] = []
+    paper_title = ""
+    for p in partials:
+        if not isinstance(p, dict):
+            return None
+        secs = p.get("sections")
+        if not isinstance(secs, list) or len(secs) == 0:
+            return None
+        row = secs[0]
+        if not isinstance(row, dict):
+            return None
+        combined_sections.append(row)
+        pt = p.get("paper_title")
+        if isinstance(pt, str) and pt.strip() and not paper_title:
+            paper_title = pt.strip()
+
+    return {
+        "paper_title": paper_title,
+        "github_repo_url": key_sections.get("github_repo_url"),
+        "sections": combined_sections,
+    }
+
+
 def extract_paper_info(paper_content: str) -> dict:
     client = anthropic.Anthropic(
         api_key=ANTHROPIC_API_KEY
