@@ -57,6 +57,15 @@ function PdfBoundingHitTarget({
     return null;
   }
 
+  const showAllFileCodeSnippets = (codeSnippets: typeof box.code_snippets) => {
+    const thisFilePath = codeSnippets[0].filepath;
+    const thisCodeSnippets = codeSnippets.filter(s => s.filepath === thisFilePath);
+    // Show ALL code snippets for this file
+    showCode({
+      filePath: thisFilePath,
+      codeRanges: thisCodeSnippets.map(s => ({ startLine: s.start_line, endLine: s.end_line })),
+    });
+  };
   const { top, left, width, height } = computeBoundingBoxStyle(
     { top: box.top, left: box.left, width: box.width, height: box.height },
     pageDimensions,
@@ -75,7 +84,7 @@ function PdfBoundingHitTarget({
     opacity: hover ? 0.5 : 0.25,
     outline: hover ? '2px solid rgba(0, 180, 255, 0.85)' : 'none',
     backgroundColor: hover ? 'rgba(0, 160, 255, 0.25)' : 'orange',
-    cursor: 'help',
+    cursor: 'pointer',
     pointerEvents: 'auto',
     transition: 'opacity 80ms ease',
   };
@@ -128,12 +137,7 @@ function PdfBoundingHitTarget({
           <button
             type="button"
             className="pdf-hit-tooltip__text-btn"
-            onClick={() => showCode(
-              box.code_snippets[codeIndex].content,
-              box.code_snippets[codeIndex].filepath,
-              box.code_snippets[codeIndex].start_line,
-              box.code_snippets[codeIndex].end_line,
-            )}
+            onClick={() => showAllFileCodeSnippets(box.code_snippets)}
           >
             View code
           </button>

@@ -3,23 +3,24 @@ import ShikiHighlighter from 'react-shiki';
 
 interface CodeViewerProps {
    code: string;
-   highlightStart?: number;
-   highlightEnd?: number;
+   highlightStarts?: number[]; // Could be multiple snippets in the file
+   highlightEnds?: number[];
 }
 
-const CodeViewer = ({ code, highlightStart, highlightEnd }: CodeViewerProps) => {
+const CodeViewer = ({ code, highlightStarts, highlightEnds }: CodeViewerProps) => {
     const containerRef = useRef<HTMLDivElement>(null);
 
-    const decorations = highlightStart != null && highlightEnd != null
-        ? [{
+    // Decorations for all code snippets in the file
+    const decorations = highlightStarts != null && highlightEnds != null
+        ? highlightStarts.map((highlightStart, index) => ({
             start: { line: highlightStart - 1, character: 0 },
-            end: { line: highlightEnd, character: 0 },
+            end: { line: highlightEnds[index] - 1, character: 0 },
             properties: { class: 'code-viewer__highlighted-line' },
-        }]
+        }))
         : [];
 
     useEffect(() => {
-        if (highlightStart == null || !containerRef.current) return;
+        if (highlightStarts == null || highlightEnds == null || !containerRef.current) return;
 
         const container = containerRef.current;
         const tryScroll = () => {
@@ -39,7 +40,7 @@ const CodeViewer = ({ code, highlightStart, highlightEnd }: CodeViewerProps) => 
         observer.observe(container, { childList: true, subtree: true });
 
         return () => observer.disconnect();
-    }, [code, highlightStart]);
+    }, [code, highlightStarts, highlightEnds]);
 
     return (
         <div ref={containerRef} className="code-viewer">

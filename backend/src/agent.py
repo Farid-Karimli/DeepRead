@@ -1,4 +1,5 @@
 import asyncio
+import json
 import os
 from pathlib import Path
 from claude_agent_sdk import ClaudeAgentOptions, query, ResultMessage
@@ -102,7 +103,7 @@ class Agent:
                 "section_name": "Section 1",
                 "start_line": 10,
                 "end_line": 20,
-                "description": "A short description of the section"
+                "description": "A comprehensive description of the section", 
             }}
             ],
             "github_repo_url": "https://github.com/your-repo/your-repo.git"
@@ -274,7 +275,11 @@ class Agent:
 
 if __name__ == "__main__":
     agent = Agent()
-    reader = pypdf.PdfReader("./papers/linear_bandits.pdf")
-    paper_content = reader.pages[0].extract_text()
-    result = asyncio.run(agent.identify_key_sections(paper_content=paper_content))
-    print(result)
+    paper_path = "./papers/pretraining-rl.pdf"
+    paper_content = "\n\n".join([page.extract_text() for page in pypdf.PdfReader(paper_path).pages])
+    result = asyncio.run(agent.analyze_paper(paper_content=paper_content))
+    
+    with open("pretraining-rl.analyze_paper.json", "w") as f:
+        json.dump(result, f, indent=4)
+
+    
