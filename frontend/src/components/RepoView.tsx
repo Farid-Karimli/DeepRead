@@ -13,10 +13,15 @@ interface RepoViewProps {
     filepath?: string
 }
 
+type HighlightRange = {
+  start: number;
+  end: number;
+}
+
 const RepoView = ({ tree }: RepoViewProps) => {
     const [currentPath, setCurrentPath] = useState(() => "");
-    const [currentFile, setCurrentFile] = useState<string | null>(null);
-    const [highlightRange, setHighlightRange] = useState<{ start: number; end: number } | null>(null);
+    const [currentFileContent, setCurrentFileContent] = useState<string | null>(null);
+    const [highlightRanges, setHighlightRanges] = useState<HighlightRange[] | null>(null);
     const { codeInfo } = useSidePanel();
 
     const getFileURLByPath = (path: string) => {
@@ -26,16 +31,18 @@ const RepoView = ({ tree }: RepoViewProps) => {
     useEffect(() => {
         if (codeInfo) {
             setCurrentPath(codeInfo.filePath);
-            setHighlightRange({ start: codeInfo.startLine, end: codeInfo.endLine });
+            setHighlightRanges(codeInfo.codeRanges.map((codeRange) => ({ start: codeRange.startLine, end: codeRange.endLine })));
             const url = getFileURLByPath(codeInfo.filePath);
             if (url) {
                 getGithubFileFromBlobUrl(url).then((content) => {
-                    setCurrentFile(content);
-                }).catch(() => {
-                    setCurrentFile(codeInfo.code);
+                    setCurrentFileContent(content);
+                }).catch((error) => {
+                    console.error('error', error);
+                    setCurrentFileContent(null);
                 });
             } else {
-                setCurrentFile(codeInfo.code);
+                console.error('file not found', codeInfo.filePath);
+                setCurrentFileContent(null);
             }
         }
     }, [codeInfo]);
@@ -71,20 +78,20 @@ const RepoView = ({ tree }: RepoViewProps) => {
     }
 
     const onFileClick = (filepath: string, url: string) => {
-        setCurrentPath(filepath);
-        setHighlightRange(null);
+        setCurrentPath(filepath + "/");
+        setHighlightRanges([] as HighlightRange[]);
         getGithubFileFromBlobUrl(url).then((content) => {
-            setCurrentFile(content);
+            setCurrentFileContent(content);
         }).catch((error) => {
             console.error('error', error);
-            setCurrentFile(null);
+            setCurrentFileContent(null);
         });
     }
 
     const backButtonClick = () => {
         setCurrentPath(currentPathParts.slice(0, -1).join('/'));
-        setCurrentFile(null);
-        setHighlightRange(null);
+        setCurrentFileContent(null);
+        setHighlightRanges([] as HighlightRange[]);
     }
 
     return (
@@ -99,10 +106,10 @@ const RepoView = ({ tree }: RepoViewProps) => {
                 ))}
             </div>
             <button style={{ background: 'none', border: 'none', cursor: 'pointer' }} onClick={backButtonClick} className="repo-tree__link"><IoIosArrowBack /></button>
-            {currentFile ? <CodeViewer
-                code={currentFile}
-                highlightStart={highlightRange?.start}
-                highlightEnd={highlightRange?.end}
+            {currentFileContent ? <CodeViewer
+                code={currentFileContent}
+                highlightStarts={highlightRanges?.map((highlightRange) => highlightRange.start)}
+                highlightEnds={highlightRanges?.map((highlightRange) => highlightRange.end)}
             /> : <div className="repo-tree__list">
                 {getCurrentFiles().map((file, index) => (
                     <div key={index} className="repo-tree__row">
