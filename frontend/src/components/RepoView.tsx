@@ -14,7 +14,7 @@ interface RepoViewProps {
 }
 
 const RepoView = ({ tree }: RepoViewProps) => {
-    const [currentPath, setCurrentPath] = useState(() => tree.tree[0]?.path ?? "");
+    const [currentPath, setCurrentPath] = useState(() => "");
     const [currentFile, setCurrentFile] = useState<string | null>(null);
     const [highlightRange, setHighlightRange] = useState<{ start: number; end: number } | null>(null);
     const { codeInfo } = useSidePanel();
@@ -45,8 +45,9 @@ const RepoView = ({ tree }: RepoViewProps) => {
     const fileDepthDifference = (filepath1: string, filepath2: string) => {
         const n1 = filepath1.split("/").length;
         const n2 = filepath2.split("/").length;
+        // console.log(`For ${filepath1} and ${filepath2}, the difference is ${Math.abs(n1 - n2)}`);
 
-        return n1 - n2;
+        return Math.abs(n1 - n2);
     }
 
     const getCurrentFiles = () => {
@@ -59,7 +60,7 @@ const RepoView = ({ tree }: RepoViewProps) => {
             if (
                 (fp.startsWith(currentPath) && fp.length !== currentPath.length) // directory
                 &&
-                (fileDifference==-1)
+                (fileDifference<1)
             ) {
                 return { path: fp, url: url, type: type };
             }
