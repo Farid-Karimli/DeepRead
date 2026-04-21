@@ -47,39 +47,29 @@ const RepoView = ({ tree }: RepoViewProps) => {
         }
     }, [codeInfo]);
 
-    const currentPathParts = currentPath.split('/');
-
-    const fileDepthDifference = (filepath1: string, filepath2: string) => {
-        const n1 = filepath1.split("/").length;
-        const n2 = filepath2.split("/").length;
-        // console.log(`For ${filepath1} and ${filepath2}, the difference is ${Math.abs(n1 - n2)}`);
-
-        return Math.abs(n1 - n2);
-    }
+    const currentPathParts = currentPath.split('/').filter(Boolean);
 
     const getCurrentFiles = () => {
-        const files = tree.tree.filter((obj, _) =>{
+        const isRoot = currentPath === "";
+        const prefix = isRoot ? "" : currentPath + "/";
+        const expectedDepth = isRoot ? 1 : currentPathParts.length + 1;
+
+        const result = tree.tree.filter((obj) => {
             const fp: string = obj.path;
-            const url: string = obj.url;
-            const type: string = obj.mode === '100644' ? 'file' : 'directory';
-            const fileDifference = fileDepthDifference(currentPath, fp);
-
-            if (
-                (fp.startsWith(currentPath) && fp.length !== currentPath.length) // directory
-                &&
-                (fileDifference<1)
-            ) {
-                return { path: fp, url: url, type: type };
-            }
-        }
-        )
-
-        return files;
+            if (!fp.startsWith(prefix)) return false;
+            if (fp.length === prefix.length) return false;
+            return fp.split('/').length === expectedDepth;
+        });
+        return result;
     }
 
-    const onFileClick = (filepath: string, url: string) => {
-        setCurrentPath(filepath + "/");
+    const onEntryClick = (filepath: string, url: string, isFile: boolean) => {
         setHighlightRanges([] as HighlightRange[]);
+        setCurrentPath(filepath);
+        if (!isFile) {
+            setCurrentFileContent(null);
+            return;
+        }
         getGithubFileFromBlobUrl(url).then((content) => {
             setCurrentFileContent(content);
         }).catch((error) => {
@@ -89,9 +79,15 @@ const RepoView = ({ tree }: RepoViewProps) => {
     }
 
     const backButtonClick = () => {
-        setCurrentPath(currentPathParts.slice(0, -1).join('/'));
-        setCurrentFileContent(null);
-        setHighlightRanges([] as HighlightRange[]);
+        const parts = currentPath.split('/').filter(Boolean);
+        const parentDir = parts.slice(0, -1).join('/');
+        if (currentFileContent) {
+            setCurrentFileContent(null);
+            setHighlightRanges([] as HighlightRange[]);
+            setCurrentPath(parentDir);
+            return;
+        }
+        setCurrentPath(parentDir);
     }
 
     return (
@@ -105,7 +101,7 @@ const RepoView = ({ tree }: RepoViewProps) => {
                     </span>
                 ))}
             </div>
-            <button style={{ background: 'none', border: 'none', cursor: 'pointer' }} onClick={backButtonClick} className="repo-tree__link"><IoIosArrowBack /></button>
+            {currentPath !== "" && <button style={{ background: 'none', border: 'none', cursor: 'pointer' }} onClick={backButtonClick} className="repo-tree__link"><IoIosArrowBack /></button>}
             {currentFileContent ? <CodeViewer
                 code={currentFileContent}
                 highlightStarts={highlightRanges?.map((highlightRange) => highlightRange.start)}
@@ -113,11 +109,11 @@ const RepoView = ({ tree }: RepoViewProps) => {
             /> : <div className="repo-tree__list">
                 {getCurrentFiles().map((file, index) => (
                     <div key={index} className="repo-tree__row">
-                        {file.mode !== '100644'
+                        {file.mode === '040000'
                             ? <VscFolder className="repo-tree__icon repo-tree__icon--dir" />
                             : <VscFile className="repo-tree__icon repo-tree__icon--file" />
                         }
-                        <button style={{ background: 'none', border: 'none', cursor: 'pointer' }} onClick={() => onFileClick(file.path as string, file.url as string)} className="repo-tree__link">{file.path as string}</button>
+                        <button style={{ background: 'none', border: 'none', cursor: 'pointer' }} onClick={() => onEntryClick(file.path as string, file.url as string, file.mode !== '100644')} className="repo-tree__link">{file.path as string}</button>
                     </div>
                 ))}
             </div>}
