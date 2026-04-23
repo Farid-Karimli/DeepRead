@@ -22,6 +22,7 @@ const RepoView = ({ tree }: RepoViewProps) => {
     const [currentPath, setCurrentPath] = useState(() => "");
     const [currentFileContent, setCurrentFileContent] = useState<string | null>(null);
     const [highlightRanges, setHighlightRanges] = useState<HighlightRange[] | null>(null);
+    const [scrollFocusRange, setScrollFocusRange] = useState<HighlightRange | null>(null);
     const { codeInfo } = useSidePanel();
 
     const getFileURLByPath = (path: string) => {
@@ -32,6 +33,11 @@ const RepoView = ({ tree }: RepoViewProps) => {
         if (codeInfo) {
             setCurrentPath(codeInfo.filePath);
             setHighlightRanges(codeInfo.codeRanges.map((codeRange) => ({ start: codeRange.startLine, end: codeRange.endLine })));
+            setScrollFocusRange(
+                codeInfo.scrollToRange
+                    ? { start: codeInfo.scrollToRange.startLine, end: codeInfo.scrollToRange.endLine }
+                    : null,
+            );
             const url = getFileURLByPath(codeInfo.filePath);
             if (url) {
                 getGithubFileFromBlobUrl(url).then((content) => {
@@ -65,6 +71,7 @@ const RepoView = ({ tree }: RepoViewProps) => {
 
     const onEntryClick = (filepath: string, url: string, isFile: boolean) => {
         setHighlightRanges([] as HighlightRange[]);
+        setScrollFocusRange(null);
         setCurrentPath(filepath);
         if (!isFile) {
             setCurrentFileContent(null);
@@ -84,6 +91,7 @@ const RepoView = ({ tree }: RepoViewProps) => {
         if (currentFileContent) {
             setCurrentFileContent(null);
             setHighlightRanges([] as HighlightRange[]);
+            setScrollFocusRange(null);
             setCurrentPath(parentDir);
             return;
         }
@@ -106,6 +114,8 @@ const RepoView = ({ tree }: RepoViewProps) => {
                 code={currentFileContent}
                 highlightStarts={highlightRanges?.map((highlightRange) => highlightRange.start)}
                 highlightEnds={highlightRanges?.map((highlightRange) => highlightRange.end)}
+                scrollFocusStart={scrollFocusRange?.start}
+                scrollFocusEnd={scrollFocusRange?.end}
             /> : <div className="repo-tree__list">
                 {getCurrentFiles().map((file, index) => (
                     <div key={index} className="repo-tree__row">

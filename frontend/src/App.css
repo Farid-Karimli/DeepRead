@@ -673,6 +673,10 @@
   margin-left: -16px;
 }
 
+.code-viewer__highlighted-line--scroll-focus {
+  background: rgba(192, 132, 252, 0.24);
+}
+
 /* Scrollbar styling (PDF pane + code pane + code viewer) */
 .paper-view-layout__pdf-inner .reader__page-list,
 .paper-view-layout__code-scroll,

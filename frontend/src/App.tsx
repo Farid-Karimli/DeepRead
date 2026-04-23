@@ -95,7 +95,9 @@ function App() {
 
         if (status.status === 'SUCCESS' && status.result !== undefined && status.result !== null) {
           const sections: codeSectionsResult | null = extractCodeSections(status.result);
+          console.log('sections', sections);
           const githubRepoUrl: string | null = extractGithubRepoUrl(status.result);
+          console.log('githubRepoUrl', githubRepoUrl);
           if (githubRepoUrl === null) {
             setSubmitError('Could not extract GitHub repository URL from the result.');
             setTaskId(null);

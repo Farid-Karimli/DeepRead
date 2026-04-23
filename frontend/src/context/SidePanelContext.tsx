@@ -9,6 +9,8 @@ type CodeRange = {
 type CodeInfo = {
   filePath: string;
   codeRanges: CodeRange[];
+  /** If set, scroll this range into view (still highlights all `codeRanges`). */
+  scrollToRange?: CodeRange;
 };
 
 type sidePanelContext = {
