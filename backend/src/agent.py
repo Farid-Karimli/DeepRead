@@ -5,7 +5,7 @@ from pathlib import Path
 from claude_agent_sdk import ClaudeAgentOptions, query, ResultMessage
 import pypdf
 
-from src.utils import clone_repo_to_temp_dir, delete_temp_dir
+from src.utils import clone_repo_to_temp_dir, delete_temp_dir, normalize_github_repo_url
 from src.search import search_github
 from src.agent_utils import extract_paper_info, key_section_schema, code_section_schema, _merge_key_sections_into_code_result, _parse_json_result, EventCallback
 
@@ -50,7 +50,11 @@ class Agent:
         search_results = search_github(query=f"{title} {authors}")
         if len(search_results) == 0:
             raise ValueError("No search results found.")
-        return search_results[0].get("url")
+        for result in search_results:
+            normalized = normalize_github_repo_url(result.get("url"))
+            if normalized:
+                return normalized
+        raise ValueError("No valid GitHub repository URLs found in search results.")
 
     async def identify_key_sections(
         self,
@@ -142,6 +146,10 @@ class Agent:
                     print(f"Tried to parse: {cleaned}")
                     parsed_result = None
                     # Do not return here – keep consuming the generator so SDK cleans up correctly.
+        if isinstance(parsed_result, dict):
+            normalized = normalize_github_repo_url(parsed_result.get("github_repo_url"))
+            if normalized:
+                parsed_result["github_repo_url"] = normalized
         return parsed_result
 
     async def map_key_sections_to_code(
@@ -245,7 +253,9 @@ class Agent:
         if key_sections is None:
             raise ValueError("No key sections found.")
 
-        github_repo_url = key_sections.get('github_repo_url')
+        github_repo_url = normalize_github_repo_url(key_sections.get('github_repo_url'))
+        if github_repo_url:
+            key_sections["github_repo_url"] = github_repo_url
         if not github_repo_url:
             raise ValueError(
                 "No GitHub repository URL found in this paper. "
