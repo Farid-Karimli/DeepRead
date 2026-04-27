@@ -15,10 +15,12 @@ class Agent:
     to specific code snippets in the associated repository.
     Powered by Claude Code.
     """ 
-    def __init__(self, model: str = "claude-3-5-sonnet-20241022", 
-                 stream_events: bool = False):
+    def __init__(self, model: str = "sonnet", 
+                 stream_events: bool = False,
+                 temperature: float = 0.0):
         self.model = model
         self.stream_events = stream_events
+        self.temperature = temperature
 
     async def _test_claude_code(self) -> None:
         prompt = "What is the capital of France?"
@@ -120,6 +122,7 @@ class Agent:
         }
 
         options = ClaudeAgentOptions(
+            model=self.model,
             allowed_tools=["Bash", "Search", "ReadFile"],
             include_partial_messages=True,
             cwd="." if paper_path is None else os.path.dirname(paper_path),
@@ -208,6 +211,7 @@ class Agent:
         }
 
         options = ClaudeAgentOptions(
+            model=self.model,
             allowed_tools=["Bash", "Search", "ReadFile"],
             include_partial_messages=True,
             cwd="." if code_path is None else os.path.dirname(code_path),
