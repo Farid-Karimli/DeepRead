@@ -11,6 +11,7 @@ type CodeInfo = {
   codeRanges: CodeRange[];
   /** If set, scroll this range into view (still highlights all `codeRanges`). */
   scrollToRange?: CodeRange;
+  description: string;
 };
 
 type sidePanelContext = {
