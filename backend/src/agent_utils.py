@@ -251,9 +251,6 @@ def _merge_key_sections_into_code_result(
                 out["paper_start_line"] = sl
             if isinstance(el, int):
                 out["paper_end_line"] = el
-            desc = matched.get("description")
-            if isinstance(desc, str) and desc.strip():
-                out["paper_section_description"] = desc
         merged.append(out)
 
     return {**code_result, "sections": merged}
@@ -316,7 +313,7 @@ def extract_paper_info(paper_content: str) -> dict:
     for attempt in range(2):
         message = client.messages.create(
             model="claude-haiku-4-5-20251001",
-            max_tokens=20000,
+            max_tokens=1000,
             temperature=0 if attempt > 0 else 1,
             system=system_prompt,
             messages=[
