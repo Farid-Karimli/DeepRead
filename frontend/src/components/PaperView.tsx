@@ -11,7 +11,6 @@ import {
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { textItemToBoundingBoxLike, type PdfTextItemLike } from '../utils/pdfTextItemToBoundingBox.ts';
 import { HighlightOverlayDemo, type BoundingBoxWithTooltip } from './CodeOverlay.tsx';
-import { useSidePanel } from '../context/SidePanelContext.tsx';
 import RepoView from './RepoView.tsx';
 
 interface PaperViewProps {
@@ -167,8 +166,6 @@ export default function PaperView({ analysisResult: _analysisResult, clearEnviro
     const fileForViewer = useMemo(() => paperFile, [paperFile]);
 
     const hasRealFile = paperFile instanceof File && paperFile.size > 0;
-
-    const { hideCode } = useSidePanel();
 
     return (
         <div className="paper-view-layout">
