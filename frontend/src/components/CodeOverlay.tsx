@@ -17,6 +17,7 @@ import { useSidePanel } from '../context/SidePanelContext.tsx';
 /** Geometry matches `BoundingBox`; `tooltip` is shown on hover (native + optional floating). */
 export type BoundingBoxWithTooltip = BoundingBoxType & {
   file_infos: string[];
+  description: string;
   code_snippets: {
     content: string;
     filepath: string;
@@ -58,6 +59,7 @@ function PdfBoundingHitTarget({
   }
 
   const showAllSnippetsForSelectedFile = (codeSnippets: typeof box.code_snippets, index: number) => {
+    console.log('showAllSnippetsForSelectedFile', codeSnippets, index);
     const s = codeSnippets[index];
     if (!s) return;
     const thisFilePath = s.filepath;
@@ -66,6 +68,7 @@ function PdfBoundingHitTarget({
       filePath: thisFilePath,
       codeRanges: forFile.map((t) => ({ startLine: t.start_line, endLine: t.end_line })),
       scrollToRange: { startLine: s.start_line, endLine: s.end_line },
+      description: box.description || '',
     });
   };
   const { top, left, width, height } = computeBoundingBoxStyle(
@@ -120,6 +123,7 @@ function PdfBoundingHitTarget({
           setFloating(null);
         }}
       >
+        <div className="pdf-hit-tooltip__description">{box.description}</div>
         <div className="pdf-hit-tooltip__path">{box.file_infos[codeIndex]}</div>
         <div className="pdf-hit-tooltip__actions">
           {box.code_snippets.length > 1 ? (

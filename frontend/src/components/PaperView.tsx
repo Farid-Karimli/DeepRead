@@ -131,6 +131,7 @@ function PdfPageList({ analysisResult, scrollRef }: { analysisResult: codeSectio
                         hitKey: `p${pageIndexZeroBased}-h${hitSeq++}`,
                         file_infos: section.code_snippets.map((snippet) => `${snippet.filepath}:${snippet.start_line}-${snippet.end_line}`),
                         code_snippets: section.code_snippets,
+                        description: section.section_description,
                     });
                 }
             }
