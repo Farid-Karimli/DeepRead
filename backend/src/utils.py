@@ -4,6 +4,7 @@ import subprocess
 import shutil
 import requests
 import base64
+from urllib.parse import urlparse
 
 from claude_agent_sdk.types import StreamEvent
 from pprint import pprint
@@ -18,6 +19,11 @@ def clone_repo_to_temp_dir(repo_url: str) -> str:
     """
     Clones a GitHub repository to a temporary directory.
     """
+    raw_repo_url = repo_url
+    repo_url = normalize_github_repo_url(repo_url)
+    if repo_url is None:
+        raise ValueError(f"Invalid GitHub repository URL: {raw_repo_url}")
+
     repo_name = repo_url.split("/")[-1]
     repo_name = repo_name.replace(".git", "")
     repo_dir = os.path.join(os.path.dirname(__file__), "temp", repo_name)
@@ -30,6 +36,38 @@ def clone_repo_to_temp_dir(repo_url: str) -> str:
         print(f"Repository already cloned to {repo_dir}")
 
     return repo_dir
+
+
+def normalize_github_repo_url(repo_url: str | None) -> str | None:
+    """
+    Normalizes GitHub links (repo, blob, tree) to canonical clone URL.
+    Example: https://github.com/org/repo/blob/main/a.py -> https://github.com/org/repo.git
+    """
+    if not isinstance(repo_url, str):
+        return None
+
+    raw = repo_url.strip()
+    if not raw:
+        return None
+
+    parsed = urlparse(raw)
+    if parsed.scheme not in ("http", "https"):
+        return None
+    if parsed.netloc.lower() != "github.com":
+        return None
+
+    parts = [p for p in parsed.path.split("/") if p]
+    if len(parts) < 2:
+        return None
+
+    owner = parts[0]
+    repo = parts[1]
+    if repo.endswith(".git"):
+        repo = repo[:-4]
+    if not owner or not repo:
+        return None
+
+    return f"https://github.com/{owner}/{repo}.git"
 
 def get_repo_tree(repo_url: str) -> list:
     repo_name = repo_url.split("/")[-1]

@@ -5,9 +5,13 @@ from pathlib import Path
 from claude_agent_sdk import ClaudeAgentOptions, query, ResultMessage
 import pypdf
 
-from src.utils import clone_repo_to_temp_dir, delete_temp_dir
+from src.utils import clone_repo_to_temp_dir, delete_temp_dir, normalize_github_repo_url
 from src.search import search_github
 from src.agent_utils import extract_paper_info, key_section_schema, code_section_schema, _merge_key_sections_into_code_result, _parse_json_result, EventCallback
+from src.prompts import (
+    build_identify_key_sections_prompt,
+    build_map_key_sections_to_code_prompt,
+)
 
 class Agent:
     """
@@ -15,12 +19,14 @@ class Agent:
     to specific code snippets in the associated repository.
     Powered by Claude Code.
     """ 
-    def __init__(self, model: str = "claude-3-5-sonnet-20241022", 
-                 stream_events: bool = False):
+    def __init__(self, model: str = "sonnet", 
+                 stream_events: bool = False,
+                 temperature: float = 0.0):
         self.model = model
         self.stream_events = stream_events
+        self.temperature = temperature
 
-    async def _test_claude_code(self) -> None:
+    async def _test(self) -> None:
         prompt = "What is the capital of France?"
         options = ClaudeAgentOptions(
             allowed_tools=["Bash", "Glob"],
@@ -50,7 +56,11 @@ class Agent:
         search_results = search_github(query=f"{title} {authors}")
         if len(search_results) == 0:
             raise ValueError("No search results found.")
-        return search_results[0].get("url")
+        for result in search_results:
+            normalized = normalize_github_repo_url(result.get("url"))
+            if normalized:
+                return normalized
+        raise ValueError("No valid GitHub repository URLs found in search results.")
 
     async def identify_key_sections(
         self,
@@ -73,42 +83,10 @@ class Agent:
         if not github_link_present:
             github_repository_url = await self.find_github_repo(paper_content=paper_content_to_analyze, paper_path=paper_path)
 
-        prompt = f"""
-        Identify the key sections of the implementation content in the following research paper.
-        Focus on sections that have a high likelihood of being implemented in the code repository. These sections
-        should be ones that aid the reader in understanding the implementation and enable them to compare side-by-side.
-
-        Ignore sections that are not implementation content, such as introduction, conclusion, figures, tables, etc.
-
-        Also, extract the GitHub repository URL from the paper, if it is present.
-
-        Provide JUST the section names, and start and end lines, short descriptions of the section, and the GitHub repository URL, no other text.
-
-        IMPORTANT: Make sure that the section names are exact matches to the section names in the paper. Do not make up section names and do not add
-        descriptive text to the section names. Sections should include subsections within sections, marked with a sub-section number. If there is no sub-section number, 
-        append a sub-section number to the section name with a period.
-
-        ### Paper Content ###
-        {paper_content_to_analyze}
-        ### End Paper Content ###
-
-        ### GitHub Repository URL ###
-        In case the repository URL is not present in the paper, it is provided here. Note that this may be empty is the URL is present in the paper already.
-        {github_repository_url}
-        ### End GitHub Repository URL ###
-
-        Example:
-        {{ "sections": [
-            {{
-                "section_name": "Section 1",
-                "start_line": 10,
-                "end_line": 20,
-                "description": "A comprehensive description of the section", 
-            }}
-            ],
-            "github_repo_url": "https://github.com/your-repo/your-repo.git"
-        ]}}
-        """
+        prompt = build_identify_key_sections_prompt(
+            paper_content_to_analyze=paper_content_to_analyze,
+            github_repository_url=github_repository_url,
+        )
 
         tool_state = {
             "current_tool": None,
@@ -116,6 +94,7 @@ class Agent:
         }
 
         options = ClaudeAgentOptions(
+            model=self.model,
             allowed_tools=["Bash", "Search", "ReadFile"],
             include_partial_messages=True,
             cwd="." if paper_path is None else os.path.dirname(paper_path),
@@ -142,6 +121,10 @@ class Agent:
                     print(f"Tried to parse: {cleaned}")
                     parsed_result = None
                     # Do not return here – keep consuming the generator so SDK cleans up correctly.
+        if isinstance(parsed_result, dict):
+            normalized = normalize_github_repo_url(parsed_result.get("github_repo_url"))
+            if normalized:
+                parsed_result["github_repo_url"] = normalized
         return parsed_result
 
     async def map_key_sections_to_code(
@@ -154,45 +137,10 @@ class Agent:
         if code_path is None and code_content is None:
             raise ValueError("Either code_path or code_content must be provided.")
 
-        prompt = f"""
-        Map the provided key sections of a research papers to the code in the corresponding repository (local path provided).
-
-        ### Key Sections ###
-        {key_sections}
-        ### End Key Sections ###
-
-        ### Code ###
-        {code_path}
-        ### End Code ###
-
-        Provide the code snippets for each section, and the line numbers of the code snippets.
-        Provide JUST the code snippets and the line numbers in a JSON object, no other text. 
-
-        Return only a JSON object. First character must be {{ and last must be }}. No prose.
-
-        IMPORTANT: Make sure that the section names are exact matches to the section names in the key sections. Do not make up section names and do not add
-        descriptive text to the section names.
-
-        Example:
-        {{
-            "paper_title": "The Title of the Paper",
-            "github_repo_url": "https://github.com/your-repo/your-repo.git",
-            "sections": [
-                {{
-                    "section_name": "Section 1",
-                    "section_description": "A short description of the section",
-                    "code_snippets": [
-                        {{
-                            "content": "print('Hello, world!')",
-                            "filepath": "path/to/code/file.py",
-                            "start_line": 10,
-                            "end_line": 20
-                        }},
-                    ],
-                }}
-            ]
-        }}
-        """
+        prompt = build_map_key_sections_to_code_prompt(
+            key_sections=key_sections,
+            code_path=code_path,
+        )
 
         tool_state = {
             "current_tool": None,
@@ -200,6 +148,7 @@ class Agent:
         }
 
         options = ClaudeAgentOptions(
+            model=self.model,
             allowed_tools=["Bash", "Search", "ReadFile"],
             include_partial_messages=True,
             cwd="." if code_path is None else os.path.dirname(code_path),
@@ -245,7 +194,9 @@ class Agent:
         if key_sections is None:
             raise ValueError("No key sections found.")
 
-        github_repo_url = key_sections.get('github_repo_url')
+        github_repo_url = normalize_github_repo_url(key_sections.get('github_repo_url'))
+        if github_repo_url:
+            key_sections["github_repo_url"] = github_repo_url
         if not github_repo_url:
             raise ValueError(
                 "No GitHub repository URL found in this paper. "

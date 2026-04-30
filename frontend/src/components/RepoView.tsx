@@ -22,7 +22,10 @@ const RepoView = ({ tree }: RepoViewProps) => {
     const [currentPath, setCurrentPath] = useState(() => "");
     const [currentFileContent, setCurrentFileContent] = useState<string | null>(null);
     const [highlightRanges, setHighlightRanges] = useState<HighlightRange[] | null>(null);
+    const [scrollFocusRange, setScrollFocusRange] = useState<HighlightRange | null>(null);
     const { codeInfo } = useSidePanel();
+
+    const [currentCodeDescription, setCurrentCodeDescription] = useState<string | null>(null);
 
     const getFileURLByPath = (path: string) => {
         return tree.tree.find((obj, _) => obj.path === path)?.url;
@@ -31,7 +34,13 @@ const RepoView = ({ tree }: RepoViewProps) => {
     useEffect(() => {
         if (codeInfo) {
             setCurrentPath(codeInfo.filePath);
+            setCurrentCodeDescription(codeInfo.description);
             setHighlightRanges(codeInfo.codeRanges.map((codeRange) => ({ start: codeRange.startLine, end: codeRange.endLine })));
+            setScrollFocusRange(
+                codeInfo.scrollToRange
+                    ? { start: codeInfo.scrollToRange.startLine, end: codeInfo.scrollToRange.endLine }
+                    : null,
+            );
             const url = getFileURLByPath(codeInfo.filePath);
             if (url) {
                 getGithubFileFromBlobUrl(url).then((content) => {
@@ -65,6 +74,7 @@ const RepoView = ({ tree }: RepoViewProps) => {
 
     const onEntryClick = (filepath: string, url: string, isFile: boolean) => {
         setHighlightRanges([] as HighlightRange[]);
+        setScrollFocusRange(null);
         setCurrentPath(filepath);
         if (!isFile) {
             setCurrentFileContent(null);
@@ -84,7 +94,9 @@ const RepoView = ({ tree }: RepoViewProps) => {
         if (currentFileContent) {
             setCurrentFileContent(null);
             setHighlightRanges([] as HighlightRange[]);
+            setScrollFocusRange(null);
             setCurrentPath(parentDir);
+            setCurrentCodeDescription(null);
             return;
         }
         setCurrentPath(parentDir);
@@ -93,19 +105,41 @@ const RepoView = ({ tree }: RepoViewProps) => {
     return (
         <div className="repo-tree">
             <h3 className="repo-tree__heading">Repo View</h3>
-            <div className="repo-tree__breadcrumb">
-                {currentPathParts.map((part, index) => (
-                    <span key={index}>
-                        {part}
-                        {index < currentPathParts.length - 1 ? '/ ' : ' '}
-                    </span>
-                ))}
+            <div className="repo-tree__header">
+                <div className="repo-tree__header-row">
+                    {currentPath !== "" && (
+                        <button
+                            type="button"
+                            onClick={backButtonClick}
+                            className="repo-tree__back-btn"
+                            aria-label="Go back"
+                        >
+                            <IoIosArrowBack />
+                        </button>
+                    )}
+                    <div className="repo-tree__breadcrumb" title={currentPath || 'Repository root'}>
+                        {currentPathParts.length > 0 ? (
+                            currentPathParts.map((part, index) => (
+                                <span key={index}>
+                                    {part}
+                                    {index < currentPathParts.length - 1 ? '/ ' : ''}
+                                </span>
+                            ))
+                        ) : (
+                            <span>Repository root</span>
+                        )}
+                    </div>
+                </div>
+                {currentCodeDescription && (
+                    <div className="repo-tree__description">{currentCodeDescription}</div>
+                )}
             </div>
-            {currentPath !== "" && <button style={{ background: 'none', border: 'none', cursor: 'pointer' }} onClick={backButtonClick} className="repo-tree__link"><IoIosArrowBack /></button>}
             {currentFileContent ? <CodeViewer
                 code={currentFileContent}
                 highlightStarts={highlightRanges?.map((highlightRange) => highlightRange.start)}
                 highlightEnds={highlightRanges?.map((highlightRange) => highlightRange.end)}
+                scrollFocusStart={scrollFocusRange?.start}
+                scrollFocusEnd={scrollFocusRange?.end}
             /> : <div className="repo-tree__list">
                 {getCurrentFiles().map((file, index) => (
                     <div key={index} className="repo-tree__row">
@@ -113,7 +147,7 @@ const RepoView = ({ tree }: RepoViewProps) => {
                             ? <VscFolder className="repo-tree__icon repo-tree__icon--dir" />
                             : <VscFile className="repo-tree__icon repo-tree__icon--file" />
                         }
-                        <button style={{ background: 'none', border: 'none', cursor: 'pointer' }} onClick={() => onEntryClick(file.path as string, file.url as string, file.mode !== '100644')} className="repo-tree__link">{file.path as string}</button>
+                        <button style={{ background: 'none', border: 'none', cursor: 'pointer' }} onClick={() => onEntryClick(file.path as string, file.url as string, file.mode !== '040000')} className="repo-tree__link">{file.path as string}</button>
                     </div>
                 ))}
             </div>}

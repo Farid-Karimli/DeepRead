@@ -251,9 +251,6 @@ def _merge_key_sections_into_code_result(
                 out["paper_start_line"] = sl
             if isinstance(el, int):
                 out["paper_end_line"] = el
-            desc = matched.get("description")
-            if isinstance(desc, str) and desc.strip():
-                out["paper_section_description"] = desc
         merged.append(out)
 
     return {**code_result, "sections": merged}
@@ -306,43 +303,62 @@ def extract_paper_info(paper_content: str) -> dict:
     You're a PDF extractor agent. You'll be given a PDF file and asked to extract information. Respond only with the requested information in a structured JSON format: \n\n{{ \n\"attribute1\": <value1>,\n...\n}}"
     """
 
-    message = client.messages.create(
-        model="claude-haiku-4-5-20251001",
-        max_tokens=20000,
-        temperature=1,
-        system=system_prompt,
-        messages=[
+    prompt_text = f"Give me the title and authors of this paper: \n\n {paper_content}"
+    fallback_prompt_text = (
+        "Return ONLY valid JSON with keys title and authors (both strings). "
+        "No markdown fences and no extra commentary.\n\n"
+        f"Paper:\n{paper_content}"
+    )
+
+    for attempt in range(2):
+        message = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=1000,
+            temperature=0 if attempt > 0 else 1,
+            system=system_prompt,
+            messages=[
                 {
                     "role": "user",
                     "content": [
                         {
                             "type": "text",
-                            "text": f"Give me the title and authors of this paper: \n\n {paper_content}"
+                            "text": prompt_text if attempt == 0 else fallback_prompt_text
                         }
                     ]
                 }
             ],
-        thinking={
-            "type": "disabled"
-        },
-        output_config={
-            "format": {
-                "type": "json_schema",
-                "schema": {
-                    "type": "object",
-                    "properties": {
-                        "title": {"type": "string"},
-                        "authors": {"type": "string"}
-                    },
-                    "required": ["title", "authors"],
-                    "additionalProperties": False,
-                }
+            thinking={
+                "type": "disabled"
             },
-        }
-    )
+            output_config={
+                "format": {
+                    "type": "json_schema",
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "title": {"type": "string"},
+                            "authors": {"type": "string"}
+                        },
+                        "required": ["title", "authors"],
+                        "additionalProperties": False,
+                    }
+                },
+            }
+        )
 
-    response = json.loads(message.content[0].text)
-    return response
+        response_text = ""
+        if isinstance(message.content, list) and len(message.content) > 0:
+            first_block = message.content[0]
+            response_text = getattr(first_block, "text", "") or ""
+
+        parsed = _parse_json_result(response_text)
+        if isinstance(parsed, dict):
+            title = parsed.get("title")
+            authors = parsed.get("authors")
+            if isinstance(title, str) and isinstance(authors, str):
+                return {"title": title, "authors": authors}
+
+    raise ValueError("Failed to parse title/authors JSON from model response.")
 
 
 if __name__ == "__main__":

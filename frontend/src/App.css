@@ -149,7 +149,7 @@
 
 .home-papers {
   width: 100%;
-  max-width: 28rem;
+  max-width: 46rem;
   margin-top: 2rem;
   padding-top: 1.5rem;
   border-top: 1px solid var(--border);
@@ -175,8 +175,8 @@
   list-style: none;
   margin: 0;
   padding: 0;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
   gap: 8px;
 }
 
@@ -505,7 +505,18 @@
 }
 
 /* PDF hit-target tooltip: path + ghost actions (no default gray buttons) */
+.pdf-hit-tooltip__description {
+  font-size: 12px;
+  font-weight: 600;
+  color: #fafafa;
+}
+
 .pdf-hit-tooltip__path {
+  margin-top: 3px;
+  color: #a1a1aa;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 11px;
+  line-height: 1.25;
   word-break: break-word;
 }
 
@@ -514,8 +525,8 @@
   align-items: center;
   justify-content: center;
   gap: 12px;
-  margin-top: 10px;
-  padding-top: 10px;
+  margin-top: 8px;
+  padding-top: 8px;
   border-top: 1px solid rgba(255, 255, 255, 0.12);
 }
 
@@ -586,13 +597,64 @@
   color: var(--text-h);
 }
 
-.repo-tree__breadcrumb {
+.repo-tree__header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--social-bg);
+}
+
+.repo-tree__header-row {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  padding: 8px 0;
-  font-size: 0.8125rem;
+  gap: 8px;
+  min-width: 0;
+}
+
+.repo-tree__back-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
   color: var(--text);
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.repo-tree__back-btn:hover {
+  border-color: var(--accent-border);
+  background: var(--accent-bg);
+  color: var(--text-h);
+}
+
+.repo-tree__breadcrumb {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.8125rem;
+  font-family: var(--mono);
+  color: var(--text-h);
+}
+
+.repo-tree__description {
+  color: var(--text);
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  opacity: 0.86;
 }
 
 .repo-tree__list {
@@ -671,6 +733,10 @@
   border-left: 3px solid var(--accent);
   padding-left: 13px;
   margin-left: -16px;
+}
+
+.code-viewer__highlighted-line--scroll-focus {
+  background: rgba(192, 132, 252, 0.24);
 }
 
 /* Scrollbar styling (PDF pane + code pane + code viewer) */
