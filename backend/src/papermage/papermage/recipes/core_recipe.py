@@ -4,6 +4,7 @@
 
 """
 
+from io import BytesIO
 import logging
 import warnings
 from pathlib import Path
@@ -98,12 +99,23 @@ class CoreRecipe(Recipe):
         self.sent_predictor = PysbdSentencePredictor()
         self.logger.info("Finished instantiating recipe")
 
-    def from_pdf(self, pdf: Path) -> Document:
+    def from_pdf(self, pdf: Path | bytes | BytesIO) -> Document:
         self.logger.info("Parsing document...")
-        doc = self.parser.parse(input_pdf_path=pdf)
+        print(type(pdf))
 
-        self.logger.info("Rasterizing document...")
-        images = self.rasterizer.rasterize(input_pdf_path=pdf, dpi=self.dpi)
+        if isinstance(pdf, (str, Path)):
+            doc = self.parser.parse(input_pdf_path=str(pdf))
+            images = self.rasterizer.rasterize(input_file=pdf, dpi=self.dpi)
+        else:
+            if isinstance(pdf, bytes):
+                pdf_bytes = pdf
+            else:
+                pdf.seek(0)
+                pdf_bytes = pdf.read()
+            
+            doc = self.parser.parse(input_pdf_path=BytesIO(pdf_bytes))
+            images = self.rasterizer.rasterize(input_file=pdf_bytes, dpi=self.dpi)
+
         doc.annotate_images(images=list(images))
         self.rasterizer.attach_images(images=images, doc=doc)
         return self.from_doc(doc=doc)

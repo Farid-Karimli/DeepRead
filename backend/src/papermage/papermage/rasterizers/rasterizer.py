@@ -6,6 +6,7 @@ Converts pages of a PDF into Images that can be attached to a Document.
 
 """
 
+from pathlib import Path
 from typing import Iterable, List, Protocol
 
 from papermage.magelib import Document, Image, PagesFieldName
@@ -46,9 +47,12 @@ class Rasterizer(Protocol):
 
 
 class PDF2ImageRasterizer(Rasterizer):
-    def rasterize(self, input_pdf_path: str, dpi: int, **kwargs) -> Iterable[Image]:
+    def rasterize(self, input_file: str | bytes, dpi: int, **kwargs) -> Iterable[Image]:
         """Rasterize the pdf and convert the PIL images to papermage Image objects"""
-        pil_images = pdf2image.convert_from_path(pdf_path=input_pdf_path, dpi=dpi)
+        if isinstance(input_file, (str, Path)):
+            pil_images = pdf2image.convert_from_path(pdf_path=str(input_file), dpi=dpi)
+        else:
+            pil_images = pdf2image.convert_from_bytes(input_file, dpi=dpi)
         images: List[Image] = []
         for pil_image in pil_images:
             image = Image()
