@@ -6,14 +6,24 @@
 import os
 from abc import abstractmethod
 from pathlib import Path
-from typing import Any
+from typing import Any, BinaryIO
+from io import BufferedIOBase
 
 from papermage.magelib import Document
 
 
 class Recipe:
     @abstractmethod
-    def run(self, input: Any) -> Document:
+    def run(self, input: Path | str | BinaryIO, filetype: str = None) -> Document: #filetype is pdf or doc
+
+        if isinstance(input, (BufferedIOBase, bytes)):
+            if not filetype:
+                raise Exception("When passing a bytes-like object you must specify the type of file (pdf vs doc)")
+            if filetype == "pdf":
+                return self.from_pdf(input)
+            else:
+                raise Exception
+
         if isinstance(input, Path):
             if input.suffix == ".pdf":
                 return self.from_pdf(pdf=input)
