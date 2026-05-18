@@ -13,9 +13,10 @@ import {
   type paperSubmitResponse,
   type paperAnalysisStatusResponse,
   type codeSectionsResult,
-  type Paper,
+  type CachedPaper,
   type githubRepoTreeResponse,
 } from './api/main';
+import type { processPDFResult } from './api/types.ts';
 
 /** Celery stores the agent return value: `{ github_repo_url, code_result }`. */
 interface AgentTaskResult {
@@ -47,6 +48,10 @@ function App() {
   const [analysisResult, setAnalysisResult] = useState<codeSectionsResult | undefined>(() => {
     const analysisResult = localStorage.getItem('analysisResult');
     return analysisResult ? JSON.parse(analysisResult) : undefined;
+  });
+  const [papermageResult, setPaperMageResult] = useState<processPDFResult | undefined>(() => {
+    const papermageResult = localStorage.getItem('papermageResult');
+    return papermageResult ? JSON.parse(papermageResult) : undefined;
   });
   const [githubRepoTree, setGithubRepoTree] = useState<githubRepoTreeResponse | undefined>(() => {
     const githubRepoTree = localStorage.getItem('githubRepoTree');
@@ -181,12 +186,15 @@ function App() {
   const openCachedPaper = async (id: string) => {
     setSubmitError(null);
     try {
-      const response: Paper = await getCachedPaperById(id);
-      const { result, file } = response;
-      const sections = extractCodeSections(result);
+      const cacheResponse: CachedPaper = await getCachedPaperById(id);
+      const { analysisResult, papermageResult, file } = cacheResponse;
+      const sections = extractCodeSections(analysisResult);
+      const githubRepoUrl = extractGithubRepoUrl(analysisResult);
+
       console.log('sections', sections);
-      const githubRepoUrl = extractGithubRepoUrl(result);
+      console.log('papermageResult', papermageResult);
       console.log('githubRepoUrl', githubRepoUrl);
+
       if (sections && githubRepoUrl) {
         const tree: githubRepoTreeResponse = await getGithubRepoTree(githubRepoUrl);
         if (tree) {
@@ -196,6 +204,7 @@ function App() {
         setPaperId(id);
         setPaperFile(new File([file.buffer as ArrayBuffer], id, { type: 'application/pdf' }));
         setAnalysisResult(sections);
+        setPaperMageResult(papermageResult);
         return;
       }
       setSubmitError('Cached result format was unexpected.');
@@ -204,11 +213,12 @@ function App() {
     }
   };
 
-  if (analysisResult && githubRepoTree) {
+  if (analysisResult && githubRepoTree && papermageResult) {
     return (
       <SidePanelProvider>
         <PaperView
           analysisResult={analysisResult}
+          processResult={papermageResult}
           clearEnvironment={clearEnvironment}
           paperFile={paperFile}
           tree={githubRepoTree}

@@ -6,6 +6,7 @@ import type {
     cachedPaperSummary, 
     listCachedPapersResponse,
     githubRepoTreeResponse,
+    processPDFResult,
 } from './types';
 
 const API_URL: string =
@@ -52,12 +53,13 @@ const listCachedPapers = async (): Promise<cachedPaperSummary[]> => {
     return body.papers ?? [];
 };
 
-interface Paper {
-    result: codeSectionsResult;
+interface CachedPaper {
+    analysisResult: codeSectionsResult;
+    papermageResult: processPDFResult;
     file: Uint8Array;
 }
 
-const getCachedPaperById = async (paperId: string): Promise<Paper> => {
+const getCachedPaperById = async (paperId: string): Promise<CachedPaper> => {
     // Returns the cached paper result and the file URL
     const response: Response = await fetch(`${API_URL}/papers/${encodeURIComponent(paperId)}`);
     if (!response.ok) {
@@ -67,7 +69,7 @@ const getCachedPaperById = async (paperId: string): Promise<Paper> => {
     const responseJSON: paperByIdResponse = await response.json();
     const fileUrl = responseJSON.file_url;
     const file = await getFileByUrl(fileUrl);
-    return { result: responseJSON.result, file: file };
+    return { analysisResult: responseJSON.analysis_result, file: file , papermageResult: responseJSON.papermage_result};
 };
 
 const getFileByUrl = async (url: string): Promise<Uint8Array> => {
@@ -121,7 +123,7 @@ export {
     type cachedPaperSummary,
     type paperByIdResponse,
     type listCachedPapersResponse,
-    type Paper,
+    type CachedPaper,
     type githubRepoTreeResponse,
     getGithubRepoTree,
     getGithubFileFromBlobUrl,

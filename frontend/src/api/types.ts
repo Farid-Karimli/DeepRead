@@ -1,5 +1,6 @@
 interface codeSection {
-    section_name: string;
+    section_id: string;
+    section_header: string;
     section_description: string;
     paper_start_line?: number;
     paper_end_line?: number;
@@ -33,8 +34,10 @@ interface paperAnalysisStatusResponse {
 
 interface paperByIdResponse {
     paper_id: string;
-    result: codeSectionsResult;
     file_url: string;
+    analysis_result: codeSectionsResult;
+    papermage_result: processPDFResult;
+
 }
 
 interface cachedPaperSummary {
@@ -60,4 +63,31 @@ interface githubRepoTreeResponse {
     truncated: boolean;
 }
 
-export type { codeSection, codeSectionsResult, paperSubmitResponse, paperAnalysisStatusResponse, paperByIdResponse, cachedPaperSummary, listCachedPapersResponse, githubRepoTreeResponse };
+interface PaperMageBox {
+    page: number, 
+    l: number, 
+    t: number, 
+    h: number, 
+    w: number
+}
+interface SectionEntity {
+    entity_id: string,
+    page_index: number,
+    box: PaperMageBox,
+}
+interface processPDFResult {
+    paper_title: string,
+    n_pages: number,
+    sections: SectionEntity[];
+}
+
+export type { codeSection, 
+    codeSectionsResult, 
+    paperSubmitResponse, 
+    paperAnalysisStatusResponse, 
+    paperByIdResponse, 
+    cachedPaperSummary, 
+    listCachedPapersResponse, 
+    githubRepoTreeResponse,
+    processPDFResult,
+};
