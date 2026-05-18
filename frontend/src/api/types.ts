@@ -1,3 +1,9 @@
+interface AgentTaskResult {
+    paper_title: string | null;
+    github_repo_url: string | null;
+    code_result: codeSectionsResult | null;
+};
+
 interface codeSection {
     section_id: string;
     section_header: string;
@@ -17,17 +23,22 @@ interface codeSection {
     sections: codeSection[];
   }
 
+interface paperAnalysisPayload {
+    analysis: AgentTaskResult;
+    processed: processPDFResult;
+}
+
 interface paperSubmitResponse {
     status: 'complete' | 'pending';
     task_id?: string;
     paper_id: string;
-    result?: codeSectionsResult;
+    result?: paperAnalysisPayload;
 }
 
 interface paperAnalysisStatusResponse {
     status: string;
     /** Celery success payload: `{ github_repo_url, code_result }` or cached equivalent */
-    result?: unknown;
+    result?: paperAnalysisPayload;
     /** Set when status === 'FAILURE'; human-readable reason from the worker exception. */
     error?: string;
 }
@@ -35,7 +46,7 @@ interface paperAnalysisStatusResponse {
 interface paperByIdResponse {
     paper_id: string;
     file_url: string;
-    analysis_result: codeSectionsResult;
+    analysis_result: AgentTaskResult;
     papermage_result: processPDFResult;
 
 }
@@ -46,6 +57,12 @@ interface cachedPaperSummary {
     github_repo_url?: string | null;
     section_count: number;
     label?: string | null;
+}
+
+interface CachedPaper {
+    analysisResult: AgentTaskResult;
+    papermageResult: processPDFResult;
+    file: Uint8Array;
 }
 
 interface listCachedPapersResponse {
@@ -90,4 +107,6 @@ export type { codeSection,
     listCachedPapersResponse, 
     githubRepoTreeResponse,
     processPDFResult,
+    AgentTaskResult,
+    CachedPaper,
 };

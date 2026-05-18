@@ -16,14 +16,10 @@ import {
   type CachedPaper,
   type githubRepoTreeResponse,
 } from './api/main';
-import type { processPDFResult } from './api/types.ts';
+import type { processPDFResult, AgentTaskResult } from './api/types.ts';
 
 /** Celery stores the agent return value: `{ github_repo_url, code_result }`. */
-interface AgentTaskResult {
-  paper_title: string | null;
-  github_repo_url: string | null;
-  code_result: codeSectionsResult | null;
-};
+
 
 function extractGithubRepoUrl(result: unknown): string | null {
   if (!result || typeof result !== 'object') return null;
@@ -75,6 +71,11 @@ function App() {
     } else {
       localStorage.removeItem('analysisResult');
     }
+    if (papermageResult) {
+      localStorage.setItem('papermageResult', JSON.stringify(papermageResult));
+    } else {
+      localStorage.removeItem('papermageResult');
+    }
     if (paperId) {
       localStorage.setItem('paperId', paperId);
     } else {
@@ -85,7 +86,7 @@ function App() {
     } else {
       localStorage.removeItem('githubRepoTree');
     }
-  }, [taskId, analysisResult, paperFile, paperId, githubRepoTree]);
+  }, [taskId, analysisResult, paperFile, paperId, githubRepoTree, papermageResult]);
 
   useEffect(() => {
     if (!taskId || analysisResult) return;
@@ -99,19 +100,21 @@ function App() {
         if (cancelled) return;
 
         if (status.status === 'SUCCESS' && status.result !== undefined && status.result !== null) {
-          const sections: codeSectionsResult | null = extractCodeSections(status.result);
-          console.log('sections', sections);
-          const githubRepoUrl: string | null = extractGithubRepoUrl(status.result);
-          console.log('githubRepoUrl', githubRepoUrl);
+
+          const sections: codeSectionsResult | null = extractCodeSections(status.result.analysis);
+          const githubRepoUrl: string | null = extractGithubRepoUrl(status.result.analysis);
+          const papermageResult: processPDFResult = status.result.processed;
+
           if (githubRepoUrl === null) {
             setSubmitError('Could not extract GitHub repository URL from the result.');
             setTaskId(null);
             return;
           }
           const tree: githubRepoTreeResponse = await getGithubRepoTree(githubRepoUrl);
-          if (sections !== null && tree !== undefined) {
+          if (sections !== null && tree !== undefined && papermageResult !== null) {
             setGithubRepoTree(tree); 
             setAnalysisResult(sections);
+            setPaperMageResult(papermageResult)
             return;
           }
           setSubmitError('Analysis finished but the result format was unexpected.');
@@ -178,6 +181,7 @@ function App() {
   const clearEnvironment = () => {
     setTaskId(null);
     setAnalysisResult(undefined);
+    setPaperMageResult(undefined);
     setPaperFile(undefined);
     setPaperId(null);
     setSubmitError(null);

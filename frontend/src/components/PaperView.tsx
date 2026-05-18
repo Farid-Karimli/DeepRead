@@ -10,11 +10,9 @@ import {
     TransformContext,
 } from '@allenai/pdf-components';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { textItemToBoundingBoxLike, type PdfTextItemLike } from '../utils/pdfTextItemToBoundingBox.ts';
 import { HighlightOverlayDemo, type BoundingBoxWithTooltip } from './CodeOverlay.tsx';
 import { useSidePanel } from '../context/SidePanelContext.tsx';
 import RepoView from './RepoView.tsx';
-import sectionToBBoxBruteForce from '../utils/sectionToBBox.ts';
 
 interface PaperViewProps {
     analysisResult: codeSectionsResult;

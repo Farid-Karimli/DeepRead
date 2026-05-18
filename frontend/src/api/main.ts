@@ -6,7 +6,7 @@ import type {
     cachedPaperSummary, 
     listCachedPapersResponse,
     githubRepoTreeResponse,
-    processPDFResult,
+    CachedPaper,
 } from './types';
 
 const API_URL: string =
@@ -52,12 +52,6 @@ const listCachedPapers = async (): Promise<cachedPaperSummary[]> => {
     const body: listCachedPapersResponse = await response.json();
     return body.papers ?? [];
 };
-
-interface CachedPaper {
-    analysisResult: codeSectionsResult;
-    papermageResult: processPDFResult;
-    file: Uint8Array;
-}
 
 const getCachedPaperById = async (paperId: string): Promise<CachedPaper> => {
     // Returns the cached paper result and the file URL
