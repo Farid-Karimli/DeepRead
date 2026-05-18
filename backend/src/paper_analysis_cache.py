@@ -52,10 +52,14 @@ def get_cached_result(paper_id: str) -> dict[str, Any] | None:
         return None
 
 
-def set_cached_result(paper_id: str, result: dict[str, Any]) -> None:
+def set_cached_result(paper_id: str, analysis_result: dict[str, Any], papermage_result: dict[str, Any] = None) -> None:
     try:
         r = _client()
-        payload = json.dumps(result, default=str)
+        payload_raw = {
+            "analysis": analysis_result,
+            "processed": papermage_result,
+        }
+        payload = json.dumps(payload_raw, default=str)
         r.setex(cache_key_for_paper_id(paper_id), _ttl_seconds(), payload)
     except redis.RedisError:
         pass

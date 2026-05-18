@@ -3,13 +3,17 @@ import logging
 import os
 import time
 
+from src import process_pdf
 from celery import Celery
 from pydantic import BaseModel
+from io import BytesIO
+
 
 from src.agent import Agent
 from src.db import update_paper_metadata
 from src.paper_analysis_cache import get_cached_result, set_cached_result
 from src.config import REDIS_URL, SUPABASE_URL, SUPABASE_KEY
+from src.process_pdf import ProcessedPdf, papermage_process
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +22,7 @@ celery = Celery(
     broker=REDIS_URL,
     backend=REDIS_URL,
 )
-
+    
 class AgentTaskResult(BaseModel):
     paper_title: str | None = None
     github_repo_url: str | None = None
@@ -31,10 +35,18 @@ def test_task():
     print(f"Done waiting")
     return "Done waiting"
 
+@celery.task(name="process_pdf_papermage")
+def process_pdf_task(
+    file_raw: bytes | BytesIO,
+):
+    print(f"type of file_raw: {type(file_raw)}")
+    processed_pdf: ProcessedPdf = papermage_process(file_input=file_raw)
+    return processed_pdf
 
 @celery.task(name="analyze_paper")
 def analyze_paper_task(
     paper_content: str,
+    paper_raw: bytes | BytesIO,
     paper_id: str,
     original_filename: str | None = None,
 ):
@@ -57,13 +69,19 @@ def analyze_paper_task(
         return cached
 
     logger.info("paper analysis cache miss paper_id=%s file=%s", paper_id, label)
+
+    logger.info("using papermage to process pdf")
+    papermage_result: ProcessedPdf = papermage_process(file_input=paper_raw)
+    logger.info("paper processed.")
+
     agent = Agent()
-    result = asyncio.run(agent.analyze_paper(paper_content))
-    set_cached_result(paper_id, result)
-    if isinstance(result, dict):
-        title = result.get("paper_title")
-        link = result.get("github_repo_url")
-        code_result = result.get("code_result")
+    analysis_result = asyncio.run(agent.analyze_paper(file_input=paper_raw, papermage_process_result=papermage_result))
+    set_cached_result(paper_id, analysis_result, papermage_result=papermage_result)
+
+    if isinstance(analysis_result, dict):
+        title = analysis_result.get("paper_title")
+        link = analysis_result.get("github_repo_url")
+        code_result = analysis_result.get("code_result")
         if not link and isinstance(code_result, dict):
             link = code_result.get("github_repo_url")
         if not title and isinstance(code_result, dict):
@@ -75,4 +93,8 @@ def analyze_paper_task(
             paper_title=title if isinstance(title, str) else None,
             github_link=link if isinstance(link, str) else None,
         )
-    return result
+    unified_result = {
+        "analysis": analysis_result,
+        "processed": papermage_result
+    }
+    return unified_result
