@@ -1,4 +1,5 @@
 import { type codeSectionsResult, type githubRepoTreeResponse } from '../api/main.ts';
+import type { processPDFResult } from '../api/types.ts';
 import {
     ContextProvider,
     DocumentContext,
@@ -13,9 +14,11 @@ import { textItemToBoundingBoxLike, type PdfTextItemLike } from '../utils/pdfTex
 import { HighlightOverlayDemo, type BoundingBoxWithTooltip } from './CodeOverlay.tsx';
 import { useSidePanel } from '../context/SidePanelContext.tsx';
 import RepoView from './RepoView.tsx';
+import sectionToBBoxBruteForce from '../utils/sectionToBBox.ts';
 
 interface PaperViewProps {
     analysisResult: codeSectionsResult;
+    processResult: processPDFResult;
     clearEnvironment: () => void;
     paperFile: File | undefined;
     tree: githubRepoTreeResponse | undefined;
@@ -26,7 +29,7 @@ interface PaperViewProps {
  * is the real provider (not the default). Otherwise numPages stays 0 and
  * nothing renders.
  */
-function PdfPageList({ analysisResult, scrollRef }: { analysisResult: codeSectionsResult, scrollRef: React.RefObject<HTMLDivElement | null> }) {
+function PdfPageList({ analysisResult, processResult,  scrollRef }: { analysisResult: codeSectionsResult, processResult: processPDFResult, scrollRef: React.RefObject<HTMLDivElement | null> }) {
     const { numPages, pdfDocProxy, pageDimensions } = React.useContext(DocumentContext);
     const { rotation } = React.useContext(TransformContext);
     const [hitBoxes, setHitBoxes] = useState<BoundingBoxWithTooltip[]>([]);
@@ -35,116 +38,50 @@ function PdfPageList({ analysisResult, scrollRef }: { analysisResult: codeSectio
         if (!pdfDocProxy || numPages < 1 || pageDimensions.height < 1) {
             return;
         }
-        console.log("analysisResult: ", analysisResult);
+        let boxes: BoundingBoxWithTooltip[] = [];
 
-        let cancelled = false;
+        const contentToBBoxPaperMage = async () => {
+            for (let i = 0; i < analysisResult.sections.length; i++) {
+                const analyzedSection = analysisResult.sections[i];
 
-        const run = async () => {
-            const next: BoundingBoxWithTooltip[] = [];
-            let hitSeq = 0;
+                if (analyzedSection.code_snippets.length === 0) {
+                    console.warn("No code snippets listed for section", analyzedSection);
+                    continue;
+                }
 
-            // Normalize a string for matching: strip whitespace and lowercase
-            const normalize = (s: string) => s.replace(/\s+/g, '').toLowerCase();
+                const paperMageSection = processResult.sections.filter((section)=>section.entity_id === analyzedSection.section_id)[0];
 
-            // Build (normalizedName, sectionName) pairs once
-            const targets = analysisResult.sections.map((section) => ({
-                section,
-                needle: normalize(section.section_name),
-            })).filter(t => t.needle.length > 0);
-
-            // Track which sections have been matched (by index) so we skip them on later pages
-            const matched = new Set<number>();
-
-            for (let pageNum = 1; pageNum <= numPages; pageNum++) {
-                if (cancelled) return;
-                if (matched.size === targets.length) break;
-
-                const page = await pdfDocProxy.getPage(pageNum);
-                const pageText = await page.getTextContent();
+                if (!paperMageSection) {
+                    console.warn('No PaperMage section for analyzed section', analyzedSection);
+                    continue;
+                }
+                console.log('paperMageSection for', analyzedSection, " = ", paperMageSection.box);
+    
+                const box = paperMageSection.box;
+                const page = await pdfDocProxy.getPage(box.page + 1);
                 const viewport = page.getViewport({ scale: 1, rotation });
 
                 const scaleX = pageDimensions.width / viewport.width;
                 const scaleY = pageDimensions.height / viewport.height;
-                const pageIndexZeroBased = pageNum - 1;
-
-                // Collect only text items (not TextMarkedContent)
-                const items = pageText.items.filter((it: object): it is PdfTextItemLike => 'str' in it);
-
-                // Build flat string and char→item index map
-                let flatStr = '';
-                const charToItem: number[] = [];
-                for (let idx = 0; idx < items.length; idx++) {
-                    const str = items[idx].str;
-                    for (let c = 0; c < str.length; c++) {
-                        charToItem.push(idx);
-                    }
-                    flatStr += str;
-                }
-
-                // Build normalized flat string and normChar→origChar map (strip whitespace, lowercase)
-                const normToOrig: number[] = [];
-                let normalizedFlat = '';
-                for (let c = 0; c < flatStr.length; c++) {
-                    if (!/\s/.test(flatStr[c])) {
-                        normToOrig.push(c);
-                        normalizedFlat += flatStr[c].toLowerCase();
-                    }
-                }
-
-                for (let ti = 0; ti < targets.length; ti++) {
-                    if (matched.has(ti)) continue;
-                    const { section, needle } = targets[ti];
-
-                    const pos = normalizedFlat.indexOf(needle);
-                    if (pos === -1) continue;
-
-                    matched.add(ti);
-
-                    const startOrigChar = normToOrig[pos];
-                    const endOrigChar   = normToOrig[pos + needle.length - 1];
-                    const startItemIdx  = charToItem[startOrigChar];
-                    const endItemIdx    = charToItem[endOrigChar];
-
-                    // Union bounding boxes across the matched item span
-                    let unionLeft   = Infinity;
-                    let unionTop    = Infinity;
-                    let unionRight  = -Infinity;
-                    let unionBottom = -Infinity;
-
-                    for (let idx = startItemIdx; idx <= endItemIdx; idx++) {
-                        const box = textItemToBoundingBoxLike(items[idx], pageIndexZeroBased, viewport.height);
-                        if (!box) continue;
-                        unionLeft   = Math.min(unionLeft,   box.left);
-                        unionTop    = Math.min(unionTop,    box.top);
-                        unionRight  = Math.max(unionRight,  box.left + box.width);
-                        unionBottom = Math.max(unionBottom, box.top  + box.height);
-                    }
-
-                    if (!isFinite(unionLeft)) continue;
-
-                    next.push({
-                        page: pageIndexZeroBased,
-                        top:    unionTop    * scaleY - 5,
-                        left:   unionLeft   * scaleX,
-                        width:  (unionRight  - unionLeft)   * scaleX,
-                        height: (unionBottom - unionTop)    * scaleY * 1.5,
-                        hitKey: `p${pageIndexZeroBased}-h${hitSeq++}`,
-                        file_infos: section.code_snippets.map((snippet) => `${snippet.filepath}:${snippet.start_line}-${snippet.end_line}`),
-                        code_snippets: section.code_snippets,
-                        description: section.section_description,
-                    });
-                }
+    
+                boxes.push({
+                    page:   box.page,
+                    top:    box.t   * viewport.height * scaleY,
+                    left:   box.l   * viewport.width * scaleX,
+                    width:  box.w   * viewport.width * scaleX,
+                    height: box.h   * viewport.height * scaleY,
+                    hitKey: `p${box.page}-h${i}`,
+                    file_infos: analyzedSection.code_snippets.map((snippet) => `${snippet.filepath}:${snippet.start_line}-${snippet.end_line}`),
+                    code_snippets: analyzedSection.code_snippets,
+                    description: analyzedSection.section_description,
+                })
             }
-            if (!cancelled) {
-                setHitBoxes(next);
-            }
-        };
+        
+            setHitBoxes(boxes)
+        }
 
-        void run();
-        return () => {
-            cancelled = true;
-        };
-    }, [pdfDocProxy, numPages, rotation, pageDimensions]);
+        contentToBBoxPaperMage();
+    }, [pdfDocProxy, numPages, rotation, pageDimensions, analysisResult, processResult]);
 
     return (
         <div className="reader__page-list" ref={scrollRef}>
@@ -159,7 +96,7 @@ function PdfPageList({ analysisResult, scrollRef }: { analysisResult: codeSectio
     );
 }
 
-export default function PaperView({ analysisResult: _analysisResult, clearEnvironment, paperFile, tree }: PaperViewProps) {
+export default function PaperView({ analysisResult: _analysisResult, processResult, clearEnvironment, paperFile, tree }: PaperViewProps) {
     const pdfContentRef = useRef<HTMLDivElement>(null);
     const pdfScrollableRef = useRef<HTMLDivElement>(null);
 
@@ -199,7 +136,7 @@ export default function PaperView({ analysisResult: _analysisResult, clearEnviro
                                     renderType={RENDER_TYPE.SINGLE_CANVAS}
                                     inputRef={pdfContentRef}
                                 >
-                                    <PdfPageList analysisResult={_analysisResult} scrollRef={pdfScrollableRef} />
+                                    <PdfPageList analysisResult={_analysisResult} processResult={processResult} scrollRef={pdfScrollableRef} />
                                 </DocumentWrapper>
                             </ContextProvider>
                         </div>
