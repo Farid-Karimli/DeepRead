@@ -81,7 +81,7 @@ def _extract_metadata(result: dict) -> tuple[str | None, str | None]:
     )
 
 
-def seed(pdf_path: Path, result_path: Path) -> None:
+def seed(pdf_path: Path, result_path: Path, papermage_result_path: Path) -> None:
     if not pdf_path.exists():
         raise SystemExit(f"PDF not found: {pdf_path}")
     if not result_path.exists():
@@ -93,11 +93,12 @@ def seed(pdf_path: Path, result_path: Path) -> None:
     print(f"[info] result={result_path}")
     print(f"[info] paper_id={paper_id}")
 
-    result = json.loads(result_path.read_text(encoding="utf-8"))
-    if not isinstance(result, dict):
-        raise SystemExit("Analysis JSON must decode to an object/dict")
+    analysis_result = json.loads(result_path.read_text(encoding="utf-8"))
+    papermage_result = json.loads(papermage_result_path.read_text(encoding="utf-8"))
+    if not isinstance(analysis_result, dict) or not isinstance(papermage_result, dict):
+        raise SystemExit("Analysis JSON and Papermage JSON must decode to an object/dict")
 
-    title, link = _extract_metadata(result)
+    title, link = _extract_metadata(analysis_result)
     print(f"[info] paper_title={title!r}")
     print(f"[info] github_repo_url={link!r}")
 
@@ -113,7 +114,7 @@ def seed(pdf_path: Path, result_path: Path) -> None:
         )
 
     print("[step] writing analysis result to Redis cache...")
-    set_cached_result(paper_id, result)
+    set_cached_result(paper_id, analysis_result, papermage_result)
     cached = get_cached_result(paper_id)
     if cached is None:
         print(f"[error] Redis cache write did not stick at key {cache_key_for_paper_id(paper_id)!r}")
@@ -158,8 +159,14 @@ def main() -> None:
         default=REPO_BACKEND / "pretraining-rl.analyze_paper.json",
         help="Path to the precomputed analyze_paper JSON.",
     )
+    parser.add_argument(
+        "--papermage",
+        type=Path, 
+        default=REPO_BACKEND / "pretraining-papermage.json",
+        help="Path to the papermage processing result JSON."
+    )
     args = parser.parse_args()
-    seed(args.pdf.resolve(), args.result.resolve())
+    seed(args.pdf.resolve(), args.result.resolve(), args.papermage.resolve())
 
 
 if __name__ == "__main__":
