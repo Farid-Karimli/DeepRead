@@ -114,6 +114,34 @@ code_section_schema = {
     "required": ["sections"]
 }
 
+single_content_map_schema = {
+    "type": "object",
+    "properties": {
+        "code_snippets": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "content": {
+                        "type": "string",
+                    },
+                    "filepath": {
+                        "type": "string",
+                    },
+                    "start_line": {
+                        "type": "integer",
+                    },
+                    "end_line": {
+                        "type": "integer",
+                    },
+                },
+                "required": ["content", "filepath", "start_line", "end_line"],
+            },
+        },
+    },
+    "required": ['code_snippets']
+}
+
 
 EventCallback = Callable[[StreamEvent], None]
 
