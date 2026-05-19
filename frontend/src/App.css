@@ -334,19 +334,24 @@
 }
 
 /*
- * PaperView: PageWrapper renders <Overlay> first, then react-pdf <Page>. Anything
- * in that Page subtree (canvas, text layer, annotation layer, wrapper divs) stacks
- * above the overlay and steals pointer events. Instead of chasing class names, turn
- * off events for every direct child of the page except the overlay, then re-enable
- * the overlay so hit targets receive hover. Do NOT set pointer-events: none on
- * .reader__page-list — that breaks wheel/touch scrolling.
+ * PaperView: PageWrapper renders <Overlay> first, then react-pdf <Page>. Keep the
+ * PDF/text layer pointer-active for text selection, but stack the overlay above it.
+ * The overlay container stays pointer-transparent; individual hit targets opt back
+ * into pointer events in CodeOverlay.tsx.
  */
+.paper-viewer .pdf-reader__page {
+  position: relative;
+}
+
 .paper-viewer .pdf-reader__page > :not(.pdf-reader__overlay) {
-  pointer-events: none;
+  position: relative;
+  z-index: 1;
+  pointer-events: auto;
 }
 
 .paper-viewer .pdf-reader__page > .pdf-reader__overlay {
-  pointer-events: auto;
+  z-index: 2;
+  pointer-events: none;
 }
 
 /* HighlightOverlay defaults to a 60% white rect over the whole page (see pdf-components
