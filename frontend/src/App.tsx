@@ -57,6 +57,10 @@ function App() {
     const paperId = localStorage.getItem('paperId');
     return paperId ?? null;
   });
+  const [githubRepoUrl, setGithubRepoUrl] = useState<string | undefined>(() => {
+    const githubRepoUrl = localStorage.getItem('githubRepoUrl');
+    return githubRepoUrl ?? undefined;
+  });
   const [paperFile, setPaperFile] = useState<File | undefined>(undefined);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -86,7 +90,7 @@ function App() {
     } else {
       localStorage.removeItem('githubRepoTree');
     }
-  }, [taskId, analysisResult, paperFile, paperId, githubRepoTree, papermageResult]);
+  }, [taskId, analysisResult, paperFile, paperId, githubRepoTree, papermageResult, githubRepoUrl]);
 
   useEffect(() => {
     if (!taskId || analysisResult) return;
@@ -115,6 +119,7 @@ function App() {
             setGithubRepoTree(tree); 
             setAnalysisResult(sections);
             setPaperMageResult(papermageResult)
+            setGithubRepoUrl(githubRepoUrl);
             return;
           }
           setSubmitError('Analysis finished but the result format was unexpected.');
@@ -209,6 +214,7 @@ function App() {
         setPaperFile(new File([file.buffer as ArrayBuffer], id, { type: 'application/pdf' }));
         setAnalysisResult(sections);
         setPaperMageResult(papermageResult);
+        setGithubRepoUrl(githubRepoUrl);
         return;
       }
       setSubmitError('Cached result format was unexpected.');
@@ -217,7 +223,7 @@ function App() {
     }
   };
 
-  if (analysisResult && githubRepoTree && papermageResult) {
+  if (analysisResult && githubRepoTree && papermageResult && githubRepoUrl) {
     return (
       <SidePanelProvider>
         <PaperView
@@ -226,6 +232,7 @@ function App() {
           clearEnvironment={clearEnvironment}
           paperFile={paperFile}
           tree={githubRepoTree}
+          githubRepoUrl={githubRepoUrl}
         />
       </SidePanelProvider>  
     );
