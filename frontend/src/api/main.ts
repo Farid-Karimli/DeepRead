@@ -7,6 +7,8 @@ import type {
     listCachedPapersResponse,
     githubRepoTreeResponse,
     CachedPaper,
+    mapContentResponse,
+    mapContentTaskResponse,
 } from './types';
 
 const API_URL: string =
@@ -105,6 +107,36 @@ const getGithubFileFromBlobUrl = async (githubBlobUrl: string): Promise<string> 
     return responseJSON;
 };
 
+const mapContentToCode = async (content: string | Blob, repoUrl: string, context: string): Promise<string> => {
+    const formData = new FormData();
+    formData.append("content", content);
+    formData.append("repo_url", repoUrl);
+    formData.append("context", context);
+
+    console.log(`Submitting content to code mapping: ${content} to ${repoUrl} with context ${context}`);
+
+    const response: Response = await fetch(`${API_URL}/map_content`, {
+        method: "POST",
+        body: formData,
+    });
+    if (!response.ok) {
+        console.error(response);
+        throw new Error("Failed to map content to code");
+    }
+    const responseJSON: mapContentTaskResponse = await response.json();
+    return responseJSON.task_id;
+};
+
+const getContentMappingStatus = async (taskId: string): Promise<mapContentResponse> => {
+    const response: Response = await fetch(`${API_URL}/tasks/${taskId}`);
+    if (!response.ok) {
+        console.error(response);
+        throw new Error("Failed to get content mapping status");
+    }
+    const responseJSON: mapContentResponse = await response.json();
+    return responseJSON;
+};
+
 export {
     submitPaperAnalysis,
     getPaperAnalysisStatus,
@@ -121,4 +153,6 @@ export {
     type githubRepoTreeResponse,
     getGithubRepoTree,
     getGithubFileFromBlobUrl,
+    mapContentToCode,
+    getContentMappingStatus,
 };

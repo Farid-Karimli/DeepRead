@@ -1,5 +1,3 @@
-import { type codeSectionsResult, type githubRepoTreeResponse } from '../api/main.ts';
-import type { processPDFResult } from '../api/types.ts';
 import {
     ContextProvider,
     DocumentContext,
@@ -10,9 +8,14 @@ import {
     TransformContext,
 } from '@allenai/pdf-components';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+
+import { type codeSectionsResult, type githubRepoTreeResponse, mapContentToCode, getContentMappingStatus } from '../api/main.ts';
+import type { codeSection, processPDFResult } from '../api/types.ts';
 import { HighlightOverlayDemo, type BoundingBoxWithTooltip } from './CodeOverlay.tsx';
-import { useSidePanel } from '../context/SidePanelContext.tsx';
+import { useSidePanel, type CodeInfo } from '../context/SidePanelContext.tsx';
 import RepoView from './RepoView.tsx';
+
+import { usePDFTextSelection } from '../hooks/useTextSelection.tsx';
 
 interface PaperViewProps {
     analysisResult: codeSectionsResult;
@@ -20,6 +23,7 @@ interface PaperViewProps {
     clearEnvironment: () => void;
     paperFile: File | undefined;
     tree: githubRepoTreeResponse | undefined;
+    githubRepoUrl: string | undefined;
 }
 
 /**
@@ -53,7 +57,7 @@ function PdfPageList({ analysisResult, processResult,  scrollRef }: { analysisRe
                     console.warn('No PaperMage section for analyzed section', analyzedSection);
                     continue;
                 }
-                console.log('paperMageSection for', analyzedSection, " = ", paperMageSection.box);
+                //console.log('paperMageSection for', analyzedSection, " = ", paperMageSection.box);
     
                 const box = paperMageSection.box;
                 const page = await pdfDocProxy.getPage(box.page + 1);
@@ -84,7 +88,7 @@ function PdfPageList({ analysisResult, processResult,  scrollRef }: { analysisRe
     return (
         <div className="reader__page-list" ref={scrollRef}>
             {Array.from({ length: numPages > 0 ? numPages : 0 }).map((_, i) => (
-                <PageWrapper key={i} pageIndex={i} renderType={RENDER_TYPE.SINGLE_CANVAS}>
+                <PageWrapper key={i} pageIndex={i} renderType={RENDER_TYPE.MULTI_CANVAS}>
                     <Overlay>
                         <HighlightOverlayDemo pageIndex={i} boxes={hitBoxes} />
                     </Overlay>
@@ -94,16 +98,66 @@ function PdfPageList({ analysisResult, processResult,  scrollRef }: { analysisRe
     );
 }
 
-export default function PaperView({ analysisResult: _analysisResult, processResult, clearEnvironment, paperFile, tree }: PaperViewProps) {
+export default function PaperView({ analysisResult, processResult, clearEnvironment, paperFile, tree, githubRepoUrl }: PaperViewProps) {
     const pdfContentRef = useRef<HTMLDivElement>(null);
     const pdfScrollableRef = useRef<HTMLDivElement>(null);
+    console.log('githubRepoUrl', githubRepoUrl);
 
-    // react-pdf / DocumentWrapper use reference equality on `file`
+    const [mappingTaskId, setMappingTaskId] = useState<string | null>(null);
+
+    usePDFTextSelection(pdfContentRef, (selection) => {
+        if (!selection || mappingTaskId !== null) return;
+
+        console.log("Selection:", selection?.text);
+        console.log(selection?.rect);
+
+        const content = selection.text;
+        const repoUrl = githubRepoUrl;
+        if (!repoUrl) {
+            console.error('No GitHub repository URL found');
+            return;
+        }
+        let context = processResult.sections.filter((section) => section.entity_id === "abstract")[0]?.section_content ?? "";
+        if (!context) {
+            console.warn('No context found');
+            context = "";
+        }
+        mapContentToCode(content, repoUrl, context).then((taskId) => {
+            setMappingTaskId(taskId);
+        }).catch((error) => {
+            console.error('error', error);
+            setMappingTaskId(null);
+        });
+    })
+
+    useEffect(()=> {
+        if (!mappingTaskId) return;
+        let cancelled = false;
+        const poll = async () => {
+            if (cancelled) return;
+            const status = await getContentMappingStatus(mappingTaskId);
+            if (cancelled) return;
+            if (status.status === 'SUCCESS' && status.result !== undefined && status.result !== null) {
+                const snippet: any = status.result.code_snippets[0];
+                const codeInfoToShow: CodeInfo = {
+                    filePath: snippet.filepath,
+                    codeRanges: [{ startLine: snippet.start_line, endLine: snippet.end_line }],
+                    description: snippet.description,
+                }
+                showCode(codeInfoToShow);
+                cancelled = true;
+            }
+            setTimeout(poll, 5000);
+        };
+        poll();
+        return () => { cancelled = true; };
+    }, [mappingTaskId]);
+    
     const fileForViewer = useMemo(() => paperFile, [paperFile]);
 
     const hasRealFile = paperFile instanceof File && paperFile.size > 0;
 
-    const { hideCode } = useSidePanel();
+    const { showCode } = useSidePanel();
 
     return (
         <div className="paper-view-layout">
@@ -134,7 +188,7 @@ export default function PaperView({ analysisResult: _analysisResult, processResu
                                     renderType={RENDER_TYPE.SINGLE_CANVAS}
                                     inputRef={pdfContentRef}
                                 >
-                                    <PdfPageList analysisResult={_analysisResult} processResult={processResult} scrollRef={pdfScrollableRef} />
+                                    <PdfPageList analysisResult={analysisResult} processResult={processResult} scrollRef={pdfScrollableRef} />
                                 </DocumentWrapper>
                             </ContextProvider>
                         </div>

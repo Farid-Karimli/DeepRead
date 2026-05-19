@@ -91,11 +91,24 @@ interface SectionEntity {
     entity_id: string,
     page_index: number,
     box: PaperMageBox,
+    section_content: string;
+    section_header: string;
 }
 interface processPDFResult {
     paper_title: string,
     n_pages: number,
     sections: SectionEntity[];
+}
+
+interface mapContentTaskResponse {
+    task_id: string;
+}
+
+interface mapContentResponse {
+    status: string;
+    result?: {
+        code_snippets: codeSection[];
+    };
 }
 
 export type { codeSection, 
@@ -109,4 +122,6 @@ export type { codeSection,
     processPDFResult,
     AgentTaskResult,
     CachedPaper,
+    mapContentTaskResponse,
+    mapContentResponse,
 };
