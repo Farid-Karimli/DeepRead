@@ -1,6 +1,5 @@
 import asyncio
 import logging
-import os
 import time
 
 from src import process_pdf
@@ -39,7 +38,6 @@ def test_task():
 def process_pdf_task(
     file_raw: bytes | BytesIO,
 ):
-    print(f"type of file_raw: {type(file_raw)}")
     processed_pdf: ProcessedPdf = papermage_process(file_input=file_raw)
     return processed_pdf
 
@@ -98,3 +96,18 @@ def analyze_paper_task(
         "processed": papermage_result
     }
     return unified_result
+
+@celery.task(name='map_content')
+def map_content_task(
+    content: str | bytes | BytesIO,
+    repo_url: str,
+    context: str
+):
+    agent = Agent()
+    result = asyncio.run(agent.map_content_to_code(
+        content=content,
+        repo_url=repo_url,
+        context=context
+    ))
+    return result
+

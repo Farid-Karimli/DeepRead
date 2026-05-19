@@ -1,15 +1,16 @@
 import hashlib
 import io
 import os
+from pathlib import Path
 
-from fastapi import FastAPI, File, HTTPException, UploadFile, Response
+from fastapi import FastAPI, File, HTTPException, UploadFile, Response, Form
 from fastapi.responses import JSONResponse, PlainTextResponse
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import asyncio
 
 from src.agent import Agent
-from src.celery_tasks import analyze_paper_task, celery, test_task, process_pdf_task
+from src.celery_tasks import analyze_paper_task, celery, test_task, process_pdf_task, map_content_task
 from src.db import get_file_url, upload_paper_to_storage
 from src.paper_analysis_cache import get_cached_result, iter_cached_results
 from src.utils import download_file as download_file_from_url, get_file_content, get_repo_tree
@@ -207,6 +208,19 @@ def process_pdf(file: UploadFile = File(...)):
     )
     return {"task_id": task.id}
 
+@app.post("/map_content")
+def map_content(
+    content: str = Form(...),
+    repo_url: str = Form(...),
+    context: str = Form(...),
+):
+    task = map_content_task.delay(
+        content=content,
+        repo_url=repo_url,
+        context=context
+    )
+    return {"task_id": task.id}
+    
 
 ##########################################
 ##### Repository Content #######################

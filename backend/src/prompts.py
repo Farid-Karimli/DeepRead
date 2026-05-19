@@ -1,3 +1,6 @@
+from pathlib import Path
+
+
 def build_identify_key_sections_prompt(
     paper_content_to_analyze: str,
     github_repository_url: str | None,
@@ -114,4 +117,48 @@ def build_map_key_sections_to_code_prompt(
 
         IMPORTANT: Make sure that the section headers and ids in your output match what is provided in the context. Do not make up section headers and do not add
         descriptive text.
+        """
+
+def build_single_content_mapping_prompt(
+    content: str | Path,
+    repo_path: Path,
+    context: str
+):
+
+    if isinstance(content, str): # Piece of text
+        return f"""
+            Map the provided piece of content from a scientific research paper to relevant code snippets
+            in its associated code repository. The content could be in text or a path to an image. 
+            The local path to the repository will be provided too. 
+            You could also be provided context surrounding the specific piece of content the user is interested in, 
+            like surrounding text, caption or the paper abstract. 
+
+            ## Content ##
+            {content}
+            ## End Content
+
+            ## Context ##
+            {context}
+            ## End Context
+
+            ## Local Repository Path ##
+            {repo_path}
+            ## End Local Repository Path ## 
+
+            Provide the code snippets for each section, and the line numbers of the code snippets.
+            Return just a JSON object. The first and last character of your output should be {{ and }}. 
+            No prose. 
+
+            ## Output Format ## 
+
+            {{
+                "code_snippets": [
+                        {{
+                            "content": "print('Hello, world!')",
+                            "filepath": "path/to/code/file.py",
+                            "start_line": 10,
+                            "end_line": 20
+                        }},
+                    ],
+            }}
         """
