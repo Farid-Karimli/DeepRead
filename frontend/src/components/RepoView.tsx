@@ -74,6 +74,11 @@ const RepoView = ({ tree }: RepoViewProps) => {
 
     const onEntryClick = (filepath: string, url: string, isFile: boolean) => {
         setHighlightRanges([] as HighlightRange[]);
+        setCurrentPath(filepath);
+        if (!isFile) {
+            setCurrentFileContent(null);
+            return;
+        }
         setScrollFocusRange(null);
         setCurrentPath(filepath);
         if (!isFile) {
@@ -134,6 +139,7 @@ const RepoView = ({ tree }: RepoViewProps) => {
                     <div className="repo-tree__description">{currentCodeDescription}</div>
                 )}
             </div>
+            {currentPath !== "" && <button style={{ background: 'none', border: 'none', cursor: 'pointer' }} onClick={backButtonClick} className="repo-tree__link"><IoIosArrowBack /></button>}
             {currentFileContent ? <CodeViewer
                 code={currentFileContent}
                 highlightStarts={highlightRanges?.map((highlightRange) => highlightRange.start)}
@@ -147,7 +153,7 @@ const RepoView = ({ tree }: RepoViewProps) => {
                             ? <VscFolder className="repo-tree__icon repo-tree__icon--dir" />
                             : <VscFile className="repo-tree__icon repo-tree__icon--file" />
                         }
-                        <button style={{ background: 'none', border: 'none', cursor: 'pointer' }} onClick={() => onEntryClick(file.path as string, file.url as string, file.mode !== '040000')} className="repo-tree__link">{file.path as string}</button>
+                        <button style={{ background: 'none', border: 'none', cursor: 'pointer' }} onClick={() => onEntryClick(file.path as string, file.url as string, file.mode !== '100644')} className="repo-tree__link">{file.path as string}</button>
                     </div>
                 ))}
             </div>}
