@@ -2,11 +2,11 @@ import React from 'react';
 
 export function usePDFTextSelection(
     pdfRoot: React.RefObject<HTMLElement | null>,
-    onSelection: (selection: {
+    setSelection: (selection: {
         text: string, 
         rect: DOMRect,
         range: Range,
-    } | null) => void, // function that fires once selected text is extracted
+    } | null) => void, // function that sets the value of the selection for outside scope
 ) {
     React.useEffect(() => {
 
@@ -15,20 +15,20 @@ export function usePDFTextSelection(
             const selection = document.getSelection();
 
             if (!root || !selection) {
-                onSelection(null);
+                setSelection(null);
                 return;
             }
 
             const text = selection.toString().trim();
             if (!text) {
-                onSelection(null);
+                setSelection(null);
                 return;
             }
 
             const range = selection.getRangeAt(0);
             const commonAncestor = range.getBoundingClientRect();
 
-            onSelection(
+            setSelection(
                 {
                     text, 
                     rect: commonAncestor,
@@ -44,5 +44,5 @@ export function usePDFTextSelection(
             document.removeEventListener('mouseup', handleSelection);
         }
 
-    }, [pdfRoot, onSelection]);
+    }, [pdfRoot, setSelection]);
 }
