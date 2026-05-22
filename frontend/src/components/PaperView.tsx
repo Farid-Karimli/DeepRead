@@ -101,44 +101,67 @@ function PdfPageList({ analysisResult, processResult,  scrollRef }: { analysisRe
 export default function PaperView({ analysisResult, processResult, clearEnvironment, paperFile, tree, githubRepoUrl }: PaperViewProps) {
     const pdfContentRef = useRef<HTMLDivElement>(null);
     const pdfScrollableRef = useRef<HTMLDivElement>(null);
+
+    const [pendingSelection, setPendingSelection] = useState<{
+        text: string;
+        rect: DOMRect;
+        range: Range;
+    } | null>(null);
+
+    const [contentMappingLoading, setContentMappingLoading] = useState<Boolean>(false);
+
     console.log('githubRepoUrl', githubRepoUrl);
 
     const [mappingTaskId, setMappingTaskId] = useState<string | null>(null);
 
-    usePDFTextSelection(pdfContentRef, (selection) => {
-        if (!selection || mappingTaskId !== null) return;
+    const submitPendingSelection = () => {
+            if (!pendingSelection || mappingTaskId !== null) return;
+    
+            console.log("Selection:", pendingSelection?.text);
+            console.log(pendingSelection?.rect);
+    
+            const content = pendingSelection.text;
+            const repoUrl = githubRepoUrl;
+            if (!repoUrl) {
+                console.error('No GitHub repository URL found');
+                return;
+            }
+            let context = processResult.sections.filter((section) => section.entity_id === "abstract")[0]?.section_content ?? "";
+            if (!context) {
+                console.warn('No context found');
+                context = "";
+            }
+            setContentMappingLoading(true);
+            mapContentToCode(content, repoUrl, context).then((taskId) => {
+                setMappingTaskId(taskId);
+            }).catch((error) => {
+                console.error('error', error);
+                setMappingTaskId(null);
+                setPendingSelection(null);
+            });
+    };
 
-        console.log("Selection:", selection?.text);
-        console.log(selection?.rect);
-
-        const content = selection.text;
-        const repoUrl = githubRepoUrl;
-        if (!repoUrl) {
-            console.error('No GitHub repository URL found');
-            return;
-        }
-        let context = processResult.sections.filter((section) => section.entity_id === "abstract")[0]?.section_content ?? "";
-        if (!context) {
-            console.warn('No context found');
-            context = "";
-        }
-        mapContentToCode(content, repoUrl, context).then((taskId) => {
-            setMappingTaskId(taskId);
-        }).catch((error) => {
-            console.error('error', error);
-            setMappingTaskId(null);
-        });
-    })
+    usePDFTextSelection(pdfContentRef, setPendingSelection);
 
     useEffect(()=> {
         if (!mappingTaskId) return;
         let cancelled = false;
         const poll = async () => {
-            if (cancelled) return;
+
+            if (cancelled) {
+                setContentMappingLoading(false);
+                return;
+            };
             const status = await getContentMappingStatus(mappingTaskId);
-            if (cancelled) return;
+
+            if (cancelled) {
+                setContentMappingLoading(false);
+                return;
+            };
+
             if (status.status === 'SUCCESS' && status.result !== undefined && status.result !== null) {
-                const snippet: any = status.result.code_snippets[0];
+                setContentMappingLoading(false);
+                const snippet: any = status.result;
                 const codeInfoToShow: CodeInfo = {
                     filePath: snippet.filepath,
                     codeRanges: [{ startLine: snippet.start_line, endLine: snippet.end_line }],
@@ -146,6 +169,7 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
                 }
                 showCode(codeInfoToShow);
                 cancelled = true;
+                setPendingSelection(null);
             }
             setTimeout(poll, 5000);
         };
@@ -207,6 +231,33 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
                         {<RepoView tree={tree} />}
                     </div>
                 </aside>
+            )}
+
+            {pendingSelection && (
+            <div className="pdf-selection-popover" style={{
+                position: 'fixed',
+                left: pendingSelection.rect.right + 8,
+                top: pendingSelection.rect.bottom + 8,
+                zIndex: 10000,
+              }}>
+            <div className="pdf-selection-popover__actions">
+              <button
+                type="button"
+                className="pdf-selection-popover__btn pdf-selection-popover__btn--primary"
+                onClick={submitPendingSelection}
+                disabled={(contentMappingLoading || mappingTaskId !== null) ? true : false}
+              >
+                {contentMappingLoading ? "Mapping..." : "Map to code"}
+              </button>
+              <button
+                type="button"
+                className="pdf-selection-popover__btn pdf-selection-popover__btn--ghost"
+                onClick={() => setPendingSelection(null)}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
             )}
         </div>
     );

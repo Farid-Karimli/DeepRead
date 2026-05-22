@@ -4,6 +4,14 @@ interface AgentTaskResult {
     code_result: codeSectionsResult | null;
 };
 
+interface codeSnippet {
+    content: string;
+    filepath: string;
+    start_line: number;
+    end_line: number;
+    ranking: number;
+}
+
 interface codeSection {
     section_id: string;
     section_header: string;
@@ -11,12 +19,7 @@ interface codeSection {
     paper_start_line?: number;
     paper_end_line?: number;
     paper_section_description?: string;
-    code_snippets: {
-        content: string;
-        filepath: string;
-        start_line: number;
-        end_line: number;
-    }[];
+    code_snippets: codeSnippet[];
   }
   /** Root object: `{ "sections": [ ... ] }` */
   interface codeSectionsResult {
@@ -106,12 +109,11 @@ interface mapContentTaskResponse {
 
 interface mapContentResponse {
     status: string;
-    result?: {
-        code_snippets: codeSection[];
-    };
+    result?: codeSnippet;
 }
 
 export type { codeSection, 
+    codeSnippet,
     codeSectionsResult, 
     paperSubmitResponse, 
     paperAnalysisStatusResponse, 
