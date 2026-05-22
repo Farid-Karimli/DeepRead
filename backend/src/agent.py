@@ -30,7 +30,8 @@ from src.prompts import (
     build_map_key_sections_to_code_prompt,
     build_single_content_mapping_prompt
 )
-from src.process_pdf import papermage_process
+
+from src.rerank import Reranker
 
 import logging
 import warnings
@@ -68,6 +69,7 @@ class Agent:
         self.model = model
         self.stream_events = stream_events
         self.temperature = temperature
+        self.reranker = Reranker("cohere")
 
     async def _test(self) -> None:
         prompt = "What is the capital of France?"
@@ -143,7 +145,7 @@ class Agent:
             cwd="." if paper_path is None else os.path.dirname(paper_path),
             output_format={
                 "type": "json_schema",
-                "json_schema": key_section_schema # BUG with CC, this is ignored. https://github.com/anthropics/claude-code/issues/18536
+                "json_schema": key_section_schema
                 }
             )
 
@@ -348,13 +350,23 @@ class Agent:
                     parsed_result = None
 
         result = parsed_result.get("code_snippets") if isinstance(parsed_result, dict) else None
+
         logger.info(
             "map_content_to_code: completed duration=%.2fs mapped_count=%s",
             time.perf_counter() - started_at,
             len(result) if isinstance(result, list) else None,
         )
-        return parsed_result
 
+        code_contents = [snippet.get("content") for snippet in result]
+        reranked_results = self.reranker.rerank(query=prompt, documents=code_contents)
+
+        logger.info(
+            "map_content_to_code: reranked results count=%d",
+            len(reranked_results),
+        )
+
+        top_rank_index = max(reranked_results, key=lambda x: x.get("relevance_score")).get("index")
+        return result[top_rank_index]
 
 
     async def analyze_paper(
@@ -379,6 +391,8 @@ class Agent:
         else:
             raise TypeError(f"Unsupported file_input type: {type(file_input)}")
         if papermage_process_result is None:
+            from src.process_pdf import papermage_process
+
             papermage_started_at = time.perf_counter()
             papermage_result = papermage_process(file_input)
             logger.info(
