@@ -1,5 +1,5 @@
 // src/context/SidePanelContext.tsx
-import React, { createContext, useContext, useState, type ReactNode } from 'react';
+import { createContext, useContext, useState, type ReactNode } from 'react';
 
 type CodeRange = {
   startLine: number;
@@ -9,6 +9,9 @@ type CodeRange = {
 type CodeInfo = {
   filePath: string;
   codeRanges: CodeRange[];
+  /** If set, scroll this range into view (still highlights all `codeRanges`). */
+  scrollToRange?: CodeRange;
+  description: string;
 };
 
 type sidePanelContext = {

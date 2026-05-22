@@ -10,8 +10,8 @@ Mirrors what /analyze + analyze_paper_task do, without re-running the agent:
 Usage (from repo root):
     cd backend
     uv run python scripts/seed_paper_result.py \
-        --pdf papers/pretraining-rl.pdf \
-        --result pretraining-rl.analyze_paper.json
+        --pdf papers/vjepa.pdf \
+        --result scripts/out/2506_09985v1.9cfcfde5fb0d.analyze_paper.json
 
 Defaults match the request: pretraining-rl.pdf + pretraining-rl.analyze_paper.json.
 """
