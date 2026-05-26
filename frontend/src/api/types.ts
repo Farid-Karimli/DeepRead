@@ -1,40 +1,57 @@
+interface AgentTaskResult {
+    paper_title: string | null;
+    github_repo_url: string | null;
+    code_result: codeSectionsResult | null;
+};
+
+interface codeSnippet {
+    content: string;
+    filepath: string;
+    start_line: number;
+    end_line: number;
+    ranking: number;
+}
+
 interface codeSection {
-    section_name: string;
+    section_id: string;
+    section_header: string;
     section_description: string;
     paper_start_line?: number;
     paper_end_line?: number;
     paper_section_description?: string;
-    code_snippets: {
-        content: string;
-        filepath: string;
-        start_line: number;
-        end_line: number;
-    }[];
+    code_snippets: codeSnippet[];
   }
   /** Root object: `{ "sections": [ ... ] }` */
   interface codeSectionsResult {
     sections: codeSection[];
   }
 
+interface paperAnalysisPayload {
+    analysis: AgentTaskResult;
+    processed: processPDFResult;
+}
+
 interface paperSubmitResponse {
     status: 'complete' | 'pending';
     task_id?: string;
     paper_id: string;
-    result?: codeSectionsResult;
+    result?: paperAnalysisPayload;
 }
 
 interface paperAnalysisStatusResponse {
     status: string;
     /** Celery success payload: `{ github_repo_url, code_result }` or cached equivalent */
-    result?: unknown;
+    result?: paperAnalysisPayload;
     /** Set when status === 'FAILURE'; human-readable reason from the worker exception. */
     error?: string;
 }
 
 interface paperByIdResponse {
     paper_id: string;
-    result: codeSectionsResult;
     file_url: string;
+    analysis_result: AgentTaskResult;
+    papermage_result: processPDFResult;
+
 }
 
 interface cachedPaperSummary {
@@ -43,6 +60,12 @@ interface cachedPaperSummary {
     github_repo_url?: string | null;
     section_count: number;
     label?: string | null;
+}
+
+interface CachedPaper {
+    analysisResult: AgentTaskResult;
+    papermageResult: processPDFResult;
+    file: Uint8Array;
 }
 
 interface listCachedPapersResponse {
@@ -60,4 +83,47 @@ interface githubRepoTreeResponse {
     truncated: boolean;
 }
 
-export type { codeSection, codeSectionsResult, paperSubmitResponse, paperAnalysisStatusResponse, paperByIdResponse, cachedPaperSummary, listCachedPapersResponse, githubRepoTreeResponse };
+interface PaperMageBox {
+    page: number, 
+    l: number, 
+    t: number, 
+    h: number, 
+    w: number
+}
+interface SectionEntity {
+    entity_id: string,
+    page_index: number,
+    box: PaperMageBox,
+    section_content: string;
+    section_header: string;
+}
+interface processPDFResult {
+    paper_title: string,
+    n_pages: number,
+    sections: SectionEntity[];
+}
+
+interface mapContentTaskResponse {
+    task_id: string;
+}
+
+interface mapContentResponse {
+    status: string;
+    result?: codeSnippet;
+}
+
+export type { codeSection, 
+    codeSnippet,
+    codeSectionsResult, 
+    paperSubmitResponse, 
+    paperAnalysisStatusResponse, 
+    paperByIdResponse, 
+    cachedPaperSummary, 
+    listCachedPapersResponse, 
+    githubRepoTreeResponse,
+    processPDFResult,
+    AgentTaskResult,
+    CachedPaper,
+    mapContentTaskResponse,
+    mapContentResponse,
+};

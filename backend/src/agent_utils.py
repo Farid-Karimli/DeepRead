@@ -1,14 +1,18 @@
-from pathlib import Path
+import io
+import re
+
 import pypdf
 import anthropic
 import json
+import pdfplumber
+
+
 from typing import Callable
+from pathlib import Path
 from claude_agent_sdk.types import StreamEvent
 
 from src.config import ANTHROPIC_API_KEY
 
-
-# Currently unused, output format is ignored by Claude Code. https://github.com/anthropics/claude-code/issues/18536
 key_section_schema = {
     "type": "object",
     "properties": {
@@ -30,12 +34,33 @@ key_section_schema = {
                 "required": ["section_name", "start_line", "end_line"]
             }
         },
-        "github_repo_url": {
-            "type": "string",
-            "format": "uri",
-        }
     },
     "required": ["sections", "github_repo_url"]
+}
+
+key_section_schema_v2 = {
+    "type": "object",
+    "properties": {
+        "sections": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "section_id": {
+                        "type": "string",
+                    },
+                    "section_header": {
+                        "type": "string",
+                    },
+                    "description": {
+                        "type": "string",
+                    }
+                },
+                "required": ["section_id", "section_header", "description"]
+            }
+        },
+    },
+    "required": ["sections"]
 }
 
 code_section_schema = {
@@ -44,22 +69,21 @@ code_section_schema = {
         "paper_title": {
             "type": "string",
         },
-        "github_repo_url": {
-            "type": "string",
-            "format": "uri",
-        },
         "sections": {
             "type": "array",
             "items": {
                 "type": "object",
                 "properties": {
+                    "section_id": {
+                        "type": "string",
+                    },
                     "section_name": {
                         "type": "string",
                     },
-                    "section_description": {
+                    "section_header": {
                         "type": "string",
                     },
-                    "code_snippet": {
+                    "code_snippets": {
                         "type": "array",
                         "items": {
                             "type": "object",
@@ -82,7 +106,7 @@ code_section_schema = {
                     },
                    
                 },
-                "required": ["section_name", "section_description", "code_snippet", "code_filepath", "code_start_line", "code_end_line"]
+                "required": ["section_id", "section_header", "code_snippets"]
             }
         },
         
@@ -90,8 +114,43 @@ code_section_schema = {
     "required": ["sections"]
 }
 
+single_content_map_schema = {
+    "type": "object",
+    "properties": {
+        "code_snippets": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "content": {
+                        "type": "string",
+                    },
+                    "filepath": {
+                        "type": "string",
+                    },
+                    "start_line": {
+                        "type": "integer",
+                    },
+                    "end_line": {
+                        "type": "integer",
+                    },
+                },
+                "required": ["content", "filepath", "start_line", "end_line"],
+            },
+        },
+    },
+    "required": ['code_snippets']
+}
+
 
 EventCallback = Callable[[StreamEvent], None]
+
+
+GITHUB_URL_RE = re.compile(r"https?://(?:www\.)?github\.com/[^\s<>()\[\]{}\"']+", re.IGNORECASE)
+
+
+def _clean_extracted_url(url: str) -> str:
+    return url.strip().rstrip(".,;:)]}>")
 
 
 def _extract_first_json_object(text: str) -> str | None:
@@ -210,7 +269,8 @@ def _merge_key_sections_into_code_result(
     """
     Normalize each section to code_snippets[] shape, then copy paper-side fields
     from identify_key_sections onto each section row.
-    Matches by normalized section_name, or by index when both lists have the same length.
+    Matches by stable section_id first, then by normalized section_header/name, then
+    by index when both lists have the same length.
     """
     if code_result is None:
         return None
@@ -224,13 +284,19 @@ def _merge_key_sections_into_code_result(
         if isinstance(ks_raw, list):
             ks_list = [x for x in ks_raw if isinstance(x, dict)]
 
+    by_id: dict[str, dict] = {}
     by_norm: dict[str, dict] = {}
     for row in ks_list:
-        sn = row.get("section_name")
-        if isinstance(sn, str):
-            norm = _normalize_section_title(sn)
-            if norm and norm not in by_norm:
-                by_norm[norm] = row
+        sid = row.get("section_id")
+        if isinstance(sid, str) and sid and sid not in by_id:
+            by_id[sid] = row
+
+        for title_key in ("section_header", "section_name"):
+            title = row.get(title_key)
+            if isinstance(title, str):
+                norm = _normalize_section_title(title)
+                if norm and norm not in by_norm:
+                    by_norm[norm] = row
 
     merged: list[dict] = []
     for i, item in enumerate(raw_sections):
@@ -238,13 +304,29 @@ def _merge_key_sections_into_code_result(
             merged.append(item)
             continue
         out = _normalize_section_to_code_shape(item)
-        name = out.get("section_name")
         matched: dict | None = None
-        if isinstance(name, str):
-            matched = by_norm.get(_normalize_section_title(name))
+        sid = out.get("section_id")
+        if isinstance(sid, str):
+            matched = by_id.get(sid)
+        if matched is None:
+            for title_key in ("section_header", "section_name"):
+                title = out.get(title_key)
+                if isinstance(title, str):
+                    matched = by_norm.get(_normalize_section_title(title))
+                    if matched is not None:
+                        break
         if matched is None and len(ks_list) == len(raw_sections) and i < len(ks_list):
             matched = ks_list[i]
         if isinstance(matched, dict):
+            desc = matched.get("description")
+            if isinstance(desc, str):
+                out["section_description"] = desc
+            matched_id = matched.get("section_id")
+            if isinstance(matched_id, str):
+                out["section_id"] = matched_id
+            matched_header = matched.get("section_header")
+            if isinstance(matched_header, str):
+                out["section_header"] = matched_header
             sl = matched.get("start_line")
             el = matched.get("end_line")
             if isinstance(sl, int):
@@ -360,6 +442,21 @@ def extract_paper_info(paper_content: str) -> dict:
 
     raise ValueError("Failed to parse title/authors JSON from model response.")
 
+def extract_github_urls_from_pdf(raw: bytes) -> list[str]:
+    urls: set[str] = set()
+
+    with pdfplumber.open(io.BytesIO(raw)) as pdf:
+        for page in pdf.pages:
+            text = page.extract_text() or ""
+            urls.update(_clean_extracted_url(match.group(0)) for match in GITHUB_URL_RE.finditer(text))
+
+            # Hyperlinks are often stored as annotations rather than visible text.
+            for link in getattr(page, "hyperlinks", []):
+                uri = link.get("uri")
+                if isinstance(uri, str):
+                    urls.update(_clean_extracted_url(match.group(0)) for match in GITHUB_URL_RE.finditer(uri))
+
+    return sorted(urls)
 
 if __name__ == "__main__":
     reader = pypdf.PdfReader("./papers/linear_bandits.pdf")

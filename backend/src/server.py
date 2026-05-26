@@ -1,18 +1,18 @@
 import hashlib
 import io
 import os
+from pathlib import Path
 
-from fastapi import FastAPI, File, HTTPException, UploadFile, Response
+from fastapi import FastAPI, File, HTTPException, UploadFile, Response, Form
 from fastapi.responses import JSONResponse, PlainTextResponse
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
-import pypdf
 import asyncio
 
 from src.agent import Agent
-from src.celery_tasks import analyze_paper_task, celery, test_task
+from src.celery_tasks import analyze_paper_task, celery, test_task, process_pdf_task, map_content_task
 from src.db import get_file_url, upload_paper_to_storage
-from src.paper_analysis_cache import get_cached_result, iter_cached_results, set_cached_result
+from src.paper_analysis_cache import get_cached_result, iter_cached_results
 from src.utils import download_file as download_file_from_url, get_file_content, get_repo_tree
 
 app = FastAPI()
@@ -124,9 +124,10 @@ def test_claude_code():
 
 def _paper_list_item(paper_id: str, result: dict) -> dict:
     """Lightweight row for the home page (full result available via GET /papers/{id})."""
-    github = result.get("github_repo_url")
-    title = result.get("paper_title")
-    code_result = result.get("code_result") or {}
+    analysis = result.get("analysis")
+    github = analysis.get("github_repo_url")
+    title = analysis.get("paper_title")
+    code_result = analysis.get("code_result") or {}
     sections = code_result.get("sections") if isinstance(code_result, dict) else None
     n_sections = len(sections) if isinstance(sections, list) else 0
     label = None
@@ -145,6 +146,7 @@ def _paper_list_item(paper_id: str, result: dict) -> dict:
 
 @app.get("/papers")
 def list_papers():
+    results = iter_cached_results()
     rows = [_paper_list_item(pid, res) for pid, res in iter_cached_results()]
     rows.sort(key=lambda r: r["paper_id"])
     return {"papers": rows}
@@ -159,7 +161,7 @@ def get_paper_by_id(paper_id: str):
 
     if cached_result is None:
         raise HTTPException(status_code=404, detail="Unknown paper_id or cache expired")
-    return {"paper_id": paper_id, "result": cached_result, "file_url": url}
+    return {"paper_id": paper_id, "analysis_result": cached_result.get("analysis"), "papermage_result": cached_result.get("processed"), "file_url": url}
 
 
 @app.post("/analyze")
@@ -185,6 +187,7 @@ def analyze_paper(file: UploadFile = File(...)):
 
     task = analyze_paper_task.delay(
         paper_content=paper_content,
+        paper_raw=raw,
         paper_id=paper_id,
         original_filename=file.filename,
     )
@@ -193,6 +196,31 @@ def analyze_paper(file: UploadFile = File(...)):
 @app.get("/download_file")
 def download_file(link: str) -> Response:
     return Response(content=download_file_from_url(link), media_type="application/pdf")
+
+@app.post("/process_pdf")
+def process_pdf(file: UploadFile = File(...)):
+    if not file.file:
+        raw = download_file(file.link)
+    else:
+        raw = file.file.read()
+    task = process_pdf_task.delay(
+        file_raw=raw
+    )
+    return {"task_id": task.id}
+
+@app.post("/map_content")
+def map_content(
+    content: str = Form(...),
+    repo_url: str = Form(...),
+    context: str = Form(...),
+):
+    task = map_content_task.delay(
+        content=content,
+        repo_url=repo_url,
+        context=context
+    )
+    return {"task_id": task.id}
+    
 
 ##########################################
 ##### Repository Content #######################

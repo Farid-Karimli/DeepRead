@@ -334,19 +334,24 @@
 }
 
 /*
- * PaperView: PageWrapper renders <Overlay> first, then react-pdf <Page>. Anything
- * in that Page subtree (canvas, text layer, annotation layer, wrapper divs) stacks
- * above the overlay and steals pointer events. Instead of chasing class names, turn
- * off events for every direct child of the page except the overlay, then re-enable
- * the overlay so hit targets receive hover. Do NOT set pointer-events: none on
- * .reader__page-list — that breaks wheel/touch scrolling.
+ * PaperView: PageWrapper renders <Overlay> first, then react-pdf <Page>. Keep the
+ * PDF/text layer pointer-active for text selection, but stack the overlay above it.
+ * The overlay container stays pointer-transparent; individual hit targets opt back
+ * into pointer events in CodeOverlay.tsx.
  */
+.paper-viewer .pdf-reader__page {
+  position: relative;
+}
+
 .paper-viewer .pdf-reader__page > :not(.pdf-reader__overlay) {
-  pointer-events: none;
+  position: relative;
+  z-index: 1;
+  pointer-events: auto;
 }
 
 .paper-viewer .pdf-reader__page > .pdf-reader__overlay {
-  pointer-events: auto;
+  z-index: 2;
+  pointer-events: none;
 }
 
 /* HighlightOverlay defaults to a 60% white rect over the whole page (see pdf-components
@@ -397,6 +402,87 @@
   font-weight: 600;
   letter-spacing: -0.02em;
   line-height: 1.25;
+}
+
+/* Selection confirm popover (PaperView) */
+.pdf-selection-popover {
+  pointer-events: auto;
+  user-select: none;
+  max-width: min(320px, calc(100vw - 24px));
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(20, 20, 24, 0.96);
+  color: #f4f4f5;
+  font-size: 12px;
+  line-height: 1.35;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.pdf-selection-popover__preview {
+  margin: 0 0 10px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #a1a1aa;
+  word-break: break-word;
+  max-height: 4.2em;
+  overflow: hidden;
+}
+
+.pdf-selection-popover__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.pdf-selection-popover__btn {
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.25;
+  cursor: pointer;
+  border-radius: 6px;
+  padding: 6px 12px;
+  border: none;
+  transition:
+    background-color 0.12s ease,
+    color 0.12s ease,
+    opacity 0.12s ease;
+}
+
+.pdf-selection-popover__btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pdf-selection-popover__btn--primary {
+  background: var(--accent);
+  color: #fff;
+}
+
+.pdf-selection-popover__btn--primary:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.pdf-selection-popover__btn--primary:focus-visible {
+  outline: 2px solid var(--accent-border);
+  outline-offset: 2px;
+}
+
+.pdf-selection-popover__btn--ghost {
+  background: transparent;
+  color: #d4d4d8;
+}
+
+.pdf-selection-popover__btn--ghost:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fafafa;
+}
+
+.pdf-selection-popover__btn--ghost:focus-visible {
+  outline: 2px solid rgba(129, 140, 248, 0.9);
+  outline-offset: 2px;
 }
 
 /* Shared outline control (PaperView toolbars, Home submit, etc.) */

@@ -13,16 +13,13 @@ import {
   type paperSubmitResponse,
   type paperAnalysisStatusResponse,
   type codeSectionsResult,
-  type Paper,
+  type CachedPaper,
   type githubRepoTreeResponse,
 } from './api/main';
+import type { processPDFResult, AgentTaskResult } from './api/types.ts';
 
 /** Celery stores the agent return value: `{ github_repo_url, code_result }`. */
-interface AgentTaskResult {
-  paper_title: string | null;
-  github_repo_url: string | null;
-  code_result: codeSectionsResult | null;
-};
+
 
 function extractGithubRepoUrl(result: unknown): string | null {
   if (!result || typeof result !== 'object') return null;
@@ -48,6 +45,10 @@ function App() {
     const analysisResult = localStorage.getItem('analysisResult');
     return analysisResult ? JSON.parse(analysisResult) : undefined;
   });
+  const [papermageResult, setPaperMageResult] = useState<processPDFResult | undefined>(() => {
+    const papermageResult = localStorage.getItem('papermageResult');
+    return papermageResult ? JSON.parse(papermageResult) : undefined;
+  });
   const [githubRepoTree, setGithubRepoTree] = useState<githubRepoTreeResponse | undefined>(() => {
     const githubRepoTree = localStorage.getItem('githubRepoTree');
     return githubRepoTree ? JSON.parse(githubRepoTree) : undefined;
@@ -55,6 +56,10 @@ function App() {
   const [paperId, setPaperId] = useState<string | null>(() => {
     const paperId = localStorage.getItem('paperId');
     return paperId ?? null;
+  });
+  const [githubRepoUrl, setGithubRepoUrl] = useState<string | undefined>(() => {
+    const githubRepoUrl = localStorage.getItem('githubRepoUrl');
+    return githubRepoUrl ?? undefined;
   });
   const [paperFile, setPaperFile] = useState<File | undefined>(undefined);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -70,6 +75,11 @@ function App() {
     } else {
       localStorage.removeItem('analysisResult');
     }
+    if (papermageResult) {
+      localStorage.setItem('papermageResult', JSON.stringify(papermageResult));
+    } else {
+      localStorage.removeItem('papermageResult');
+    }
     if (paperId) {
       localStorage.setItem('paperId', paperId);
     } else {
@@ -80,7 +90,7 @@ function App() {
     } else {
       localStorage.removeItem('githubRepoTree');
     }
-  }, [taskId, analysisResult, paperFile, paperId, githubRepoTree]);
+  }, [taskId, analysisResult, paperFile, paperId, githubRepoTree, papermageResult, githubRepoUrl]);
 
   useEffect(() => {
     if (!taskId || analysisResult) return;
@@ -94,19 +104,22 @@ function App() {
         if (cancelled) return;
 
         if (status.status === 'SUCCESS' && status.result !== undefined && status.result !== null) {
-          const sections: codeSectionsResult | null = extractCodeSections(status.result);
-          console.log('sections', sections);
-          const githubRepoUrl: string | null = extractGithubRepoUrl(status.result);
-          console.log('githubRepoUrl', githubRepoUrl);
+
+          const sections: codeSectionsResult | null = extractCodeSections(status.result.analysis);
+          const githubRepoUrl: string | null = extractGithubRepoUrl(status.result.analysis);
+          const papermageResult: processPDFResult = status.result.processed;
+
           if (githubRepoUrl === null) {
             setSubmitError('Could not extract GitHub repository URL from the result.');
             setTaskId(null);
             return;
           }
           const tree: githubRepoTreeResponse = await getGithubRepoTree(githubRepoUrl);
-          if (sections !== null && tree !== undefined) {
+          if (sections !== null && tree !== undefined && papermageResult !== null) {
             setGithubRepoTree(tree); 
             setAnalysisResult(sections);
+            setPaperMageResult(papermageResult)
+            setGithubRepoUrl(githubRepoUrl);
             return;
           }
           setSubmitError('Analysis finished but the result format was unexpected.');
@@ -173,6 +186,7 @@ function App() {
   const clearEnvironment = () => {
     setTaskId(null);
     setAnalysisResult(undefined);
+    setPaperMageResult(undefined);
     setPaperFile(undefined);
     setPaperId(null);
     setSubmitError(null);
@@ -181,12 +195,15 @@ function App() {
   const openCachedPaper = async (id: string) => {
     setSubmitError(null);
     try {
-      const response: Paper = await getCachedPaperById(id);
-      const { result, file } = response;
-      const sections = extractCodeSections(result);
+      const cacheResponse: CachedPaper = await getCachedPaperById(id);
+      const { analysisResult, papermageResult, file } = cacheResponse;
+      const sections = extractCodeSections(analysisResult);
+      const githubRepoUrl = extractGithubRepoUrl(analysisResult);
+
       console.log('sections', sections);
-      const githubRepoUrl = extractGithubRepoUrl(result);
+      console.log('papermageResult', papermageResult);
       console.log('githubRepoUrl', githubRepoUrl);
+
       if (sections && githubRepoUrl) {
         const tree: githubRepoTreeResponse = await getGithubRepoTree(githubRepoUrl);
         if (tree) {
@@ -196,6 +213,8 @@ function App() {
         setPaperId(id);
         setPaperFile(new File([file.buffer as ArrayBuffer], id, { type: 'application/pdf' }));
         setAnalysisResult(sections);
+        setPaperMageResult(papermageResult);
+        setGithubRepoUrl(githubRepoUrl);
         return;
       }
       setSubmitError('Cached result format was unexpected.');
@@ -204,14 +223,16 @@ function App() {
     }
   };
 
-  if (analysisResult && githubRepoTree) {
+  if (analysisResult && githubRepoTree && papermageResult && githubRepoUrl) {
     return (
       <SidePanelProvider>
         <PaperView
           analysisResult={analysisResult}
+          processResult={papermageResult}
           clearEnvironment={clearEnvironment}
           paperFile={paperFile}
           tree={githubRepoTree}
+          githubRepoUrl={githubRepoUrl}
         />
       </SidePanelProvider>  
     );

@@ -6,7 +6,7 @@ type CodeRange = {
   endLine: number;
 }
 
-type CodeInfo = {
+export type CodeInfo = {
   filePath: string;
   codeRanges: CodeRange[];
   /** If set, scroll this range into view (still highlights all `codeRanges`). */

@@ -6,6 +6,9 @@ import type {
     cachedPaperSummary, 
     listCachedPapersResponse,
     githubRepoTreeResponse,
+    CachedPaper,
+    mapContentResponse,
+    mapContentTaskResponse,
 } from './types';
 
 const API_URL: string =
@@ -52,12 +55,7 @@ const listCachedPapers = async (): Promise<cachedPaperSummary[]> => {
     return body.papers ?? [];
 };
 
-interface Paper {
-    result: codeSectionsResult;
-    file: Uint8Array;
-}
-
-const getCachedPaperById = async (paperId: string): Promise<Paper> => {
+const getCachedPaperById = async (paperId: string): Promise<CachedPaper> => {
     // Returns the cached paper result and the file URL
     const response: Response = await fetch(`${API_URL}/papers/${encodeURIComponent(paperId)}`);
     if (!response.ok) {
@@ -67,7 +65,7 @@ const getCachedPaperById = async (paperId: string): Promise<Paper> => {
     const responseJSON: paperByIdResponse = await response.json();
     const fileUrl = responseJSON.file_url;
     const file = await getFileByUrl(fileUrl);
-    return { result: responseJSON.result, file: file };
+    return { analysisResult: responseJSON.analysis_result, file: file , papermageResult: responseJSON.papermage_result};
 };
 
 const getFileByUrl = async (url: string): Promise<Uint8Array> => {
@@ -109,6 +107,36 @@ const getGithubFileFromBlobUrl = async (githubBlobUrl: string): Promise<string> 
     return responseJSON;
 };
 
+const mapContentToCode = async (content: string | Blob, repoUrl: string, context: string): Promise<string> => {
+    const formData = new FormData();
+    formData.append("content", content);
+    formData.append("repo_url", repoUrl);
+    formData.append("context", context);
+
+    console.log(`Submitting content to code mapping: ${content} to ${repoUrl} with context ${context}`);
+
+    const response: Response = await fetch(`${API_URL}/map_content`, {
+        method: "POST",
+        body: formData,
+    });
+    if (!response.ok) {
+        console.error(response);
+        throw new Error("Failed to map content to code");
+    }
+    const responseJSON: mapContentTaskResponse = await response.json();
+    return responseJSON.task_id;
+};
+
+const getContentMappingStatus = async (taskId: string): Promise<mapContentResponse> => {
+    const response: Response = await fetch(`${API_URL}/tasks/${taskId}`);
+    if (!response.ok) {
+        console.error(response);
+        throw new Error("Failed to get content mapping status");
+    }
+    const responseJSON: mapContentResponse = await response.json();
+    return responseJSON;
+};
+
 export {
     submitPaperAnalysis,
     getPaperAnalysisStatus,
@@ -121,8 +149,10 @@ export {
     type cachedPaperSummary,
     type paperByIdResponse,
     type listCachedPapersResponse,
-    type Paper,
+    type CachedPaper,
     type githubRepoTreeResponse,
     getGithubRepoTree,
     getGithubFileFromBlobUrl,
+    mapContentToCode,
+    getContentMappingStatus,
 };

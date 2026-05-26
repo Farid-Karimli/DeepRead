@@ -1,4 +1,3 @@
-import { type codeSectionsResult, type githubRepoTreeResponse } from '../api/main.ts';
 import {
     ContextProvider,
     DocumentContext,
@@ -9,15 +8,22 @@ import {
     TransformContext,
 } from '@allenai/pdf-components';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { textItemToBoundingBoxLike, type PdfTextItemLike } from '../utils/pdfTextItemToBoundingBox.ts';
+
+import { type codeSectionsResult, type githubRepoTreeResponse, mapContentToCode, getContentMappingStatus } from '../api/main.ts';
+import type { codeSection, processPDFResult } from '../api/types.ts';
 import { HighlightOverlayDemo, type BoundingBoxWithTooltip } from './CodeOverlay.tsx';
+import { useSidePanel, type CodeInfo } from '../context/SidePanelContext.tsx';
 import RepoView from './RepoView.tsx';
+
+import { usePDFTextSelection } from '../hooks/useTextSelection.tsx';
 
 interface PaperViewProps {
     analysisResult: codeSectionsResult;
+    processResult: processPDFResult;
     clearEnvironment: () => void;
     paperFile: File | undefined;
     tree: githubRepoTreeResponse | undefined;
+    githubRepoUrl: string | undefined;
 }
 
 /**
@@ -25,7 +31,7 @@ interface PaperViewProps {
  * is the real provider (not the default). Otherwise numPages stays 0 and
  * nothing renders.
  */
-function PdfPageList({ analysisResult, scrollRef }: { analysisResult: codeSectionsResult, scrollRef: React.RefObject<HTMLDivElement | null> }) {
+function PdfPageList({ analysisResult, processResult,  scrollRef }: { analysisResult: codeSectionsResult, processResult: processPDFResult, scrollRef: React.RefObject<HTMLDivElement | null> }) {
     const { numPages, pdfDocProxy, pageDimensions } = React.useContext(DocumentContext);
     const { rotation } = React.useContext(TransformContext);
     const [hitBoxes, setHitBoxes] = useState<BoundingBoxWithTooltip[]>([]);
@@ -34,121 +40,55 @@ function PdfPageList({ analysisResult, scrollRef }: { analysisResult: codeSectio
         if (!pdfDocProxy || numPages < 1 || pageDimensions.height < 1) {
             return;
         }
-        console.log("analysisResult: ", analysisResult);
+        let boxes: BoundingBoxWithTooltip[] = [];
 
-        let cancelled = false;
+        const contentToBBoxPaperMage = async () => {
+            for (let i = 0; i < analysisResult.sections.length; i++) {
+                const analyzedSection = analysisResult.sections[i];
 
-        const run = async () => {
-            const next: BoundingBoxWithTooltip[] = [];
-            let hitSeq = 0;
+                if (analyzedSection.code_snippets.length === 0) {
+                    console.warn("No code snippets listed for section", analyzedSection);
+                    continue;
+                }
 
-            // Normalize a string for matching: strip whitespace and lowercase
-            const normalize = (s: string) => s.replace(/\s+/g, '').toLowerCase();
+                const paperMageSection = processResult.sections.filter((section)=>section.entity_id === analyzedSection.section_id)[0];
 
-            // Build (normalizedName, sectionName) pairs once
-            const targets = analysisResult.sections.map((section) => ({
-                section,
-                needle: normalize(section.section_name),
-            })).filter(t => t.needle.length > 0);
-
-            // Track which sections have been matched (by index) so we skip them on later pages
-            const matched = new Set<number>();
-
-            for (let pageNum = 1; pageNum <= numPages; pageNum++) {
-                if (cancelled) return;
-                if (matched.size === targets.length) break;
-
-                const page = await pdfDocProxy.getPage(pageNum);
-                const pageText = await page.getTextContent();
+                if (!paperMageSection) {
+                    console.warn('No PaperMage section for analyzed section', analyzedSection);
+                    continue;
+                }
+                //console.log('paperMageSection for', analyzedSection, " = ", paperMageSection.box);
+    
+                const box = paperMageSection.box;
+                const page = await pdfDocProxy.getPage(box.page + 1);
                 const viewport = page.getViewport({ scale: 1, rotation });
 
                 const scaleX = pageDimensions.width / viewport.width;
                 const scaleY = pageDimensions.height / viewport.height;
-                const pageIndexZeroBased = pageNum - 1;
-
-                // Collect only text items (not TextMarkedContent)
-                const items = pageText.items.filter((it: object): it is PdfTextItemLike => 'str' in it);
-
-                // Build flat string and char→item index map
-                let flatStr = '';
-                const charToItem: number[] = [];
-                for (let idx = 0; idx < items.length; idx++) {
-                    const str = items[idx].str;
-                    for (let c = 0; c < str.length; c++) {
-                        charToItem.push(idx);
-                    }
-                    flatStr += str;
-                }
-
-                // Build normalized flat string and normChar→origChar map (strip whitespace, lowercase)
-                const normToOrig: number[] = [];
-                let normalizedFlat = '';
-                for (let c = 0; c < flatStr.length; c++) {
-                    if (!/\s/.test(flatStr[c])) {
-                        normToOrig.push(c);
-                        normalizedFlat += flatStr[c].toLowerCase();
-                    }
-                }
-
-                for (let ti = 0; ti < targets.length; ti++) {
-                    if (matched.has(ti)) continue;
-                    const { section, needle } = targets[ti];
-
-                    const pos = normalizedFlat.indexOf(needle);
-                    if (pos === -1) continue;
-
-                    matched.add(ti);
-
-                    const startOrigChar = normToOrig[pos];
-                    const endOrigChar   = normToOrig[pos + needle.length - 1];
-                    const startItemIdx  = charToItem[startOrigChar];
-                    const endItemIdx    = charToItem[endOrigChar];
-
-                    // Union bounding boxes across the matched item span
-                    let unionLeft   = Infinity;
-                    let unionTop    = Infinity;
-                    let unionRight  = -Infinity;
-                    let unionBottom = -Infinity;
-
-                    for (let idx = startItemIdx; idx <= endItemIdx; idx++) {
-                        const box = textItemToBoundingBoxLike(items[idx], pageIndexZeroBased, viewport.height);
-                        if (!box) continue;
-                        unionLeft   = Math.min(unionLeft,   box.left);
-                        unionTop    = Math.min(unionTop,    box.top);
-                        unionRight  = Math.max(unionRight,  box.left + box.width);
-                        unionBottom = Math.max(unionBottom, box.top  + box.height);
-                    }
-
-                    if (!isFinite(unionLeft)) continue;
-
-                    next.push({
-                        page: pageIndexZeroBased,
-                        top:    unionTop    * scaleY - 5,
-                        left:   unionLeft   * scaleX,
-                        width:  (unionRight  - unionLeft)   * scaleX,
-                        height: (unionBottom - unionTop)    * scaleY * 1.5,
-                        hitKey: `p${pageIndexZeroBased}-h${hitSeq++}`,
-                        file_infos: section.code_snippets.map((snippet) => `${snippet.filepath}:${snippet.start_line}-${snippet.end_line}`),
-                        code_snippets: section.code_snippets,
-                        description: section.section_description,
-                    });
-                }
+    
+                boxes.push({
+                    page:   box.page,
+                    top:    box.t   * viewport.height * scaleY,
+                    left:   box.l   * viewport.width * scaleX,
+                    width:  box.w   * viewport.width * scaleX,
+                    height: box.h   * viewport.height * scaleY,
+                    hitKey: `p${box.page}-h${i}`,
+                    file_infos: analyzedSection.code_snippets.map((snippet) => `${snippet.filepath}:${snippet.start_line}-${snippet.end_line}`),
+                    code_snippets: analyzedSection.code_snippets,
+                    description: analyzedSection.section_description,
+                })
             }
-            if (!cancelled) {
-                setHitBoxes(next);
-            }
-        };
+        
+            setHitBoxes(boxes)
+        }
 
-        void run();
-        return () => {
-            cancelled = true;
-        };
-    }, [pdfDocProxy, numPages, rotation, pageDimensions]);
+        contentToBBoxPaperMage();
+    }, [pdfDocProxy, numPages, rotation, pageDimensions, analysisResult, processResult]);
 
     return (
         <div className="reader__page-list" ref={scrollRef}>
             {Array.from({ length: numPages > 0 ? numPages : 0 }).map((_, i) => (
-                <PageWrapper key={i} pageIndex={i} renderType={RENDER_TYPE.SINGLE_CANVAS}>
+                <PageWrapper key={i} pageIndex={i} renderType={RENDER_TYPE.MULTI_CANVAS}>
                     <Overlay>
                         <HighlightOverlayDemo pageIndex={i} boxes={hitBoxes} />
                     </Overlay>
@@ -158,14 +98,90 @@ function PdfPageList({ analysisResult, scrollRef }: { analysisResult: codeSectio
     );
 }
 
-export default function PaperView({ analysisResult: _analysisResult, clearEnvironment, paperFile, tree }: PaperViewProps) {
+export default function PaperView({ analysisResult, processResult, clearEnvironment, paperFile, tree, githubRepoUrl }: PaperViewProps) {
     const pdfContentRef = useRef<HTMLDivElement>(null);
     const pdfScrollableRef = useRef<HTMLDivElement>(null);
 
-    // react-pdf / DocumentWrapper use reference equality on `file`
+    const [pendingSelection, setPendingSelection] = useState<{
+        text: string;
+        rect: DOMRect;
+        range: Range;
+    } | null>(null);
+
+    const [contentMappingLoading, setContentMappingLoading] = useState<Boolean>(false);
+
+    console.log('githubRepoUrl', githubRepoUrl);
+
+    const [mappingTaskId, setMappingTaskId] = useState<string | null>(null);
+
+    const submitPendingSelection = () => {
+            if (!pendingSelection || mappingTaskId !== null) return;
+    
+            console.log("Selection:", pendingSelection?.text);
+            console.log(pendingSelection?.rect);
+    
+            const content = pendingSelection.text;
+            const repoUrl = githubRepoUrl;
+            if (!repoUrl) {
+                console.error('No GitHub repository URL found');
+                return;
+            }
+            let context = processResult.sections.filter((section) => section.entity_id === "abstract")[0]?.section_content ?? "";
+            if (!context) {
+                console.warn('No context found');
+                context = "";
+            }
+            setContentMappingLoading(true);
+            mapContentToCode(content, repoUrl, context).then((taskId) => {
+                setMappingTaskId(taskId);
+            }).catch((error) => {
+                console.error('error', error);
+                setMappingTaskId(null);
+                setPendingSelection(null);
+            });
+    };
+
+    usePDFTextSelection(pdfContentRef, setPendingSelection);
+
+    useEffect(()=> {
+        if (!mappingTaskId) return;
+        let cancelled = false;
+        const poll = async () => {
+
+            if (cancelled) {
+                setContentMappingLoading(false);
+                return;
+            };
+            const status = await getContentMappingStatus(mappingTaskId);
+
+            if (cancelled) {
+                setContentMappingLoading(false);
+                return;
+            };
+
+            if (status.status === 'SUCCESS' && status.result !== undefined && status.result !== null) {
+                setContentMappingLoading(false);
+                const snippet: any = status.result;
+                const codeInfoToShow: CodeInfo = {
+                    filePath: snippet.filepath,
+                    codeRanges: [{ startLine: snippet.start_line, endLine: snippet.end_line }],
+                    description: snippet.description,
+                }
+                showCode(codeInfoToShow);
+                cancelled = true;
+                setPendingSelection(null);
+            }
+            setTimeout(poll, 5000);
+        };
+        poll();
+        return () => { cancelled = true; };
+    }, [mappingTaskId]);
+    
     const fileForViewer = useMemo(() => paperFile, [paperFile]);
 
     const hasRealFile = paperFile instanceof File && paperFile.size > 0;
+
+    const { showCode } = useSidePanel();
 
     return (
         <div className="paper-view-layout">
@@ -196,7 +212,7 @@ export default function PaperView({ analysisResult: _analysisResult, clearEnviro
                                     renderType={RENDER_TYPE.SINGLE_CANVAS}
                                     inputRef={pdfContentRef}
                                 >
-                                    <PdfPageList analysisResult={_analysisResult} scrollRef={pdfScrollableRef} />
+                                    <PdfPageList analysisResult={analysisResult} processResult={processResult} scrollRef={pdfScrollableRef} />
                                 </DocumentWrapper>
                             </ContextProvider>
                         </div>
@@ -215,6 +231,33 @@ export default function PaperView({ analysisResult: _analysisResult, clearEnviro
                         {<RepoView tree={tree} />}
                     </div>
                 </aside>
+            )}
+
+            {pendingSelection && (
+            <div className="pdf-selection-popover" style={{
+                position: 'fixed',
+                left: pendingSelection.rect.right + 8,
+                top: pendingSelection.rect.bottom + 8,
+                zIndex: 10000,
+              }}>
+            <div className="pdf-selection-popover__actions">
+              <button
+                type="button"
+                className="pdf-selection-popover__btn pdf-selection-popover__btn--primary"
+                onClick={submitPendingSelection}
+                disabled={(contentMappingLoading || mappingTaskId !== null) ? true : false}
+              >
+                {contentMappingLoading ? "Mapping..." : "Map to code"}
+              </button>
+              <button
+                type="button"
+                className="pdf-selection-popover__btn pdf-selection-popover__btn--ghost"
+                onClick={() => setPendingSelection(null)}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
             )}
         </div>
     );
