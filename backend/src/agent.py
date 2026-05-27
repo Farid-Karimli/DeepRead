@@ -19,6 +19,7 @@ from src.agent_utils import (
     key_section_schema_v2, 
     code_section_schema, 
     single_content_map_schema,
+    single_code_map_schema,
     _merge_key_sections_into_code_result, 
     _parse_json_result, 
     EventCallback
@@ -28,10 +29,13 @@ from src.prompts import (
     build_identify_key_sections_prompt,
     build_identify_key_sections_prompt_v2,
     build_map_key_sections_to_code_prompt,
-    build_single_content_mapping_prompt
+    build_single_content_to_code_mapping_prompt,
+    build_code_to_content_mapping_prompt
 )
 
 from src.rerank import Reranker
+
+from src.paper_analysis_cache import get_cached_result
 
 import logging
 import warnings
@@ -320,7 +324,7 @@ class Agent:
             content_input = image_file
 
         local_code_path = clone_repo_to_temp_dir(repo_url)
-        prompt = build_single_content_mapping_prompt(content=content_input, repo_path=local_code_path, context=context)
+        prompt = build_single_content_to_code_mapping_prompt(content=content_input, repo_path=local_code_path, context=context)
         logger.info(
             "map_key_sections_to_code: prompt prepared chars=%d cwd=%s tools=%s",
             len(prompt),
@@ -367,6 +371,45 @@ class Agent:
 
         top_rank_index = max(reranked_results, key=lambda x: x.get("relevance_score")).get("index")
         return result[top_rank_index]
+
+    async def map_code_to_content(
+        self, 
+        code: str,
+        paper_id: str,
+    ):
+        # TODO: 1) Get papermage result from DB using paper_id 2) Get section data as paper_content
+        # 3) Build prompt 4) Execute inference and return
+        paper_result = get_cached_result(paper_id)
+        if paper_result is None:
+            raise ValueError(f"No paper result found for id {paper_id}.")
+        papermage_result = paper_result.get("processed")
+        analysis_result = paper_result.get("analysis")
+
+        prompt = build_code_to_content_mapping_prompt(
+            code=code,
+            paper_content=papermage_result,
+        )
+
+        options = ClaudeAgentOptions(
+            model=self.model, 
+            allowed_tools=["ReadFile", "Read"],
+            include_partial_messages=True,
+            cwd=".",
+            output_format={
+                "type": "json_schema",
+                "json_schema": single_code_map_schema
+            }
+        )
+        
+        parsed_result = None
+        async for message in query(prompt=prompt, options=options):
+            if isinstance(message, ResultMessage):
+                parsed_result = _parse_json_result(message.result)
+                if parsed_result is None:
+                    cleaned = message.result.replace("```json", "").replace("```", "").strip()
+                    logger.warning("map_code_to_content: failed to parse JSON result raw=%s", cleaned)
+                    parsed_result = None
+        return parsed_result
 
 
     async def analyze_paper(

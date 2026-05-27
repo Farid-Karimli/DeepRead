@@ -142,6 +142,28 @@ single_content_map_schema = {
     "required": ['code_snippets']
 }
 
+single_code_map_schema = {
+    "type": "object",
+    "properties": {
+        "sections": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "section_id": {
+                        "type": "string",
+                    },
+                    "description": {
+                        "type": "string",
+                    },
+                },
+                "required": ["section_id", "description"],
+            }
+        },
+    },
+    "required": ["sections"]
+}
+
 
 EventCallback = Callable[[StreamEvent], None]
 
