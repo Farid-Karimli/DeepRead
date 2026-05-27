@@ -11,7 +11,7 @@ export function usePDFTextSelection(
     React.useEffect(() => {
 
         const handleSelection = () => {
-            const root = pdfRoot;
+            const root = pdfRoot.current;
             const selection = document.getSelection();
 
             if (!root || !selection) {
@@ -26,6 +26,11 @@ export function usePDFTextSelection(
             }
 
             const range = selection.getRangeAt(0);
+            if (!root.contains(range.commonAncestorContainer)) {
+                setSelection(null);
+                return;
+            }
+
             const commonAncestor = range.getBoundingClientRect();
 
             setSelection(

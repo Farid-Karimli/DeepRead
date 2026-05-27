@@ -1,16 +1,21 @@
-import { useEffect, useState } from 'react';
-import { type githubRepoTreeResponse } from '../api/main';
+import { useEffect, useRef, useState } from 'react';
+import { type githubRepoTreeResponse, getGithubFileFromBlobUrl, mapCodeToContent, getCodeMappingStatus } from '../api/main';
 import { VscFolder, VscFile } from 'react-icons/vsc';
 import { IoIosArrowBack } from "react-icons/io";
-import { getGithubFileFromBlobUrl } from '../api/main';
 import CodeViewer from './CodeViewer.tsx';
 import { useSidePanel } from '../context/SidePanelContext.tsx';
+import { usePDFTextSelection } from '../hooks/useTextSelection.tsx';
 
-
+type PaperHighlight = {
+    section_id: string;
+    description: string;
+};
 interface RepoViewProps {
     tree: githubRepoTreeResponse;
+    paperId: string;
     code?: string,
-    filepath?: string
+    filepath?: string,
+    setPaperHighlightSections: (paperHighlightSections: PaperHighlight[]) => void
 }
 
 type HighlightRange = {
@@ -18,18 +23,85 @@ type HighlightRange = {
   end: number;
 }
 
-const RepoView = ({ tree }: RepoViewProps) => {
+const RepoView = ({ tree, paperId, setPaperHighlightSections }: RepoViewProps) => {
     const [currentPath, setCurrentPath] = useState(() => "");
     const [currentFileContent, setCurrentFileContent] = useState<string | null>(null);
     const [highlightRanges, setHighlightRanges] = useState<HighlightRange[] | null>(null);
     const [scrollFocusRange, setScrollFocusRange] = useState<HighlightRange | null>(null);
     const { codeInfo } = useSidePanel();
+    const codeViewerRef = useRef<HTMLDivElement>(null);
 
     const [currentCodeDescription, setCurrentCodeDescription] = useState<string | null>(null);
+
+    const [pendingCodeSelection, setPendingCodeSelection] = useState<{
+        text: string;
+        rect: DOMRect;
+        range: Range;
+    } | null>(null);
+    const [codeMappingLoading, setCodeMappingLoading] = useState(false);
+    const [codeMappingTaskId, setCodeMappingTaskId] = useState<string | null>(null);
+
+    usePDFTextSelection(codeViewerRef, setPendingCodeSelection);
 
     const getFileURLByPath = (path: string) => {
         return tree.tree.find((obj, _) => obj.path === path)?.url;
     };
+
+    const submitPendingCodeSelection = () => {
+        if (!pendingCodeSelection || codeMappingTaskId !== null) return;
+
+        setCodeMappingLoading(true);
+        mapCodeToContent(pendingCodeSelection.text, paperId)
+            .then((taskId) => {
+                setCodeMappingTaskId(taskId);
+            })
+            .catch((error) => {
+                console.error('error', error);
+                setCodeMappingLoading(false);
+                setCodeMappingTaskId(null);
+                setPendingCodeSelection(null);
+            });
+    };
+
+    useEffect(() => {
+        if (!codeMappingTaskId) return;
+        let cancelled = false;
+
+        const poll = async () => {
+            if (cancelled) {
+                setCodeMappingLoading(false);
+                return;
+            }
+
+            const status = await getCodeMappingStatus(codeMappingTaskId);
+
+            if (cancelled) {
+                setCodeMappingLoading(false);
+                return;
+            }
+
+            if (status.status === 'FAILURE') {
+                console.error('Code mapping failed', status.error);
+                setCodeMappingLoading(false);
+                setCodeMappingTaskId(null);
+                setPendingCodeSelection(null);
+                return;
+            }
+
+            if (status.status === 'SUCCESS' && status.result?.sections) {
+                setCodeMappingLoading(false);
+                setPaperHighlightSections(status.result.sections);
+                setCodeMappingTaskId(null);
+                setPendingCodeSelection(null);
+                return;
+            }
+
+            setTimeout(poll, 5000);
+        };
+
+        poll();
+        return () => { cancelled = true; };
+    }, [codeMappingTaskId, setPaperHighlightSections]);
 
     useEffect(() => {
         if (codeInfo) {
@@ -102,6 +174,7 @@ const RepoView = ({ tree }: RepoViewProps) => {
             setScrollFocusRange(null);
             setCurrentPath(parentDir);
             setCurrentCodeDescription(null);
+            setPendingCodeSelection(null);
             return;
         }
         setCurrentPath(parentDir);
@@ -141,6 +214,7 @@ const RepoView = ({ tree }: RepoViewProps) => {
             </div>
             {currentPath !== "" && <button style={{ background: 'none', border: 'none', cursor: 'pointer' }} onClick={backButtonClick} className="repo-tree__link"><IoIosArrowBack /></button>}
             {currentFileContent ? <CodeViewer
+                ref={codeViewerRef}
                 code={currentFileContent}
                 highlightStarts={highlightRanges?.map((highlightRange) => highlightRange.start)}
                 highlightEnds={highlightRanges?.map((highlightRange) => highlightRange.end)}
@@ -157,6 +231,36 @@ const RepoView = ({ tree }: RepoViewProps) => {
                     </div>
                 ))}
             </div>}
+
+            {pendingCodeSelection && currentFileContent && (
+                <div
+                    className="pdf-selection-popover"
+                    style={{
+                        position: 'fixed',
+                        left: pendingCodeSelection.rect.right + 8,
+                        top: pendingCodeSelection.rect.bottom + 8,
+                        zIndex: 10000,
+                    }}
+                >
+                    <div className="pdf-selection-popover__actions">
+                        <button
+                            type="button"
+                            className="pdf-selection-popover__btn pdf-selection-popover__btn--primary"
+                            onClick={submitPendingCodeSelection}
+                            disabled={codeMappingLoading || codeMappingTaskId !== null}
+                        >
+                            {codeMappingLoading ? 'Mapping...' : 'Map to paper content'}
+                        </button>
+                        <button
+                            type="button"
+                            className="pdf-selection-popover__btn pdf-selection-popover__btn--ghost"
+                            onClick={() => setPendingCodeSelection(null)}
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

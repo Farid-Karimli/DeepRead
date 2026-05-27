@@ -223,7 +223,7 @@ function App() {
     }
   };
 
-  if (analysisResult && githubRepoTree && papermageResult && githubRepoUrl) {
+  if (analysisResult && githubRepoTree && papermageResult && githubRepoUrl && paperId) {
     return (
       <SidePanelProvider>
         <PaperView
@@ -233,6 +233,7 @@ function App() {
           paperFile={paperFile}
           tree={githubRepoTree}
           githubRepoUrl={githubRepoUrl}
+          paperId={paperId}
         />
       </SidePanelProvider>  
     );

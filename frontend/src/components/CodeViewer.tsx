@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { forwardRef, useEffect, useRef } from 'react';
 import ShikiHighlighter from 'react-shiki';
 
 interface CodeViewerProps {
@@ -10,8 +10,20 @@ interface CodeViewerProps {
    scrollFocusEnd?: number;
 }
 
-const CodeViewer = ({ code, highlightStarts, highlightEnds, scrollFocusStart, scrollFocusEnd }: CodeViewerProps) => {
+const CodeViewer = forwardRef<HTMLDivElement, CodeViewerProps>(function CodeViewer(
+    { code, highlightStarts, highlightEnds, scrollFocusStart, scrollFocusEnd },
+    ref,
+) {
     const containerRef = useRef<HTMLDivElement>(null);
+
+    const setContainerRef = (node: HTMLDivElement | null) => {
+        containerRef.current = node;
+        if (typeof ref === 'function') {
+            ref(node);
+        } else if (ref) {
+            ref.current = node;
+        }
+    };
 
     // Decorations for all code snippets in the file
     const decorations = highlightStarts != null && highlightEnds != null
@@ -61,7 +73,7 @@ const CodeViewer = ({ code, highlightStarts, highlightEnds, scrollFocusStart, sc
     }, [code, highlightStarts, highlightEnds, scrollFocusStart, scrollFocusEnd]);
 
     return (
-        <div ref={containerRef} className="code-viewer">
+        <div ref={setContainerRef} className="code-viewer">
             <ShikiHighlighter
                 theme="github-dark"
                 language="python"
@@ -72,6 +84,6 @@ const CodeViewer = ({ code, highlightStarts, highlightEnds, scrollFocusStart, sc
             </ShikiHighlighter>
         </div>
     );
-};
+});
 
 export default CodeViewer;

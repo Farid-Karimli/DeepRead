@@ -112,6 +112,16 @@ interface mapContentResponse {
     result?: codeSnippet;
 }
 
+interface codeToContentMappingResult {
+    sections: { section_id: string; description: string }[];
+}
+
+interface mapCodeToContentResponse {
+    status: string;
+    result?: codeToContentMappingResult;
+    error?: string;
+}
+
 export type { codeSection, 
     codeSnippet,
     codeSectionsResult, 
@@ -126,4 +136,6 @@ export type { codeSection,
     CachedPaper,
     mapContentTaskResponse,
     mapContentResponse,
+    codeToContentMappingResult,
+    mapCodeToContentResponse,
 };
