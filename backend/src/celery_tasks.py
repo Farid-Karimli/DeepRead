@@ -111,3 +111,14 @@ def map_content_task(
     ))
     return result
 
+@celery.task(name='map_code_to_content')
+def map_code_to_content_task(
+    code: str,
+    paper_id: str
+):
+    agent = Agent()
+    result = asyncio.run(agent.map_code_to_content(
+        code=code,
+        paper_id=paper_id
+    ))
+    return result

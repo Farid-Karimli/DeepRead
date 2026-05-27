@@ -10,7 +10,7 @@ import uvicorn
 import asyncio
 
 from src.agent import Agent
-from src.celery_tasks import analyze_paper_task, celery, test_task, process_pdf_task, map_content_task
+from src.celery_tasks import analyze_paper_task, celery, test_task, process_pdf_task, map_content_task, map_code_to_content_task
 from src.db import get_file_url, upload_paper_to_storage
 from src.paper_analysis_cache import get_cached_result, iter_cached_results
 from src.utils import download_file as download_file_from_url, get_file_content, get_repo_tree
@@ -209,7 +209,7 @@ def process_pdf(file: UploadFile = File(...)):
     return {"task_id": task.id}
 
 @app.post("/map_content")
-def map_content(
+def map_content_to_code(
     content: str = Form(...),
     repo_url: str = Form(...),
     context: str = Form(...),
@@ -220,7 +220,17 @@ def map_content(
         context=context
     )
     return {"task_id": task.id}
-    
+
+@app.post("/map_code_to_content")
+def map_code_to_content(
+    code: str = Form(...),
+    paper_id: str = Form(...),
+):
+    task = map_code_to_content_task.delay(
+        code=code,
+        paper_id=paper_id
+    )
+    return {"task_id": task.id}
 
 ##########################################
 ##### Repository Content #######################
