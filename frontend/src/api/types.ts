@@ -104,12 +104,25 @@ interface processPDFResult {
 }
 
 interface mapContentTaskResponse {
-    task_id: string;
+    status: string;
+    task_id: string | null;
+    result: codeSnippet | null
 }
+
 
 interface mapContentResponse {
     status: string;
-    result?: codeSnippet;
+    result: codeSnippet | null;
+}
+
+interface codeToContentMappingResult {
+    sections: { section_id: string; description: string }[];
+}
+
+interface mapCodeToContentResponse {
+    status: string;
+    result: { section_id: string; description: string }[] | null;
+    task_id: string | null;
 }
 
 export type { codeSection, 
@@ -126,4 +139,6 @@ export type { codeSection,
     CachedPaper,
     mapContentTaskResponse,
     mapContentResponse,
+    codeToContentMappingResult,
+    mapCodeToContentResponse,
 };

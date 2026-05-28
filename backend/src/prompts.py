@@ -119,7 +119,7 @@ def build_map_key_sections_to_code_prompt(
         descriptive text.
         """
 
-def build_single_content_mapping_prompt(
+def build_single_content_to_code_mapping_prompt(
     content: str | Path,
     repo_path: Path,
     context: str
@@ -155,10 +155,44 @@ def build_single_content_mapping_prompt(
                 "code_snippets": [
                         {{
                             "content": "print('Hello, world!')",
-                            "filepath": "path/to/code/file.py",
+                            "filepath": path to the file relative to the repository root directory,
                             "start_line": 10,
                             "end_line": 20
                         }},
                     ],
             }}
+        """
+
+def build_code_to_content_mapping_prompt(
+    code: str, # a single piece of code
+    paper_content: list[dict],
+):
+    return f"""
+        Map the provided code snippets to the content in the corresponding research paper.
+        The code will be provided in text format. 
+        The paper content will be provided as a list of dicts, with section_id, section_header and section_content fields.
+
+        ### Code ###
+        {code}
+        ### End Code ###
+
+        ### Paper Content ###
+        {paper_content}
+        ### End Paper Content ###
+
+        Provide the corresponding sections for the code snippet.
+        The section id is the entity_id as it appears in the context.
+        The description is a short description of how the section relates to the code snippet.
+        Return just a JSON object. The first and last character of your output should be {{ and }}. 
+        No prose. 
+        
+        Example:
+        {{
+            "sections": [
+                {{
+                    "section_id": "entity_id as it appears in the context",
+                    "description": "how the section relates to the code snippet",
+                }}
+            ]
+        }}
         """

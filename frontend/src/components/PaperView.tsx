@@ -10,7 +10,7 @@ import {
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import { type codeSectionsResult, type githubRepoTreeResponse, mapContentToCode, getContentMappingStatus } from '../api/main.ts';
-import type { codeSection, processPDFResult } from '../api/types.ts';
+import type { codeSnippet, processPDFResult } from '../api/types.ts';
 import { HighlightOverlayDemo, type BoundingBoxWithTooltip } from './CodeOverlay.tsx';
 import { useSidePanel, type CodeInfo } from '../context/SidePanelContext.tsx';
 import RepoView from './RepoView.tsx';
@@ -24,14 +24,30 @@ interface PaperViewProps {
     paperFile: File | undefined;
     tree: githubRepoTreeResponse | undefined;
     githubRepoUrl: string | undefined;
+    paperId: string;
 }
+
+type PaperHighlight = {
+    section_id: string;
+    description: string;
+};
 
 /**
  * Must render *inside* ContextProvider + DocumentWrapper so DocumentContext
  * is the real provider (not the default). Otherwise numPages stays 0 and
  * nothing renders.
  */
-function PdfPageList({ analysisResult, processResult,  scrollRef }: { analysisResult: codeSectionsResult, processResult: processPDFResult, scrollRef: React.RefObject<HTMLDivElement | null> }) {
+function PdfPageList({
+    analysisResult,
+    processResult,
+    paperHighlightSections,
+    scrollRef,
+}: {
+    analysisResult: codeSectionsResult;
+    processResult: processPDFResult;
+    paperHighlightSections: PaperHighlight[];
+    scrollRef: React.RefObject<HTMLDivElement | null>;
+}) {
     const { numPages, pdfDocProxy, pageDimensions } = React.useContext(DocumentContext);
     const { rotation } = React.useContext(TransformContext);
     const [hitBoxes, setHitBoxes] = useState<BoundingBoxWithTooltip[]>([]);
@@ -78,12 +94,58 @@ function PdfPageList({ analysisResult, processResult,  scrollRef }: { analysisRe
                     description: analyzedSection.section_description,
                 })
             }
-        
-            setHitBoxes(boxes)
+
+            for (let j = 0; j < paperHighlightSections.length; j++) {
+                const highlight = paperHighlightSections[j];
+                const paperMageSection = processResult.sections.find(
+                    (section) => section.entity_id === highlight.section_id,
+                );
+                if (!paperMageSection) {
+                    console.warn('No PaperMage section for mapped highlight', highlight);
+                    continue;
+                }
+
+                const box = paperMageSection.box;
+                const page = await pdfDocProxy.getPage(box.page + 1);
+                const viewport = page.getViewport({ scale: 1, rotation });
+
+                const scaleX = pageDimensions.width / viewport.width;
+                const scaleY = pageDimensions.height / viewport.height;
+
+                boxes.push({
+                    page: box.page,
+                    top: box.t * viewport.height * scaleY,
+                    left: box.l * viewport.width * scaleX,
+                    width: box.w * viewport.width * scaleX,
+                    height: box.h * viewport.height * scaleY,
+                    hitKey: `map-${highlight.section_id}-${j}`,
+                    file_infos: [],
+                    code_snippets: [],
+                    description: highlight.description,
+                    variant: 'underline',
+                });
+            }
+
+            setHitBoxes(boxes);
+
+            if (paperHighlightSections.length > 0) {
+                const firstSection = processResult.sections.find(
+                    (s) => s.entity_id === paperHighlightSections[0].section_id,
+                );
+                const pageIndex = firstSection?.box.page;
+                requestAnimationFrame(() => {
+                    if (pageIndex != null) {
+                        scrollRef.current?.children[pageIndex]?.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'center',
+                        });
+                    }
+                });
+            }
         }
 
         contentToBBoxPaperMage();
-    }, [pdfDocProxy, numPages, rotation, pageDimensions, analysisResult, processResult]);
+    }, [pdfDocProxy, numPages, rotation, pageDimensions, analysisResult, processResult, paperHighlightSections, scrollRef]);
 
     return (
         <div className="reader__page-list" ref={scrollRef}>
@@ -98,7 +160,7 @@ function PdfPageList({ analysisResult, processResult,  scrollRef }: { analysisRe
     );
 }
 
-export default function PaperView({ analysisResult, processResult, clearEnvironment, paperFile, tree, githubRepoUrl }: PaperViewProps) {
+export default function PaperView({ analysisResult, processResult, clearEnvironment, paperFile, tree, githubRepoUrl, paperId }: PaperViewProps) {
     const pdfContentRef = useRef<HTMLDivElement>(null);
     const pdfScrollableRef = useRef<HTMLDivElement>(null);
 
@@ -114,6 +176,8 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
 
     const [mappingTaskId, setMappingTaskId] = useState<string | null>(null);
 
+    const [paperHighlightSections, setPaperHighlightSections] = useState<PaperHighlight[]>([]);
+
     const submitPendingSelection = () => {
             if (!pendingSelection || mappingTaskId !== null) return;
     
@@ -122,6 +186,7 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
     
             const content = pendingSelection.text;
             const repoUrl = githubRepoUrl;
+            const paperIdInput = paperId;
             if (!repoUrl) {
                 console.error('No GitHub repository URL found');
                 return;
@@ -132,8 +197,25 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
                 context = "";
             }
             setContentMappingLoading(true);
-            mapContentToCode(content, repoUrl, context).then((taskId) => {
-                setMappingTaskId(taskId);
+            mapContentToCode(content, repoUrl, context, paperIdInput).then((response) => {
+                if (response.status === 'SUCCESS') {
+                    setContentMappingLoading(false);
+                    if (!response.result) {
+                        console.error('No snippet found');
+                        return;
+                    }
+                    const snippet: any = response.result;
+                    const codeInfoToShow: CodeInfo = {
+                        filePath: snippet.filepath,
+                        codeRanges: [{ startLine: snippet.start_line, endLine: snippet.end_line }],
+                        description: snippet.description,
+                    }
+                    showCode(codeInfoToShow);
+                    setPendingSelection(null);
+                }
+                else {
+                    setMappingTaskId(response.task_id);
+                }
             }).catch((error) => {
                 console.error('error', error);
                 setMappingTaskId(null);
@@ -195,6 +277,15 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
                     >
                         Clear Environment
                     </button>
+                    {paperHighlightSections.length > 0 && <button
+                        type="button"
+                        className="outline-action-btn temp-action-btn"
+                        onClick={() => {
+                            setPaperHighlightSections([]);
+                        }}
+                    >
+                        Clear Paper Highlights
+                    </button>}
                 </div>
 
                 {!hasRealFile ? (
@@ -212,7 +303,12 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
                                     renderType={RENDER_TYPE.SINGLE_CANVAS}
                                     inputRef={pdfContentRef}
                                 >
-                                    <PdfPageList analysisResult={analysisResult} processResult={processResult} scrollRef={pdfScrollableRef} />
+                                    <PdfPageList
+                                        analysisResult={analysisResult}
+                                        processResult={processResult}
+                                        paperHighlightSections={paperHighlightSections}
+                                        scrollRef={pdfScrollableRef}
+                                    />
                                 </DocumentWrapper>
                             </ContextProvider>
                         </div>
@@ -228,7 +324,7 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
                         </button> */}
                     </div>
                     <div className="paper-view-layout__code-scroll">
-                        {<RepoView tree={tree} />}
+                        {<RepoView tree={tree} paperId={paperId} setPaperHighlightSections={setPaperHighlightSections} />}
                     </div>
                 </aside>
             )}
@@ -245,7 +341,7 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
                 type="button"
                 className="pdf-selection-popover__btn pdf-selection-popover__btn--primary"
                 onClick={submitPendingSelection}
-                disabled={(contentMappingLoading || mappingTaskId !== null) ? true : false}
+                disabled={contentMappingLoading !== false}
               >
                 {contentMappingLoading ? "Mapping..." : "Map to code"}
               </button>

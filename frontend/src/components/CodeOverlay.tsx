@@ -25,6 +25,8 @@ export type BoundingBoxWithTooltip = BoundingBoxType & {
     end_line: number;
   }[];
   hitKey: string;
+  /** Default `overlay` (filled highlight). `underline` draws a line under the section only. */
+  variant?: 'overlay' | 'underline';
 };
 
 type overlayProps = {
@@ -124,7 +126,10 @@ function PdfBoundingHitTarget({
         }}
       >
         <div className="pdf-hit-tooltip__description">{box.description}</div>
-        <div className="pdf-hit-tooltip__path">{box.file_infos[codeIndex]}</div>
+        {box.code_snippets.length > 0 && (
+          <div className="pdf-hit-tooltip__path">{box.file_infos[codeIndex]}</div>
+        )}
+        {box.code_snippets.length > 0 && (
         <div className="pdf-hit-tooltip__actions">
           {box.code_snippets.length > 1 ? (
             <button
@@ -160,6 +165,7 @@ function PdfBoundingHitTarget({
             <span className="pdf-hit-tooltip__icon-spacer" aria-hidden />
           )}
         </div>
+        )}
       </div>,
       document.body,
     );
@@ -182,6 +188,119 @@ function PdfBoundingHitTarget({
           }, 150);
         }}
       />
+      {tooltipNode}
+    </>
+  );
+}
+
+const UNDERLINE_THICKNESS_PX = 3;
+
+/**
+ * Section mapping from code→paper: a bottom underline instead of a filled overlay.
+ */
+function PdfUnderlineHitTarget({
+  box,
+  pageIndex,
+}: {
+  box: BoundingBoxWithTooltip;
+  pageIndex: number;
+}) {
+  const { pageDimensions } = React.useContext(DocumentContext);
+  const { rotation, scale } = React.useContext(TransformContext);
+  const [floating, setFloating] = React.useState<{ x: number; y: number } | null>(null);
+  const [hover, setHover] = React.useState(false);
+  const leaveTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  if (box.page !== pageIndex) {
+    return null;
+  }
+
+  const { top, left, width, height } = computeBoundingBoxStyle(
+    { top: box.top, left: box.left, width: box.width, height: box.height },
+    pageDimensions,
+    rotation,
+    scale,
+  );
+
+  const hitStyle: React.CSSProperties = {
+    position: 'absolute',
+    top,
+    left,
+    width,
+    height,
+    zIndex: 2,
+    boxSizing: 'border-box',
+    backgroundColor: 'transparent',
+    cursor: 'pointer',
+    pointerEvents: 'auto',
+  };
+
+  const underlineStyle: React.CSSProperties = {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: hover ? UNDERLINE_THICKNESS_PX + 1 : UNDERLINE_THICKNESS_PX,
+    backgroundColor: hover ? 'rgba(37, 99, 235, 0.95)' : 'rgba(37, 99, 235, 0.75)',
+    borderRadius: 1,
+    pointerEvents: 'none',
+  };
+
+  const tooltipNode =
+    floating &&
+    createPortal(
+      <div
+        className="pdf-hit-tooltip"
+        style={{
+          position: 'fixed',
+          left: floating.x,
+          top: floating.y,
+          zIndex: 10000,
+          maxWidth: 520,
+          padding: '8px 10px',
+          fontSize: 12,
+          lineHeight: 1.35,
+          background: 'rgba(20, 20, 24, 0.95)',
+          color: '#f4f4f5',
+          borderRadius: 6,
+          boxShadow: '0 4px 24px rgba(0,0,0,0.35)',
+          pointerEvents: 'auto',
+          whiteSpace: 'pre-wrap',
+        }}
+        onMouseEnter={() => {
+          if (leaveTimer.current) clearTimeout(leaveTimer.current);
+        }}
+        onMouseLeave={() => {
+          setHover(false);
+          setFloating(null);
+        }}
+      >
+        <div className="pdf-hit-tooltip__description">{box.description}</div>
+      </div>,
+      document.body,
+    );
+
+  return (
+    <>
+      <div
+        className="pdf-section-underline-hit"
+        style={hitStyle}
+        role="button"
+        tabIndex={0}
+        onMouseEnter={(e) => {
+          if (leaveTimer.current) clearTimeout(leaveTimer.current);
+          setHover(true);
+          setFloating((prev) => prev ?? { x: e.clientX + 12, y: e.clientY + 12 });
+        }}
+        onMouseLeave={() => {
+          leaveTimer.current = setTimeout(() => {
+            setHover(false);
+            setFloating(null);
+          }, 150);
+        }}
+      >
+        <div className="pdf-section-underline" style={underlineStyle} aria-hidden />
+      </div>
       {tooltipNode}
     </>
   );
@@ -216,13 +335,21 @@ export const HighlightOverlayDemo: React.FunctionComponent<overlayProps> = ({
   pageIndex,
   boxes,
 }) => {
+  const overlayBoxes = boxes.filter((box) => box.variant !== 'underline');
+  const underlineBoxes = boxes.filter((box) => box.variant === 'underline');
+
   return (
     <>
-      <HighlightOverlay pageIndex={pageIndex}>
-        {maskBoundingBoxes(pageIndex, boxes)}
-      </HighlightOverlay>
-      {boxes.map((box) => (
+      {overlayBoxes.length > 0 && (
+        <HighlightOverlay pageIndex={pageIndex}>
+          {maskBoundingBoxes(pageIndex, overlayBoxes)}
+        </HighlightOverlay>
+      )}
+      {overlayBoxes.map((box) => (
         <PdfBoundingHitTarget key={`hit-${box.hitKey}`} box={box} pageIndex={pageIndex} />
+      ))}
+      {underlineBoxes.map((box) => (
+        <PdfUnderlineHitTarget key={`underline-${box.hitKey}`} box={box} pageIndex={pageIndex} />
       ))}
     </>
   );

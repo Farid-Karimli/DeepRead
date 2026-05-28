@@ -9,6 +9,7 @@ import type {
     CachedPaper,
     mapContentResponse,
     mapContentTaskResponse,
+    mapCodeToContentResponse,
 } from './types';
 
 const API_URL: string =
@@ -107,15 +108,16 @@ const getGithubFileFromBlobUrl = async (githubBlobUrl: string): Promise<string> 
     return responseJSON;
 };
 
-const mapContentToCode = async (content: string | Blob, repoUrl: string, context: string): Promise<string> => {
+const mapContentToCode = async (content: string | Blob, repoUrl: string, context: string, paperId: string): Promise<mapContentTaskResponse> => {
     const formData = new FormData();
     formData.append("content", content);
     formData.append("repo_url", repoUrl);
     formData.append("context", context);
-
+    formData.append("paper_id", paperId);
+    
     console.log(`Submitting content to code mapping: ${content} to ${repoUrl} with context ${context}`);
 
-    const response: Response = await fetch(`${API_URL}/map_content`, {
+    const response: Response = await fetch(`${API_URL}/map_content_to_code`, {
         method: "POST",
         body: formData,
     });
@@ -124,7 +126,7 @@ const mapContentToCode = async (content: string | Blob, repoUrl: string, context
         throw new Error("Failed to map content to code");
     }
     const responseJSON: mapContentTaskResponse = await response.json();
-    return responseJSON.task_id;
+    return responseJSON;
 };
 
 const getContentMappingStatus = async (taskId: string): Promise<mapContentResponse> => {
@@ -134,6 +136,33 @@ const getContentMappingStatus = async (taskId: string): Promise<mapContentRespon
         throw new Error("Failed to get content mapping status");
     }
     const responseJSON: mapContentResponse = await response.json();
+    return responseJSON;
+};
+
+const mapCodeToContent = async (code: string, paperId: string): Promise<mapCodeToContentResponse> => {
+    const formData = new FormData();
+    formData.append("code", code);
+    formData.append("paper_id", paperId);
+
+    const response: Response = await fetch(`${API_URL}/map_code_to_content`, {
+        method: "POST",
+        body: formData,
+    });
+    if (!response.ok) {
+        console.error(response);
+        throw new Error("Failed to map code to content");
+    }
+    const responseJSON: mapCodeToContentResponse = await response.json();
+    return responseJSON;
+};
+
+const getCodeMappingStatus = async (taskId: string): Promise<mapCodeToContentResponse> => {
+    const response: Response = await fetch(`${API_URL}/tasks/${taskId}`);
+    if (!response.ok) {
+        console.error(response);
+        throw new Error("Failed to get code mapping status");
+    }
+    const responseJSON: mapCodeToContentResponse = await response.json();
     return responseJSON;
 };
 
@@ -155,4 +184,6 @@ export {
     getGithubFileFromBlobUrl,
     mapContentToCode,
     getContentMappingStatus,
+    mapCodeToContent,
+    getCodeMappingStatus,
 };
