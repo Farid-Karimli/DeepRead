@@ -3,6 +3,7 @@ import json
 from pprint import pprint
 import sys
 from pathlib import Path
+from src.types import PaperMageResult, SectionEntity, BoxModel
 from pydantic import BaseModel
 
 from typing import List
@@ -13,27 +14,7 @@ from papermage.magelib.span import Span
 from papermage.recipes import CoreRecipe
 from papermage.rasterizers.rasterizer import PDF2ImageRasterizer
 
-# Same as papermage.magelib.box.Box
-class BoxModel(BaseModel):
-    page: int
-    l: float
-    t: float
-    w: float
-    h: float
-
-class SectionEntity(BaseModel):
-    entity_id: str
-    section_header: str
-    section_content: str
-    page_index: int
-    box: BoxModel
-
-class ProcessedPdf(BaseModel):
-    paper_title: str
-    n_pages: int
-    sections: List[SectionEntity] # list of list of sections for each page
-
-def papermage_process(file_input: Path | bytes) -> ProcessedPdf:
+def papermage_process(file_input: Path | bytes) -> PaperMageResult:
     print("Parsing PDF with CoreRecipe...", file=sys.stderr)
     recipe = CoreRecipe()
     doc = recipe.run(file_input, filetype="pdf")
@@ -43,7 +24,7 @@ def papermage_process(file_input: Path | bytes) -> ProcessedPdf:
     #print(f"PDF has {n_pages} pages", file=sys.stderr)
     #print(f"PDF metadata: {doc.metadata}", file=sys.stderr)
 
-    result_payload = ProcessedPdf(
+    result_payload = PaperMageResult(
         paper_title=doc.metadata.title or "Untitled",
         n_pages=n_pages,
         sections=[],
