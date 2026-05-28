@@ -7,7 +7,8 @@ from uuid import uuid4
 
 from pathlib import Path
 from pprint import pprint
-from io import BufferedIOBase
+from io import BufferedIOBase, BytesIO
+from src.types import PaperRecord
 from claude_agent_sdk import ClaudeAgentOptions, query, ResultMessage
 
 from src.search import search_github
@@ -305,7 +306,7 @@ class Agent:
         content: str | bytes,
         repo_url: str,
         context: str
-    ):
+    ) -> dict:
         """
             Maps a small piece of content to relevant code snippets. 
             Same as map_key_sections_to_code but on a smaller scale. 
@@ -375,15 +376,9 @@ class Agent:
     async def map_code_to_content(
         self, 
         code: str,
-        paper_id: str,
+        paper_record: PaperRecord = None,
     ):
-        # TODO: 1) Get papermage result from DB using paper_id 2) Get section data as paper_content
-        # 3) Build prompt 4) Execute inference and return
-        paper_result = get_cached_result(paper_id)
-        if paper_result is None:
-            raise ValueError(f"No paper result found for id {paper_id}.")
-        papermage_result = paper_result.get("processed")
-        analysis_result = paper_result.get("analysis")
+        papermage_result = paper_record.papermage_result
 
         prompt = build_code_to_content_mapping_prompt(
             code=code,
