@@ -1,5 +1,6 @@
 import hashlib
 import io
+import logging
 import os
 from pathlib import Path
 
@@ -10,10 +11,19 @@ import uvicorn
 import asyncio
 
 from src.agent import Agent
-from src.celery_tasks import analyze_paper_task, celery, test_task, process_pdf_task, map_content_task, map_code_to_content_task
-from src.db import get_file_url, upload_paper_to_storage
-from src.paper_analysis_cache import get_cached_result, iter_cached_results
+from src.celery_tasks import (
+    analyze_paper_task, 
+    celery, 
+    test_task, 
+    process_pdf_task, 
+    map_content_to_code_task, 
+    map_code_to_content_task
+)
+from src.db import get_file_url, upload_paper_to_storage, get_mapping_by_cache_key, get_paper_record_by_id, get_all_paper_records
 from src.utils import download_file as download_file_from_url, get_file_content, get_repo_tree
+from src.types import PaperRecord
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
@@ -122,46 +132,40 @@ def test_claude_code():
 ##########################################
 
 
-def _paper_list_item(paper_id: str, result: dict) -> dict:
+def _paper_list_item(paper: PaperRecord) -> dict:
     """Lightweight row for the home page (full result available via GET /papers/{id})."""
-    analysis = result.get("analysis")
-    github = analysis.get("github_repo_url")
-    title = analysis.get("paper_title")
-    code_result = analysis.get("code_result") or {}
-    sections = code_result.get("sections") if isinstance(code_result, dict) else None
-    n_sections = len(sections) if isinstance(sections, list) else 0
-    label = None
-    if isinstance(title, str) and title.strip():
-        label = title.strip()
-    elif n_sections and isinstance(sections[0], dict):
-        label = sections[0].get("section_name")
+    code_result = paper.analysis_result.code_result if paper.analysis_result else None
+    sections = code_result.sections if code_result else []
     return {
-        "paper_id": paper_id,
-        "paper_title": title if isinstance(title, str) else None,
-        "github_repo_url": github,
-        "section_count": n_sections,
-        "label": label,
+        "paper_id": paper.id,
+        "paper_title": paper.paper_title,
+        "github_repo_url": paper.github_link,
+        "section_count": len(sections),
+        "label": paper.paper_title,
     }
 
 
 @app.get("/papers")
 def list_papers():
-    results = iter_cached_results()
-    rows = [_paper_list_item(pid, res) for pid, res in iter_cached_results()]
-    rows.sort(key=lambda r: r["paper_id"])
+    results = get_all_paper_records()
+    rows = [_paper_list_item(paper) for paper in results]
     return {"papers": rows}
 
 
 @app.get("/papers/{paper_id}")
 def get_paper_by_id(paper_id: str):
-    cached_result = get_cached_result(paper_id)
+    """
+        Gets the paper record from the database.
+        Also returns the public storage URL for the raw file.
+    """
+
+    paper_record: PaperRecord | None = get_paper_record_by_id(paper_id)
     url = get_file_url(paper_id) # Raw file bytes for viewing
-    if url is None:
+
+    if paper_record is None:
         raise HTTPException(status_code=404, detail="Unknown paper_id or file not found")
 
-    if cached_result is None:
-        raise HTTPException(status_code=404, detail="Unknown paper_id or cache expired")
-    return {"paper_id": paper_id, "analysis_result": cached_result.get("analysis"), "papermage_result": cached_result.get("processed"), "file_url": url}
+    return {"paper_id": paper_id, "analysis_result": paper_record.analysis_result, "papermage_result": paper_record.papermage_result, "file_url": url}
 
 
 @app.post("/analyze")
@@ -178,9 +182,13 @@ def analyze_paper(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-    cached = get_cached_result(paper_id)
-    if cached is not None:
-        return {"paper_id": paper_id, "status": "complete", "result": cached}
+    paper_record: PaperRecord | None = get_paper_record_by_id(paper_id)
+    if paper_record is not None:
+        result = {
+            'analysis': paper_record.analysis_result,
+            'processed': paper_record.papermage_result
+        }
+        return {"paper_id": paper_id, "status": "complete", "result": result}
 
     paper_content = _paper_bytes_to_text(raw, filename)
     paper_content = _normalize_whitespace(paper_content)
@@ -208,27 +216,55 @@ def process_pdf(file: UploadFile = File(...)):
     )
     return {"task_id": task.id}
 
-@app.post("/map_content")
+##########################################
+##### Ad-Hoc Mapping #######################
+##########################################
+
+@app.post("/map_content_to_code")
 def map_content_to_code(
     content: str = Form(...),
     repo_url: str = Form(...),
     context: str = Form(...),
+    paper_id: str = Form(...),
 ):
-    task = map_content_task.delay(
+    cache_key = hashlib.sha256(
+        f"{content}/0{repo_url}/0{context}".encode("utf-8")
+    ).hexdigest()
+
+    db_record = get_mapping_by_cache_key(cache_key=cache_key)
+
+    if db_record:
+        logger.info(f"MAP CONTENT TO CODE: Mapping already exists for cache key {cache_key}, returning...")
+        return {"status": "SUCCESS", "result": db_record.outputs.code_snippet}
+
+    task = map_content_to_code_task.delay(
         content=content,
         repo_url=repo_url,
-        context=context
+        context=context,
+        cache_key=cache_key,
+        paper_id=paper_id
     )
-    return {"task_id": task.id}
+    return {"task_id": task.id, "status": "PENDING"}
 
 @app.post("/map_code_to_content")
 def map_code_to_content(
     code: str = Form(...),
     paper_id: str = Form(...),
 ):
+    cache_key = hashlib.sha256(
+        f"{code}/0{paper_id}".encode("utf-8")
+    ).hexdigest()
+
+    db_record = get_mapping_by_cache_key(cache_key=cache_key)
+
+    if db_record:
+        logger.info(f"MAP CODE TO CONTENT: Mapping already exists for cache key {cache_key}, returning...")
+        return {"status": "SUCCESS", "result": db_record.outputs.sections}
+
     task = map_code_to_content_task.delay(
         code=code,
-        paper_id=paper_id
+        paper_id=paper_id,
+        cache_key=cache_key
     )
     return {"task_id": task.id}
 

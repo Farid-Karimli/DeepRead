@@ -21,16 +21,18 @@ from __future__ import annotations
 import argparse
 import asyncio
 import hashlib
-import io
 import json
 import mimetypes
 import sys
 import time
+from datetime import datetime
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
 import requests
+
+from backend.src.types import PaperRecord
 
 REPO_BACKEND = Path(__file__).resolve().parents[1]
 if str(REPO_BACKEND) not in sys.path:
@@ -87,38 +89,6 @@ def _read_input(source: str, timeout: int) -> PaperUpload:
     return PaperUpload(source=str(local_path), filename=local_path.name, raw=local_path.read_bytes())
 
 
-def _normalize_whitespace(text: str) -> str:
-    lines = text.split("\n")
-    text = "\n".join(lines)
-    return " ".join(text.split())
-
-
-def _paper_bytes_to_text(raw: bytes, filename: str | None = None) -> str:
-    """
-    Match the /analyze extraction behavior: PDFs use pypdf, everything else is UTF-8 text.
-    """
-    if raw.startswith(b"%PDF-") or (filename or "").lower().endswith(".pdf"):
-        from pypdf import PdfReader
-
-        reader = PdfReader(io.BytesIO(raw))
-        parts: list[str] = []
-        for page in reader.pages:
-            text = page.extract_text()
-            if text:
-                parts.append(text)
-        extracted = "\n\n".join(parts).strip()
-        if not extracted:
-            raise ValueError(
-                "Could not extract text from this PDF; it may be scanned or image-only."
-            )
-        return extracted
-
-    try:
-        return raw.decode("utf-8")
-    except UnicodeDecodeError:
-        return raw.decode("utf-8", errors="replace")
-
-
 def _extract_metadata(result: dict) -> tuple[str | None, str | None]:
     title = result.get("paper_title")
     link = result.get("github_repo_url")
@@ -172,7 +142,7 @@ async def _analyze_one(
     print(f"[info] bytes={len(upload.raw)}")
     print(f"[info] paper_id={paper_id}")
 
-    from src.db import update_paper_metadata, upload_paper_to_storage
+    from src.db import upsert_paper, upload_paper_to_storage
     from src.paper_analysis_cache import cache_key_for_paper_id, get_cached_result, set_cached_result
 
     print("[step] uploading paper bytes to Supabase storage...")
@@ -185,15 +155,28 @@ async def _analyze_one(
     if not force:
         cached = get_cached_result(paper_id)
         if cached is not None:
+            analysis = cached.get("analysis")
+            processed = cached.get("processed")
+            if isinstance(analysis, dict) and isinstance(processed, dict):
+                title, link = _extract_metadata(analysis)
+                print("[step] upserting cached Supabase paper row...")
+                upsert_paper(
+                    paper_id=paper_id,
+                    paper_title=title,
+                    github_link=link,
+                    analysis_result=analysis,
+                    papermage_result=processed,
+                )
             out_path = _output_path(out_dir, upload.filename, paper_id)
             out_path.write_text(json.dumps(cached, indent=2, ensure_ascii=False), encoding="utf-8")
             print(f"[cache] hit key={cache_key_for_paper_id(paper_id)}")
             print(f"[done] wrote cached result to {out_path}")
             return True
 
-    print("[step] extracting and normalizing paper text...")
-    paper_content = _normalize_whitespace(_paper_bytes_to_text(upload.raw, upload.filename))
-    print(f"[info] extracted_chars={len(paper_content)}")
+    print("[step] processing PDF with Papermage...")
+    from src.process_pdf import papermage_process
+
+    papermage_result = papermage_process(file_input=upload.raw)
 
     print("[step] running agent.analyze_paper with streamed events...")
     from src.agent import Agent
@@ -201,25 +184,35 @@ async def _analyze_one(
 
     agent = Agent(model=model, stream_events=stream_events)
     result = await agent.analyze_paper(
-        paper_content=paper_content,
+        file_input=upload.raw,
+        papermage_process_result=papermage_result,
         on_event=print_event,
     )
 
     print("[step] writing analysis result to Redis cache...")
-    set_cached_result(paper_id, result)
+    set_cached_result(paper_id, result, papermage_result)
 
     title, link = _extract_metadata(result)
     print(f"[info] paper_title={title!r}")
     print(f"[info] github_repo_url={link!r}")
-    print("[step] updating Supabase metadata...")
-    update_paper_metadata(
-        paper_id,
-        paper_title=title,
-        github_link=link,
+    print("[step] upserting Supabase paper row...")
+    upsert_paper(
+        paper_record=PaperRecord(
+            id=paper_id,
+            paper_title=title,
+            github_link=link,
+            created_at=datetime.now(),
+            analysis_result=result,
+            papermage_result=papermage_result,
+        ),
     )
 
+    unified_result = {
+        "analysis": result,
+        "processed": papermage_result,
+    }
     out_path = _output_path(out_dir, upload.filename, paper_id)
-    out_path.write_text(json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8")
+    out_path.write_text(json.dumps(unified_result, indent=2, ensure_ascii=False), encoding="utf-8")
     elapsed = time.perf_counter() - started
     print(f"[done] wrote result to {out_path}")
     print(f"[done] paper_id={paper_id} elapsed={elapsed:.1f}s")

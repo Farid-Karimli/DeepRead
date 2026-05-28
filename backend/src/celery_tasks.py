@@ -1,6 +1,18 @@
 import asyncio
+from functools import cache
+import hashlib
 import logging
 import time
+
+from src.types import (
+CodeToContentInputs, 
+CodeToContentResult, 
+ContentToCodeInputs, 
+ContentToCodeResult, 
+KeySectionsResult, 
+PaperMappingRecord,
+PaperMageResult,
+)
 
 from src import process_pdf
 from celery import Celery
@@ -9,10 +21,11 @@ from io import BytesIO
 
 
 from src.agent import Agent
-from src.db import update_paper_metadata
+from src.db import get_paper_record_by_id, upsert_mapping_result, upsert_paper
 from src.paper_analysis_cache import get_cached_result, set_cached_result
 from src.config import REDIS_URL, SUPABASE_URL, SUPABASE_KEY
-from src.process_pdf import ProcessedPdf, papermage_process
+from src.process_pdf import papermage_process
+from src.types import PaperMageResult, KeySectionsResult
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +51,7 @@ def test_task():
 def process_pdf_task(
     file_raw: bytes | BytesIO,
 ):
-    processed_pdf: ProcessedPdf = papermage_process(file_input=file_raw)
+    processed_pdf: PaperMageResult = papermage_process(file_input=file_raw)
     return processed_pdf
 
 @celery.task(name="analyze_paper")
@@ -61,21 +74,22 @@ def analyze_paper_task(
         A dictionary containing the analysis result.
     """
     label = original_filename or "(no filename)"
-    cached = get_cached_result(paper_id)
-    if cached is not None:
-        logger.info("paper analysis cache hit paper_id=%s file=%s", paper_id, label)
-        return cached
+    # cached = get_cached_result(paper_id)
+    # if cached is not None:
+    #     logger.info("paper analysis cache hit paper_id=%s file=%s", paper_id, label)
+    #     return cached
 
-    logger.info("paper analysis cache miss paper_id=%s file=%s", paper_id, label)
+    #logger.info("paper analysis cache miss paper_id=%s file=%s", paper_id, label)
 
     logger.info("using papermage to process pdf")
-    papermage_result: ProcessedPdf = papermage_process(file_input=paper_raw)
+    papermage_result: PaperMageResult = papermage_process(file_input=paper_raw)
     logger.info("paper processed.")
 
     agent = Agent()
-    analysis_result = asyncio.run(agent.analyze_paper(file_input=paper_raw, papermage_process_result=papermage_result))
-    set_cached_result(paper_id, analysis_result, papermage_result=papermage_result)
+    analysis_result: KeySectionsResult = asyncio.run(agent.analyze_paper(file_input=paper_raw, papermage_process_result=papermage_result))
 
+    title = None
+    link = None
     if isinstance(analysis_result, dict):
         title = analysis_result.get("paper_title")
         link = analysis_result.get("github_repo_url")
@@ -86,22 +100,29 @@ def analyze_paper_task(
             ct = code_result.get("paper_title")
             if isinstance(ct, str):
                 title = ct
-        update_paper_metadata(
-            paper_id,
-            paper_title=title if isinstance(title, str) else None,
-            github_link=link if isinstance(link, str) else None,
-        )
+
     unified_result = {
         "analysis": analysis_result,
         "processed": papermage_result
     }
+
+    upsert_paper(
+        paper_id=paper_id,
+        paper_title=title if isinstance(title, str) else None,
+        github_link=link if isinstance(link, str) else None,
+        analysis_result=analysis_result,
+        papermage_result=papermage_result
+    )
+
     return unified_result
 
-@celery.task(name='map_content')
-def map_content_task(
+@celery.task(name='map_content_to_code')
+def map_content_to_code_task(
     content: str | bytes | BytesIO,
     repo_url: str,
-    context: str
+    context: str,
+    cache_key: str,
+    paper_id: str
 ):
     agent = Agent()
     result = asyncio.run(agent.map_content_to_code(
@@ -109,16 +130,41 @@ def map_content_task(
         repo_url=repo_url,
         context=context
     ))
+    
+    record = PaperMappingRecord(
+        mapping_type="content_to_code",
+        cache_key=cache_key,
+        inputs=ContentToCodeInputs(content=content, repo_url=repo_url, context=context),
+        outputs=ContentToCodeResult(code_snippet=result),
+        paper_id=paper_id
+    )
+    upsert_mapping_result(record)
     return result
 
 @celery.task(name='map_code_to_content')
 def map_code_to_content_task(
     code: str,
-    paper_id: str
+    paper_id: str,
+    cache_key: str,
 ):
     agent = Agent()
+    paper_record = get_paper_record_by_id(paper_id)
+    if paper_record is None:
+        raise ValueError(f"No paper record found for id {paper_id}.")
+
     result = asyncio.run(agent.map_code_to_content(
         code=code,
-        paper_id=paper_id
+        paper_record=paper_record
     ))
-    return result
+
+    print(result)
+    sections = result.get("sections", []) if isinstance(result, dict) else []
+    record = PaperMappingRecord(
+        mapping_type="code_to_content",
+        cache_key=cache_key,
+        paper_id=paper_id, 
+        inputs=CodeToContentInputs(code=code),
+        outputs=CodeToContentResult(sections=sections),
+    )
+    upsert_mapping_result(record)
+    return sections
