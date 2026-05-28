@@ -5,29 +5,31 @@ import logging
 import time
 
 from src.types import (
-CodeToContentInputs, 
-CodeToContentResult, 
-ContentToCodeInputs, 
-ContentToCodeResult, 
-KeySectionsResult, 
-PaperMappingRecord,
-PaperMageResult,
+    CodeToContentInputs,
+    CodeToContentResult,
+    ContentToCodeInputs,
+    ContentToCodeResult,
+    KeySectionsResult,
+    PaperMappingRecord,
+    PaperMageResult,
 )
 
-from src import process_pdf
 from celery import Celery
 from pydantic import BaseModel
 from io import BytesIO
 
-
 from src.agent import Agent
 from src.db import get_paper_record_by_id, upsert_mapping_result, upsert_paper
-from src.paper_analysis_cache import get_cached_result, set_cached_result
-from src.config import REDIS_URL, SUPABASE_URL, SUPABASE_KEY
-from src.process_pdf import papermage_process
-from src.types import PaperMageResult, KeySectionsResult
+from src.config import REDIS_URL
 
 logger = logging.getLogger(__name__)
+
+
+def _papermage_process(file_input) -> PaperMageResult:
+    """Defer papermage/OpenCV import until a PDF task runs."""
+    from src.process_pdf import papermage_process
+
+    return papermage_process(file_input=file_input)
 
 celery = Celery(
     __name__,
@@ -51,7 +53,7 @@ def test_task():
 def process_pdf_task(
     file_raw: bytes | BytesIO,
 ):
-    processed_pdf: PaperMageResult = papermage_process(file_input=file_raw)
+    processed_pdf: PaperMageResult = _papermage_process(file_raw)
     return processed_pdf
 
 @celery.task(name="analyze_paper")
@@ -82,7 +84,7 @@ def analyze_paper_task(
     #logger.info("paper analysis cache miss paper_id=%s file=%s", paper_id, label)
 
     logger.info("using papermage to process pdf")
-    papermage_result: PaperMageResult = papermage_process(file_input=paper_raw)
+    papermage_result: PaperMageResult = _papermage_process(paper_raw)
     logger.info("paper processed.")
 
     agent = Agent()

@@ -1,8 +1,16 @@
 FROM python:3.12-slim-bookworm
 
+# OpenCV (papermage/layoutparser) needs X11/GL shared libs even in headless Cloud Run.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     ca-certificates \
+    libglib2.0-0 \
+    libgl1 \
+    libgomp1 \
+    libsm6 \
+    libxcb1 \
+    libxext6 \
+    libxrender1 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
