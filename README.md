@@ -1,79 +1,40 @@
 # DeepRead
 
-Bridging the Gap Between Academic Theory and Implementation.
+Bridging the gap between academic papers and their implementations. Upload a research PDF (or provide a link); DeepRead locates the paper’s GitHub repository, segments the document with PaperMage, and uses an LLM agent to map key sections to code. The web UI shows the PDF next to the repo: section highlights link paper regions to implementation snippets, and you can select text in the paper or code in the repo to request on-demand mappings. Results are cached in Supabase so repeat visits load quickly.
 
-DeepRead is an augmented research consumption system designed to eliminate the "documentation debt" in ML and HCI research. It creates a live, bidirectional mapping between a research PDF and its source code, allowing researchers to see exactly how abstract equations and methods are implemented in practice.
-
-## Status
-
-This project is currently being developed at Boston University. We aim to evaluate how DeepRead reduces cognitive load and improves implementation accuracy for graduate-level researchers.
+This project is developed at Boston University.
 
 ## Get Started
 
-This project uses [uv](https://docs.astral.sh/uv/#projects) and the [Claude Code SDK](https://platform.claude.com/docs/en/agent-sdk/overview). Follow the respective instructions to these up.
+You need an Anthropic API key and a Supabase project (`SUPABASE_URL`, `SUPABASE_KEY`) for paper storage and mapping cache.
 
-To start using DeepRead:
+**Docker**
 
-```{python}
+```bash
 git clone https://github.com/Farid-Karimli/DeepRead.git
 cd DeepRead
-uv sync
-source .venv/bin/activate # If on Windows, .venv\Scripts\Activate
+cp env.docker.example .env
+# Edit .env: ANTHROPIC_API_KEY, SUPABASE_URL, SUPABASE_KEY
+docker compose up --build
 ```
 
-Run the test scripts:
+Open http://localhost:8080 for the UI and http://localhost:8000 for the API. Compose starts Redis, the FastAPI server, a Celery worker, and the built frontend.
 
-```{python}
-uv run python deepread/main.py
+**Local development**
+
+Requires [uv](https://docs.astral.sh/uv/), Node.js, and Redis on port 6379.
+
+```bash
+git clone https://github.com/Farid-Karimli/DeepRead.git
+cd DeepRead
+cp env.docker.example .env
+# Add Supabase keys; REDIS_URL defaults to redis://localhost:6379/0
+
+cd backend && uv sync
+cd ../frontend && npm install
+cd .. && make up
 ```
 
-**Something to be aware of**:
+UI at http://localhost:5173, API at http://localhost:8000. Use `make down`, `make status`, and `make logs` to manage processes.
 
-There's a bug in Claude Code SDK where the LLM ignores explicitly set output schema. For that reason, you might see 'No result found...', but the print result should show the result. Often times, Claude adds a little text before providing JSON, like "Based on the context, here is the...".
-
-## Run with Docker
-
-You need [Docker](https://docs.docker.com/get-docker/) with Compose V2.
-
-1. From the repository root, create a `.env` file (Compose reads it for variable substitution):
-
-   ```bash
-   cp env.docker.example .env
-   ```
-
-   Set `ANTHROPIC_API_KEY` (and any other keys your Claude / agent setup needs).
-
-2. Build and start **Redis**, **API** (FastAPI on port 8000), **Celery worker**, and **web** (nginx + static UI on port 8080):
-
-   ```bash
-   docker compose up --build
-   ```
-
-3. Open the UI at **http://localhost:8080** and use the API at **http://localhost:8000**.
-
-Dockerfiles live in `backend/Dockerfile` and `frontend/Dockerfile`; `docker-compose.yml` wires everything together.
-
-The frontend calls the API using `VITE_API_URL`, baked in at **build** time (default `http://127.0.0.1:8000`, matching the published API port). Change the `web.build.args.VITE_API_URL` value in `docker-compose.yml` and rebuild if your API is on another origin.
-
-Inside the stack, Celery and the paper-analysis cache use `REDIS_URL=redis://redis:6379/0` (set automatically in Compose).
-
-## Planned Features
-
-- Semantic Cross-Linking: Click an equation or a paragraph in the PDF to instantly highlight the corresponding implementation in the repository.
-
-- Gap Analysis: Automatically identifies "missing" logic—flagging instances where a paper claims a method that isn't reflected in the released code.
-
-- Implementation Tooltips: Hover over technical jargon in the text to see a "Code-First" explanation (e.g., seeing the PyTorch tensor shapes for a "spatio-temporal mask").
-
-- Faithfulness Scoring: A heuristic-driven metric that evaluates how closely the code follows the paper’s conventions and completeness.
-
-## How it Works
-
-- PDF Parsing: Extracts text, equations, and figures using specialized LaTeX-aware parsers.
-
-- Repo Analysis: Scans the linked GitHub repository, building a dependency graph of the codebase.
-
-- Alignment Engine: Uses a combination of LLMs and static analysis to map mathematical symbols and method descriptions to specific code snippets.
-
-- Interactive UI: A split-pane web interface for synchronized reading and code exploration.
-  
+For Cloud Run deployment, see `deploycommands.md`.
