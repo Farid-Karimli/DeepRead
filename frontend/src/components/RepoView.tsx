@@ -52,8 +52,20 @@ const RepoView = ({ tree, paperId, setPaperHighlightSections }: RepoViewProps) =
 
         setCodeMappingLoading(true);
         mapCodeToContent(pendingCodeSelection.text, paperId)
-            .then((taskId) => {
-                setCodeMappingTaskId(taskId);
+            .then((response) => {
+                if (response.status === 'SUCCESS') {
+                    console.log('Code mapping successful', response.result);
+                    setCodeMappingLoading(false);
+                    if (!response.result) {
+                        console.error('No result found');
+                        return;
+                    }
+                    const result: any = response.result;
+                    setPaperHighlightSections(result);
+                }
+                else {
+                    setCodeMappingTaskId(response.task_id);
+                }
             })
             .catch((error) => {
                 console.error('error', error);
@@ -81,16 +93,16 @@ const RepoView = ({ tree, paperId, setPaperHighlightSections }: RepoViewProps) =
             }
 
             if (status.status === 'FAILURE') {
-                console.error('Code mapping failed', status.error);
+                console.error('Code mapping failed');
                 setCodeMappingLoading(false);
                 setCodeMappingTaskId(null);
                 setPendingCodeSelection(null);
                 return;
             }
 
-            if (status.status === 'SUCCESS' && status.result?.sections) {
+            if (status.status === 'SUCCESS' && status.result) {
                 setCodeMappingLoading(false);
-                setPaperHighlightSections(status.result.sections);
+                setPaperHighlightSections(status.result);
                 setCodeMappingTaskId(null);
                 setPendingCodeSelection(null);
                 return;
@@ -220,6 +232,15 @@ const RepoView = ({ tree, paperId, setPaperHighlightSections }: RepoViewProps) =
                 highlightEnds={highlightRanges?.map((highlightRange) => highlightRange.end)}
                 scrollFocusStart={scrollFocusRange?.start}
                 scrollFocusEnd={scrollFocusRange?.end}
+                onClearHighlight={
+                    highlightRanges && highlightRanges.length > 0
+                        ? () => {
+                            setHighlightRanges([]);
+                            setScrollFocusRange(null);
+                            setCurrentCodeDescription(null);
+                        }
+                        : undefined
+                }
             /> : <div className="repo-tree__list">
                 {getCurrentFiles().map((file, index) => (
                     <div key={index} className="repo-tree__row">

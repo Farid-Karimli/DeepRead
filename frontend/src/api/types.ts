@@ -104,12 +104,15 @@ interface processPDFResult {
 }
 
 interface mapContentTaskResponse {
-    task_id: string;
+    status: string;
+    task_id: string | null;
+    result: codeSnippet | null
 }
+
 
 interface mapContentResponse {
     status: string;
-    result?: codeSnippet;
+    result: codeSnippet | null;
 }
 
 interface codeToContentMappingResult {
@@ -118,8 +121,8 @@ interface codeToContentMappingResult {
 
 interface mapCodeToContentResponse {
     status: string;
-    result?: codeToContentMappingResult;
-    error?: string;
+    result: { section_id: string; description: string }[] | null;
+    task_id: string | null;
 }
 
 export type { codeSection, 

@@ -10,7 +10,7 @@ import {
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import { type codeSectionsResult, type githubRepoTreeResponse, mapContentToCode, getContentMappingStatus } from '../api/main.ts';
-import type { processPDFResult } from '../api/types.ts';
+import type { codeSnippet, processPDFResult } from '../api/types.ts';
 import { HighlightOverlayDemo, type BoundingBoxWithTooltip } from './CodeOverlay.tsx';
 import { useSidePanel, type CodeInfo } from '../context/SidePanelContext.tsx';
 import RepoView from './RepoView.tsx';
@@ -186,6 +186,7 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
     
             const content = pendingSelection.text;
             const repoUrl = githubRepoUrl;
+            const paperIdInput = paperId;
             if (!repoUrl) {
                 console.error('No GitHub repository URL found');
                 return;
@@ -196,8 +197,25 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
                 context = "";
             }
             setContentMappingLoading(true);
-            mapContentToCode(content, repoUrl, context).then((taskId) => {
-                setMappingTaskId(taskId);
+            mapContentToCode(content, repoUrl, context, paperIdInput).then((response) => {
+                if (response.status === 'SUCCESS') {
+                    setContentMappingLoading(false);
+                    if (!response.result) {
+                        console.error('No snippet found');
+                        return;
+                    }
+                    const snippet: any = response.result;
+                    const codeInfoToShow: CodeInfo = {
+                        filePath: snippet.filepath,
+                        codeRanges: [{ startLine: snippet.start_line, endLine: snippet.end_line }],
+                        description: snippet.description,
+                    }
+                    showCode(codeInfoToShow);
+                    setPendingSelection(null);
+                }
+                else {
+                    setMappingTaskId(response.task_id);
+                }
             }).catch((error) => {
                 console.error('error', error);
                 setMappingTaskId(null);
@@ -259,6 +277,15 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
                     >
                         Clear Environment
                     </button>
+                    {paperHighlightSections.length > 0 && <button
+                        type="button"
+                        className="outline-action-btn temp-action-btn"
+                        onClick={() => {
+                            setPaperHighlightSections([]);
+                        }}
+                    >
+                        Clear Paper Highlights
+                    </button>}
                 </div>
 
                 {!hasRealFile ? (
