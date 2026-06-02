@@ -6,12 +6,12 @@ import time
 from uuid import uuid4
 
 from pathlib import Path
-from pprint import pprint
-from io import BufferedIOBase, BytesIO
+from io import BufferedIOBase
 from src.types import PaperRecord
 from claude_agent_sdk import ClaudeAgentOptions, query, ResultMessage
+import weave
 
-from src.search import search_github
+from src.search import search_github, brave_find_github_repo
 from src.utils import clone_repo_to_temp_dir, delete_temp_dir, normalize_github_repo_url, print_event
 from src.agent_utils import (
     extract_github_urls_from_pdf, 
@@ -25,6 +25,7 @@ from src.agent_utils import (
     _parse_json_result, 
     EventCallback
 )
+from src.config import WANDB_API_KEY
 
 from src.prompts import (
     build_identify_key_sections_prompt,
@@ -38,6 +39,7 @@ from src.rerank import Reranker
 
 import logging
 import warnings
+
 logging.basicConfig(
     level=logging.ERROR,
     format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
@@ -47,6 +49,7 @@ warnings.filterwarnings("ignore")
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
+weave.init("gardoslab/deepread")
 
 def _summarize_sections(sections: list[dict], max_items: int = 8) -> list[dict]:
     summary = [
@@ -96,7 +99,7 @@ class Agent:
         logger.info(f"Finding GitHub repository for paper: {title} by {authors}")
         return brave_find_github_repo(paper_title=title, paper_authors=authors, deep_search=True)
 
-
+    
     async def identify_key_sections(
         self,
         paper_content: str = None,
@@ -162,6 +165,7 @@ class Agent:
                 parsed_result["github_repo_url"] = normalized
         return parsed_result
 
+    @weave.op()
     async def identify_key_sections_v2(
         self, 
         papermage_process_result: dict,
@@ -214,6 +218,7 @@ class Agent:
         )
         return parsed_result
 
+    @weave.op()
     async def map_key_sections_to_code(
         self,
         key_sections: dict,
@@ -286,6 +291,7 @@ class Agent:
         return parsed_result
 
 
+    @weave.op()
     async def map_content_to_code(
         self,
         content: str | bytes,
@@ -358,6 +364,7 @@ class Agent:
         top_rank_index = max(reranked_results, key=lambda x: x.get("relevance_score")).get("index")
         return result[top_rank_index]
 
+    @weave.op()
     async def map_code_to_content(
         self, 
         code: str,
@@ -445,7 +452,7 @@ class Agent:
                 break
 
         if github_repo_url:
-            key_sections["github_repo_url"] = github_repo_url
+            key_sections["github_repo_url"] = github_repo_url 
         else:
             raise ValueError("No GitHub repository URL found.")
 
@@ -489,17 +496,11 @@ class Agent:
 
 
 if __name__ == "__main__":
-    agent = Agent()
+    with open(f"./papers/mistakes.pdf", "rb") as f:
+        paper_raw = f.read()
 
-    with open(f"./pretraining-papermage.json", 'r') as papermage_file:
-        papermage_result = json.load(papermage_file)
-        
-    with open(f"./papers/pretraining-rl.pdf", 'rb') as paper_file:
-        paper_raw = paper_file.read()
-    
-    final_result = asyncio.run(agent.analyze_paper(file_input=paper_raw, papermage_process_result=papermage_result))
-        
-    with open(f"./pretraining-rl.analyze_paper.final-result.json", 'w') as f:
-        json.dump(final_result, f, indent=4)
+    agent = Agent()
+    result = asyncio.run(agent.find_github_repo(paper_raw))
+    print(result)
 
     
