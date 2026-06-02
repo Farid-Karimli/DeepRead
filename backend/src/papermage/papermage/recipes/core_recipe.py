@@ -101,7 +101,6 @@ class CoreRecipe(Recipe):
 
     def from_pdf(self, pdf: Path | bytes | BytesIO) -> Document:
         self.logger.info("Parsing document...")
-        print(type(pdf))
 
         if isinstance(pdf, (str, Path)):
             doc = self.parser.parse(input_pdf_path=str(pdf))

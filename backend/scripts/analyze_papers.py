@@ -32,11 +32,12 @@ from urllib.parse import unquote, urlparse
 
 import requests
 
-from backend.src.types import PaperRecord
 
 REPO_BACKEND = Path(__file__).resolve().parents[1]
 if str(REPO_BACKEND) not in sys.path:
     sys.path.insert(0, str(REPO_BACKEND))
+
+from src.types import PaperRecord
 
 
 @dataclass(frozen=True)
@@ -161,11 +162,14 @@ async def _analyze_one(
                 title, link = _extract_metadata(analysis)
                 print("[step] upserting cached Supabase paper row...")
                 upsert_paper(
-                    paper_id=paper_id,
-                    paper_title=title,
-                    github_link=link,
-                    analysis_result=analysis,
-                    papermage_result=processed,
+                    PaperRecord(
+                        id=paper_id,
+                        paper_title=title,
+                        github_link=link,
+                        created_at=datetime.now(),
+                        analysis_result=analysis,
+                        papermage_result=processed,
+                    )
                 )
             out_path = _output_path(out_dir, upload.filename, paper_id)
             out_path.write_text(json.dumps(cached, indent=2, ensure_ascii=False), encoding="utf-8")

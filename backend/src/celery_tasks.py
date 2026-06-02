@@ -1,6 +1,5 @@
 import asyncio
-from functools import cache
-import hashlib
+import json
 import logging
 import time
 
@@ -159,7 +158,6 @@ def map_code_to_content_task(
         paper_record=paper_record
     ))
 
-    print(result)
     sections = result.get("sections", []) if isinstance(result, dict) else []
     record = PaperMappingRecord(
         mapping_type="code_to_content",

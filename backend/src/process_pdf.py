@@ -14,8 +14,11 @@ from papermage.magelib.span import Span
 from papermage.recipes import CoreRecipe
 from papermage.rasterizers.rasterizer import PDF2ImageRasterizer
 
+import logging
+
+logger = logging.getLogger("PAPERMAGE_PROCESSOR")
+
 def papermage_process(file_input: Path | bytes) -> PaperMageResult:
-    print("Parsing PDF with CoreRecipe...", file=sys.stderr)
     recipe = CoreRecipe()
     doc = recipe.run(file_input, filetype="pdf")
     display_width = 900
@@ -31,10 +34,25 @@ def papermage_process(file_input: Path | bytes) -> PaperMageResult:
     )
 
     # Add abstract for model context
-    content = doc.symbols
-    abstract = [abstract for abstract in doc.abstracts if len(abstract.text) > 5][0]
-    abstract_content = abstract.text
-    abstract_box = abstract.boxes[0]
+
+    if len(doc.abstracts) == 0:
+        logger.warning("No abstract found directly, looking at the first section...")
+        first_section = doc.sections[0]
+        if "abstract" in first_section.text.lower().replace(" ", ""):
+            abstract_start = first_section.start
+            abstract_end = first_section.end
+
+            abstract_content = doc.symbols[abstract_start:abstract_end].strip()
+            abstract_box = first_section.boxes[0]
+        else:
+            logger.warning("No abstract found!")
+            abstract_content = "abstract not found"
+            abstract_box = BoxModel(page=0, l=0, t=0, w=0, h=0)
+    else:
+        abstract = [abstract for abstract in doc.abstracts][0]
+        abstract_content = abstract.text
+        abstract_box = abstract.boxes[0]
+
     result_payload.sections.append(
         SectionEntity(entity_id=f"abstract", 
                 section_header="abstract", 
@@ -60,7 +78,6 @@ def papermage_process(file_input: Path | bytes) -> PaperMageResult:
         body_end = sections[i + 1].start if i + 1 < len(sections) else len(doc.symbols)
 
         box = section.boxes[0]
-        rows = section.rows
         
         section_header = section.text
         section_content = doc.symbols[body_start:body_end].strip()

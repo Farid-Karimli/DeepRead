@@ -1,7 +1,7 @@
 import requests
 from pprint import pprint
 
-from src.config import BRAVE_SEARCH_API_KEY
+from src.config import BRAVE_SEARCH_API_KEY, BRAVE_ANSWERS_API_KEY
 
 
 def search_github(query: str) -> list[dict]:
@@ -11,7 +11,8 @@ def search_github(query: str) -> list[dict]:
         query += " site:github.com"
     
     params = {
-        "q": query
+        "q": query, 
+        "extra_snippets": "true"
     }
     headers = {
         "Accept": "application/json",
@@ -30,6 +31,36 @@ def search_github(query: str) -> list[dict]:
 
     return result
 
+def brave_find_github_repo(paper_title: str, paper_authors: str, deep_search: bool = False) -> str:
+    url = "https://api.search.brave.com/res/v1/chat/completions"
+    data = {
+        "stream": False, 
+        "messages": [
+            {
+                "role": "user", 
+                "content": 
+                
+                f"""
+                What is the GitHub repository URL for the following paper: {paper_title} by {", ".join(paper_authors)}? 
+                Return only the GitHub repository URL, no other text.
+                """
+            }
+        ],
+        "extra_body": {
+            "enable_research": deep_search
+        }
+    }
+
+    headers = {
+        "Content-Type": "application/json",
+        "X-Subscription-Token": BRAVE_ANSWERS_API_KEY
+    }
+
+    response = requests.post(url, json=data, headers=headers).json()
+    return response.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+
+
 if __name__ == "__main__":
-    result = search_github("Linear Bandits with Memory: from Rotting to Rising")
+    q = "Mistake Attribution: Fine-Grained Mistake Understanding in Egocentric Videos by Yayuan Li, Aadit Jain, Filippos Bellos, Jason J. Corso"
+    result = search_github(q)
     pprint(result)
