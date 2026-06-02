@@ -36,8 +36,6 @@ from src.prompts import (
 
 from src.rerank import Reranker
 
-from src.paper_analysis_cache import get_cached_result
-
 import logging
 import warnings
 logging.basicConfig(
@@ -89,28 +87,15 @@ class Agent:
         return result
 
     async def find_github_repo(self,
-        paper_content: str = None,
-        paper_path: str = None,
+        paper_input: str | bytes,
     ) -> str:
 
-        paper_info = extract_paper_info(paper_content)
-        if paper_info is None:
-            raise ValueError("No paper info found.")
+        paper_info = extract_paper_info(paper_input)
         title = paper_info.get("title")
-        if title is None:
-            raise ValueError("No title found in paper info.")
         authors = paper_info.get("authors")
-        if authors is None:
-            raise ValueError("No authors found in paper info.")
+        logger.info(f"Finding GitHub repository for paper: {title} by {authors}")
+        return brave_find_github_repo(paper_title=title, paper_authors=authors, deep_search=True)
 
-        search_results = search_github(query=f"{title} {authors}")
-        if len(search_results) == 0:
-            raise ValueError("No search results found.")
-        for result in search_results:
-            normalized = normalize_github_repo_url(result.get("url"))
-            if normalized:
-                return normalized
-        raise ValueError("No valid GitHub repository URLs found in search results.")
 
     async def identify_key_sections(
         self,
@@ -449,14 +434,8 @@ class Agent:
         logger.info("analyze_paper: key sections completed duration=%.2fs", time.perf_counter() - key_sections_started_at)
         logger.info("analyze_paper: selected key sections count=%d", len(key_sections['sections']))
 
-        url_started_at = time.perf_counter()
         github_candidates = extract_github_urls_from_pdf(paper_raw)
-        logger.info(
-            "analyze_paper: extracted github URL candidates duration=%.2fs count=%d candidates=%s",
-            time.perf_counter() - url_started_at,
-            len(github_candidates),
-            github_candidates,
-        )
+
         github_repo_url = None
         for candidate_url in github_candidates:
             normalized_url = normalize_github_repo_url(candidate_url)
@@ -464,14 +443,11 @@ class Agent:
                 github_repo_url = normalized_url
                 logger.info("analyze_paper: using github URL=%s", github_repo_url)
                 break
+
         if github_repo_url:
             key_sections["github_repo_url"] = github_repo_url
-
-        if not github_repo_url:
-            raise ValueError(
-                "No GitHub repository URL found in this paper. "
-                "DeepRead requires a paper that links to a public GitHub repository."
-            )
+        else:
+            raise ValueError("No GitHub repository URL found.")
 
         clone_started_at = time.perf_counter()
         repo_local_dir = clone_repo_to_temp_dir(github_repo_url)
