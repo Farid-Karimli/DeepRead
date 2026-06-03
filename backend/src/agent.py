@@ -11,7 +11,7 @@ from io import BufferedIOBase, BytesIO
 from src.types import PaperRecord
 from claude_agent_sdk import ClaudeAgentOptions, query, ResultMessage
 
-from src.search import search_github
+from src.search import search_github, brave_find_github_repo, find_verified_github_repo
 from src.utils import clone_repo_to_temp_dir, delete_temp_dir, normalize_github_repo_url, print_event
 from src.agent_utils import (
     extract_github_urls_from_pdf, 
@@ -434,7 +434,10 @@ class Agent:
         logger.info("analyze_paper: key sections completed duration=%.2fs", time.perf_counter() - key_sections_started_at)
         logger.info("analyze_paper: selected key sections count=%d", len(key_sections['sections']))
 
-        github_candidates = extract_github_urls_from_pdf(paper_raw)
+        try:
+            github_candidates = extract_github_urls_from_pdf(paper_raw)
+        except ValueError:
+            github_candidates = []
 
         github_repo_url = None
         for candidate_url in github_candidates:
@@ -443,6 +446,10 @@ class Agent:
                 github_repo_url = normalized_url
                 logger.info("analyze_paper: using github URL=%s", github_repo_url)
                 break
+
+        if not github_repo_url:
+            github_repo_url = find_verified_github_repo(paper_raw)
+            logger.info("analyze_paper: using github URL (brave fallback)=%s", github_repo_url)
 
         if github_repo_url:
             key_sections["github_repo_url"] = github_repo_url
