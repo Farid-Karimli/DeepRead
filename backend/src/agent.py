@@ -97,10 +97,6 @@ class Agent:
         logger.info(f"Finding GitHub repository for paper: {title} by {authors}")
         return brave_find_github_repo(paper_title=title, paper_authors=authors, deep_search=True)
 
-        logger.info(f"Finding GitHub repository for paper: {title} by {authors}")
-        return brave_find_github_repo(paper_title=title, paper_authors=authors, deep_search=True)
-
-
     async def identify_key_sections(
         self,
         paper_content: str = None,
