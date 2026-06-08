@@ -88,11 +88,16 @@ class Agent:
 
     async def find_github_repo(self,
         paper_input: str | bytes,
+        paper_input: str | bytes,
     ) -> str:
 
         paper_info = extract_paper_info(paper_input)
+        paper_info = extract_paper_info(paper_input)
         title = paper_info.get("title")
         authors = paper_info.get("authors")
+        logger.info(f"Finding GitHub repository for paper: {title} by {authors}")
+        return brave_find_github_repo(paper_title=title, paper_authors=authors, deep_search=True)
+
         logger.info(f"Finding GitHub repository for paper: {title} by {authors}")
         return brave_find_github_repo(paper_title=title, paper_authors=authors, deep_search=True)
 
@@ -453,6 +458,8 @@ class Agent:
 
         if github_repo_url:
             key_sections["github_repo_url"] = github_repo_url
+        else:
+            raise ValueError("No GitHub repository URL found.")
         else:
             raise ValueError("No GitHub repository URL found.")
 

@@ -1,11 +1,14 @@
 import io
 import re
 from urllib.parse import urlparse
+from urllib.parse import urlparse
 
 import pypdf
 import anthropic
 import json
 import pdfplumber
+import requests
+from bs4 import BeautifulSoup
 import requests
 from bs4 import BeautifulSoup
 
@@ -172,6 +175,7 @@ EventCallback = Callable[[StreamEvent], None]
 
 
 GITHUB_URL_RE = re.compile(r"https?://(?:www\.)?github\.com/[^\s<>()\[\]{}\"']+", re.IGNORECASE)
+GITHUB_IO_URL_RE = re.compile(r"https?://(?:[a-z0-9-]+\.)*[a-z0-9-]+\.github\.io(?:/[^\s<>()\[\]{}\"']*)?", re.IGNORECASE)
 GITHUB_IO_URL_RE = re.compile(r"https?://(?:[a-z0-9-]+\.)*[a-z0-9-]+\.github\.io(?:/[^\s<>()\[\]{}\"']*)?", re.IGNORECASE)
 
 
@@ -416,6 +420,19 @@ def extract_paper_info(paper_input: str | bytes) -> dict:
     else:
         paper_content = paper_input
                 
+def extract_paper_info(paper_input: str | bytes) -> dict:
+    
+    if isinstance(paper_input, bytes):
+        paper_content = ""
+
+        with pdfplumber.open(io.BytesIO(paper_input)) as pdf:
+            for page in pdf.pages:
+                text = page.extract_text()
+                if text:
+                    paper_content += text
+    else:
+        paper_content = paper_input
+                
     client = anthropic.Anthropic(
         api_key=ANTHROPIC_API_KEY
     )
@@ -623,7 +640,60 @@ def rank_candidates(candidates: list[str], page_url: str) -> list[str]:
     
     return sorted(candidates, key=score, reverse=True)
 
+
+def extract_github_repo_links(page_url: str) -> list[str]:
+    resp = requests.get(page_url, timeout=10)
+    soup = BeautifulSoup(resp.text, "html.parser")
+    
+    seen = set()
+    candidates = []
+    
+    for tag in soup.find_all("a", href=True):
+        href = tag["href"]
+        # Normalize relative URLs
+        if href.startswith("/"):
+            parsed = urlparse(page_url)
+            href = f"{parsed.scheme}://{parsed.netloc}{href}"
+        
+        # Only keep github.com/owner/repo shaped URLs
+        match = re.match(r'https://github\.com/([^/]+)/([^/?#]+)', href)
+        if match and href not in seen:
+            seen.add(href)
+            candidates.append(href)
+
+    return candidates
+
+def rank_candidates(candidates: list[str], page_url: str) -> list[str]:
+    def score(url: str) -> int:
+        s = 0
+        path = urlparse(url).path.lower().strip("/")
+        parts = path.split("/")
+        
+        # Penalize non-repo links
+        if len(parts) != 2:           return -100  # e.g. github.com/org
+        if parts[1] in ("issues", "pulls", "wiki", "releases"): return -50
+        
+        # Prefer links in prominent positions (Code button, etc.)
+        # (you'd pass tag context here — see note below)
+        
+        # Prefer if owner matches page domain
+        page_domain = urlparse(page_url).netloc  # e.g. mylab.github.io
+        if parts[0] in page_domain:
+            s += 10
+        
+        # Prefer links with "code" or "github" anchor text
+        # (also requires tag context)
+        
+        return s
+    
+    return sorted(candidates, key=score, reverse=True)
+
 if __name__ == "__main__":
+    with open("./papers/mistakes.pdf", "rb") as f:
+        paper_content = f.read()
+    urls = extract_github_urls_from_pdf(paper_content)
+    print(urls)
+
     with open("./papers/mistakes.pdf", "rb") as f:
         paper_content = f.read()
     urls = extract_github_urls_from_pdf(paper_content)
