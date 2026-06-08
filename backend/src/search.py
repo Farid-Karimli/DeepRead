@@ -28,8 +28,6 @@ def search_github(query: str) -> list[dict]:
     params = {
         "q": query, 
         "extra_snippets": "true"
-        "q": query, 
-        "extra_snippets": "true"
     }
     headers = {
         "Accept": "application/json",

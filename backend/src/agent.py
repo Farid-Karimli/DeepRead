@@ -88,7 +88,6 @@ class Agent:
 
     async def find_github_repo(self,
         paper_input: str | bytes,
-        paper_input: str | bytes,
     ) -> str:
 
         paper_info = extract_paper_info(paper_input)
@@ -458,8 +457,6 @@ class Agent:
 
         if github_repo_url:
             key_sections["github_repo_url"] = github_repo_url
-        else:
-            raise ValueError("No GitHub repository URL found.")
         else:
             raise ValueError("No GitHub repository URL found.")
 
