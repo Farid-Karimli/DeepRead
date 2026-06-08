@@ -361,13 +361,8 @@
   opacity: 0;
 }
 
-/* PaperView: viewport-height split; PDF and code each scroll inside their own pane (no body scroll chaining). */
+/* PaperView: full viewport shell; react-resizable-panels Group owns the split. */
 .paper-view-layout {
-  display: flex;
-  flex-direction: row;
-  justify-content: flex-start;
-  align-items: stretch;
-  gap: 0;
   box-sizing: border-box;
   height: 100vh;
   height: 100dvh;
@@ -375,8 +370,29 @@
   overflow: hidden;
 }
 
-.paper-view-layout__pdf-panel {
-  flex: 0 0 53%;
+.paper-view-layout__group {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.paper-view-layout__separator {
+  margin: 0 5px;
+  flex: 0 0 1px;
+  width: 10px;
+  background: gray;
+}
+
+.paper-view-layout__separator:hover {
+  margin: 0 5px;
+  flex: 0 0 1px;
+  width: 10px;
+  background: red;
+}
+
+.paper-view-layout__pdf-panel,
+.paper-view-layout__code-panel {
+  height: 100%;
   min-width: 0;
   min-height: 0;
   display: flex;
@@ -562,18 +578,6 @@
   flex: 1;
   min-height: 0;
   overflow: auto;
-  overscroll-behavior: contain;
-}
-
-.paper-view-layout__code-panel {
-  flex: 1 1 47%;
-  min-width: 0;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  border-left: 1px solid var(--border, #333);
-  box-sizing: border-box;
   overscroll-behavior: contain;
 }
 

@@ -8,6 +8,7 @@ import {
     TransformContext,
 } from '@allenai/pdf-components';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Group, Panel, Separator } from "react-resizable-panels";
 
 import { type codeSectionsResult, type githubRepoTreeResponse, mapContentToCode, getContentMappingStatus } from '../api/main.ts';
 import type { codeSnippet, processPDFResult } from '../api/types.ts';
@@ -267,26 +268,28 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
 
     return (
         <div className="paper-view-layout">
+            <Group orientation="horizontal" className="paper-view-layout__group">
+            <Panel defaultSize={53} minSize={15}>
             <section id="paper-viewer" className="paper-view-layout__pdf-panel">
-                <div className="paper-view-layout__pdf-toolbar">
-                    <h1 className="paper-view-layout__toolbar-title">Paper View</h1>
-                    <button
-                        type="button"
-                        className="outline-action-btn"
-                        onClick={clearEnvironment}
-                    >
-                        Clear Environment
-                    </button>
-                    {paperHighlightSections.length > 0 && <button
-                        type="button"
-                        className="outline-action-btn temp-action-btn"
-                        onClick={() => {
-                            setPaperHighlightSections([]);
-                        }}
-                    >
-                        Clear Paper Highlights
-                    </button>}
-                </div>
+                    <div className="paper-view-layout__pdf-toolbar">
+                        <h1 className="paper-view-layout__toolbar-title">Paper View</h1>
+                        <button
+                            type="button"
+                            className="outline-action-btn"
+                            onClick={clearEnvironment}
+                        >
+                            Clear Environment
+                        </button>
+                        {paperHighlightSections.length > 0 && <button
+                            type="button"
+                            className="outline-action-btn temp-action-btn"
+                            onClick={() => {
+                                setPaperHighlightSections([]);
+                            }}
+                        >
+                            Clear Paper Highlights
+                        </button>}
+                    </div>
 
                 {!hasRealFile ? (
                     <p role="status" style={{ padding: '0 1rem' }}>
@@ -315,7 +318,9 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
                     </div>
                 )}
             </section>
-
+            </Panel>
+            <Separator className="paper-view-layout__separator" />
+            <Panel defaultSize={47} minSize={15}>
             {tree && (
                 <aside className="paper-view-layout__code-panel">
                     <div className="paper-view-layout__code-toolbar">
@@ -328,6 +333,8 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
                     </div>
                 </aside>
             )}
+            </Panel>
+            </Group>
 
             {pendingSelection && (
             <div className="pdf-selection-popover" style={{
