@@ -28,7 +28,6 @@ from src.agent_utils import (
 
 from src.prompts import (
     build_identify_key_sections_prompt,
-    build_identify_key_sections_prompt_v2,
     build_map_key_sections_to_code_prompt,
     build_single_content_to_code_mapping_prompt,
     build_code_to_content_mapping_prompt
@@ -98,71 +97,6 @@ class Agent:
         return brave_find_github_repo(paper_title=title, paper_authors=authors, deep_search=True)
 
     async def identify_key_sections(
-        self,
-        paper_content: str = None,
-        paper_path: str = None,
-        on_event: EventCallback = None
-    ) -> dict:
-        """
-        Identify the key sections of a research paper.
-        Returns a dictionary with the key sections, start and end lines, short descriptions, and the GitHub repository URL.
-        """
-        if paper_content is None and paper_path is None:
-            raise ValueError("Either paper_content or paper_path must be provided.")
-
-        paper_content_to_analyze = paper_content if paper_content is not None else Path(paper_path).read_text(encoding="utf-8")
-
-        # What if link not present in the paper?
-        github_repository_url = None
-        github_link_present = "https://github.com/" in paper_content_to_analyze
-        if not github_link_present:
-            github_repository_url = await self.find_github_repo(paper_content=paper_content_to_analyze, paper_path=paper_path)
-
-        prompt = build_identify_key_sections_prompt(
-            paper_content_to_analyze=paper_content_to_analyze,
-            github_repository_url=github_repository_url,
-        )
-
-        tool_state = {
-            "current_tool": None,
-            "tool_input": "",
-        }
-
-        options = ClaudeAgentOptions(
-            model=self.model,
-            allowed_tools=["Bash", "Search", "ReadFile"],
-            include_partial_messages=True,
-            cwd="." if paper_path is None else os.path.dirname(paper_path),
-            output_format={
-                "type": "json_schema",
-                "json_schema": key_section_schema
-                }
-            )
-
-
-        parsed_result = None
-        async for message in query(prompt=prompt, options=options):
-
-            if on_event is not None and self.stream_events:
-                await on_event(message, tool_state)
-
-            if isinstance(message, ResultMessage):
-                # Don't break early – let the async generator finish to avoid
-                # known anyio/claude_agent_sdk cancellation issues.
-                parsed_result = _parse_json_result(message.result)
-                if parsed_result is None:
-                    cleaned = message.result.replace("```json", "").replace("```", "").strip()
-                    print("Error parsing JSON from identify_key_sections result.")
-                    print(f"Tried to parse: {cleaned}")
-                    parsed_result = None
-                    # Do not return here – keep consuming the generator so SDK cleans up correctly.
-        if isinstance(parsed_result, dict):
-            normalized = normalize_github_repo_url(parsed_result.get("github_repo_url"))
-            if normalized:
-                parsed_result["github_repo_url"] = normalized
-        return parsed_result
-
-    async def identify_key_sections_v2(
         self, 
         papermage_process_result: dict,
         on_event: EventCallback = None
@@ -180,7 +114,7 @@ class Agent:
             _summarize_sections(relevant_sections),
         )
         sections_json = json.dumps(relevant_sections, ensure_ascii=False, indent=2)
-        prompt = build_identify_key_sections_prompt_v2(
+        prompt = build_identify_key_sections_prompt(
             relevant_sections=sections_json,
         )
 
@@ -427,7 +361,7 @@ class Agent:
             papermage_result = papermage_process_result
 
         key_sections_started_at = time.perf_counter()
-        key_sections = await self.identify_key_sections_v2(papermage_process_result=papermage_result)
+        key_sections = await self.identify_key_sections(papermage_process_result=papermage_result)
         if key_sections is None:
             raise ValueError("No key sections found.")
         

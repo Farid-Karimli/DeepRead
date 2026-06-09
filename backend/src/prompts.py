@@ -1,50 +1,6 @@
 from pathlib import Path
 
-
 def build_identify_key_sections_prompt(
-    paper_content_to_analyze: str,
-    github_repository_url: str | None,
-) -> str:
-    return f"""
-        Identify the key sections of the implementation content in the following research paper.
-        Focus on sections that have a high likelihood of being implemented in the code repository. These sections
-        should be ones that aid the reader in understanding the implementation and enable them to compare side-by-side.
-
-        Ignore sections that are not implementation content, such as introduction, conclusion, figures, tables, etc.
-
-        Also, extract the GitHub repository URL from the paper, if it is present.
-
-        Provide JUST the section names, and start and end lines, short descriptions of the section, and the GitHub repository URL, no other text.
-
-        ### Paper Content ###
-        {paper_content_to_analyze}
-        ### End Paper Content ###
-
-        ### GitHub Repository URL ###
-        In case the repository URL is not present in the paper, it is provided here. Note that this may be empty if the URL is present in the paper already.
-        {github_repository_url}
-        ### End GitHub Repository URL ###
-
-        Example:
-        {{ "sections": [
-            {{
-                "section_name": "Section 1",
-                "start_line": 10,
-                "end_line": 20,
-                "description": "A comprehensive description of the section", 
-            }}
-            ],
-            "github_repo_url": "https://github.com/your-repo/your-repo.git"
-        ]}}
-
-        IMPORTANT: Make sure that the section names in your output match the section names in the provided paper EXACTLY.
-        Do not make up section names and do not add
-        descriptive text to the section names. Sections should include subsections within sections, marked with a sub-section number. If there is no sub-section number, 
-        append a sub-section number to the section name with a period. 
-
-        """
-
-def build_identify_key_sections_prompt_v2(
     relevant_sections: dict,
 ) -> str:
     return f"""
