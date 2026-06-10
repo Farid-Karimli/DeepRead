@@ -46,14 +46,12 @@ const getPaperAnalysisStatus = async (taskId: string): Promise<paperAnalysisStat
     return responseJSON;
 }
 
-const listCachedPapers = async (): Promise<cachedPaperSummary[]> => {
+const getAvailPapers = async (): Promise<listCachedPapersResponse> => {
     const response: Response = await fetch(`${API_URL}/papers`);
     if (!response.ok) {
-        console.error(response);
-        throw new Error("Failed to list cached papers");
+        throw new Error('Failed to get available papers from database.')
     }
-    const body: listCachedPapersResponse = await response.json();
-    return body.papers ?? [];
+    return response.json();
 };
 
 const getCachedPaperById = async (paperId: string): Promise<CachedPaper> => {
@@ -169,7 +167,7 @@ const getCodeMappingStatus = async (taskId: string): Promise<mapCodeToContentRes
 export {
     submitPaperAnalysis,
     getPaperAnalysisStatus,
-    listCachedPapers,
+    getAvailPapers,
     getCachedPaperById,
     downloadFile,
     type paperSubmitResponse,
