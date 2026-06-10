@@ -157,13 +157,10 @@ const RepoView = ({ tree, paperId, setPaperHighlightSections }: RepoViewProps) =
     }
 
     const onEntryClick = (filepath: string, url: string, isFile: boolean) => {
-        setHighlightRanges([] as HighlightRange[]);
-        setCurrentPath(filepath);
-        if (!isFile) {
-            setCurrentFileContent(null);
-            return;
-        }
+        setHighlightRanges([]);
         setScrollFocusRange(null);
+        setCurrentCodeDescription(null);
+        setPendingCodeSelection(null);
         setCurrentPath(filepath);
         if (!isFile) {
             setCurrentFileContent(null);
@@ -248,7 +245,7 @@ const RepoView = ({ tree, paperId, setPaperHighlightSections }: RepoViewProps) =
                             ? <VscFolder className="repo-tree__icon repo-tree__icon--dir" />
                             : <VscFile className="repo-tree__icon repo-tree__icon--file" />
                         }
-                        <button style={{ background: 'none', border: 'none', cursor: 'pointer' }} onClick={() => onEntryClick(file.path as string, file.url as string, file.mode !== '100644')} className="repo-tree__link">{file.path as string}</button>
+                        <button style={{ background: 'none', border: 'none', cursor: 'pointer' }} onClick={() => onEntryClick(file.path as string, file.url as string, file.mode !== "040000")} className="repo-tree__link">{file.path.split('/').pop()}</button>
                     </div>
                 ))}
             </div>}
