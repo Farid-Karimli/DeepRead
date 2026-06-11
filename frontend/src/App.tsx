@@ -11,10 +11,9 @@ import {
   getPaperFile,
   downloadFile,
   getGithubRepoTree,
-  type codeSectionsResult,
 } from './api/main';
 
-import type {AgentTaskResult } from './api/types.ts';
+import type { AgentTaskResult, codeSectionsResult } from './api/types.ts';
 
 /** Celery stores the agent return value: `{ github_repo_url, code_result }`. */
 
