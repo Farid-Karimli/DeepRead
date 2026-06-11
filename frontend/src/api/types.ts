@@ -22,9 +22,9 @@ interface codeSection {
     code_snippets: codeSnippet[];
   }
   /** Root object: `{ "sections": [ ... ] }` */
-  interface codeSectionsResult {
+interface codeSectionsResult {
     sections: codeSection[];
-  }
+}
 
 interface paperAnalysisPayload {
     analysis: AgentTaskResult;
@@ -54,18 +54,12 @@ interface paperByIdResponse {
 
 }
 
-interface cachedPaperSummary {
+interface PaperMetadataSummary {
     paper_id: string;
     paper_title?: string | null;
     github_repo_url?: string | null;
     section_count: number;
     label?: string | null;
-}
-
-interface CachedPaper {
-    analysisResult: AgentTaskResult;
-    papermageResult: processPDFResult;
-    file: Uint8Array;
 }
 
 interface PaperMetadata {
@@ -76,7 +70,7 @@ interface PaperMetadata {
 }
 
 interface listCachedPapersResponse {
-    papers: cachedPaperSummary[];
+    papers: PaperMetadataSummary[];
 }
 
 interface githubRepoTreeResponse {
@@ -138,7 +132,7 @@ export type { codeSection,
     paperSubmitResponse, 
     paperAnalysisStatusResponse, 
     paperByIdResponse, 
-    cachedPaperSummary, 
+    PaperMetadataSummary, 
     PaperMetadata,
     listCachedPapersResponse, 
     githubRepoTreeResponse,
