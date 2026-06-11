@@ -32,7 +32,7 @@ interface paperAnalysisPayload {
 }
 
 interface paperSubmitResponse {
-    status: 'complete' | 'pending';
+    status: string,
     task_id?: string;
     paper_id: string;
     result?: paperAnalysisPayload;
@@ -66,6 +66,13 @@ interface CachedPaper {
     analysisResult: AgentTaskResult;
     papermageResult: processPDFResult;
     file: Uint8Array;
+}
+
+interface PaperMetadata {
+    analysis_result: AgentTaskResult,
+    papermage_result: processPDFResult;
+    file_url: string,
+    paper_id: string
 }
 
 interface listCachedPapersResponse {
@@ -132,11 +139,11 @@ export type { codeSection,
     paperAnalysisStatusResponse, 
     paperByIdResponse, 
     cachedPaperSummary, 
+    PaperMetadata,
     listCachedPapersResponse, 
     githubRepoTreeResponse,
     processPDFResult,
     AgentTaskResult,
-    CachedPaper,
     mapContentTaskResponse,
     mapContentResponse,
     codeToContentMappingResult,
