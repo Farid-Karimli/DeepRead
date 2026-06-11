@@ -188,7 +188,7 @@ def analyze_paper(file: UploadFile = File(...)):
             'analysis': paper_record.analysis_result,
             'processed': paper_record.papermage_result
         }
-        return {"paper_id": paper_id, "status": "complete", "result": result}
+        return {"paper_id": paper_id, "status": "SUCCESS", "result": result}
 
     paper_content = _paper_bytes_to_text(raw, filename)
     paper_content = _normalize_whitespace(paper_content)
@@ -199,7 +199,7 @@ def analyze_paper(file: UploadFile = File(...)):
         paper_id=paper_id,
         original_filename=file.filename,
     )
-    return {"paper_id": paper_id, "status": "pending", "task_id": task.id}
+    return {"paper_id": paper_id, "status": "PENDING", "task_id": task.id}
 
 @app.get("/download_file")
 def download_file(link: str) -> Response:
