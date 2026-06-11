@@ -4,6 +4,7 @@ import type {
     codeSectionsResult, 
     paperByIdResponse, 
     cachedPaperSummary, 
+    PaperMetadata,
     listCachedPapersResponse,
     githubRepoTreeResponse,
     CachedPaper,
@@ -29,8 +30,7 @@ const submitPaperAnalysis = async (formData: FormData): Promise<paperSubmitRespo
         throw new Error("Failed to submit paper analysis");
     }
 
-    const responseJSON: paperSubmitResponse = await response.json();
-    return responseJSON;
+    return response.json();
 }
 
 const getPaperAnalysisStatus = async (taskId: string): Promise<paperAnalysisStatusResponse> => {
@@ -54,27 +54,12 @@ const getAvailPapers = async (): Promise<listCachedPapersResponse> => {
     return response.json();
 };
 
-const getCachedPaperById = async (paperId: string): Promise<CachedPaper> => {
-    // Returns the cached paper result and the file URL
-    const response: Response = await fetch(`${API_URL}/papers/${encodeURIComponent(paperId)}`);
-    if (!response.ok) {
-        console.error(response);
-        throw new Error("Failed to load cached paper");
-    }
-    const responseJSON: paperByIdResponse = await response.json();
-    const fileUrl = responseJSON.file_url;
-    const file = await getFileByUrl(fileUrl);
-    return { analysisResult: responseJSON.analysis_result, file: file , papermageResult: responseJSON.papermage_result};
-};
+const getPaperById = async (paperId: string): Promise<PaperMetadata> => {
+    return fetch(`${API_URL}/papers/${encodeURIComponent(paperId)}`).then(r => r.json());
+  };
 
-const getFileByUrl = async (url: string): Promise<Uint8Array> => {
-    const response: Response = await fetch(url);
-    if (!response.ok) {
-        console.error(response);
-        throw new Error("Failed to get file by URL");
-    }
-    const responseBuffer: ArrayBuffer = await response.arrayBuffer();
-    return new Uint8Array(responseBuffer);
+const getPaperFile = async (fileUrl: string): Promise<Blob> => {
+    return fetch(fileUrl).then(r => r.blob());
 };
 
 const downloadFile = async (link: string): Promise<Blob> => {
@@ -92,8 +77,7 @@ const getGithubRepoTree = async (githubRepoUrl: string): Promise<githubRepoTreeR
         console.error(response);
         throw new Error("Failed to get github repo tree");
     }
-    const responseJSON: githubRepoTreeResponse = await response.json();
-    return responseJSON;
+    return response.json();
 };
 
 const getGithubFileFromBlobUrl = async (githubBlobUrl: string): Promise<string> => {
@@ -168,7 +152,8 @@ export {
     submitPaperAnalysis,
     getPaperAnalysisStatus,
     getAvailPapers,
-    getCachedPaperById,
+    getPaperById,
+    getPaperFile,
     downloadFile,
     type paperSubmitResponse,
     type paperAnalysisStatusResponse,
