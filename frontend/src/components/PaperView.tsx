@@ -10,8 +10,8 @@ import {
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Group, Panel, Separator } from "react-resizable-panels";
 
-import { type codeSectionsResult, type githubRepoTreeResponse, mapContentToCode, getContentMappingStatus } from '../api/main.ts';
-import type { codeSnippet, processPDFResult } from '../api/types.ts';
+import { mapContentToCode, getContentMappingStatus } from '../api/main.ts';
+import type { codeSectionsResult, githubRepoTreeResponse, processPDFResult } from '../api/types.ts';
 import { HighlightOverlayDemo, type BoundingBoxWithTooltip } from './CodeOverlay.tsx';
 import { useSidePanel, type CodeInfo } from '../context/SidePanelContext.tsx';
 import RepoView from './RepoView.tsx';

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { type githubRepoTreeResponse, getGithubFileFromBlobUrl, mapCodeToContent, getCodeMappingStatus } from '../api/main';
+import type { githubRepoTreeResponse } from '../api/types.ts';
+import { getGithubFileFromBlobUrl, mapCodeToContent, getCodeMappingStatus } from '../api/main';
 import { VscFolder, VscFile } from 'react-icons/vsc';
 import { IoIosArrowBack } from "react-icons/io";
 import CodeViewer from './CodeViewer.tsx';
