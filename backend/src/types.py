@@ -58,6 +58,12 @@ class PaperMageResult(BaseModel):
 # These get their own table as they can grow big for a paper and have 2 types. 
 ######################
 
+class PaperContentBox(BaseModel):
+    l: float
+    t: float
+    w: float
+    h: float
+
 class CodeToContentSection(BaseModel):
     section_id: str
     description: str
@@ -76,6 +82,8 @@ class ContentToCodeInputs(BaseModel):
     content: str            # paper content selected by the user
     repo_url: str
     context: str            # surrounding context of the user's selection (auto-selected)
+    box: PaperContentBox
+    page_number: int | None = None  # zero-based page index of the selection
 
 class CodeToContentInputs(BaseModel):
     code: str                 # code snippet selected by the user
