@@ -220,6 +220,11 @@ def process_pdf(file: UploadFile = File(...)):
 ##### Ad-Hoc Mapping #######################
 ##########################################
 
+@app.get("/get_content_to_code_matches")
+def get_content_to_code_matches(paper_id: str):
+    matches = get_content_to_code_matches_by_paper_id(paper_id)
+    return {"matches": [match.model_dump(mode="json") for match in matches]}
+
 @app.post("/map_content_to_code")
 def map_content_to_code(
     content: str = Form(...),
