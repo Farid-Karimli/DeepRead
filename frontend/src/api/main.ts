@@ -7,6 +7,8 @@ import type {
     mapContentResponse,
     mapContentTaskResponse,
     mapCodeToContentResponse,
+    paperContentToCodeMatch,
+    paperContentBox
 } from './types';
 
 const API_URL: string =
@@ -86,25 +88,36 @@ const getGithubFileFromBlobUrl = async (githubBlobUrl: string): Promise<string> 
     return responseJSON;
 };
 
-const mapContentToCode = async (content: string | Blob, repoUrl: string, context: string, paperId: string): Promise<mapContentTaskResponse> => {
+const getContentToCodeMatches = async (paperId: string): Promise<paperContentToCodeMatch[]> => {
+    const response = await fetch(`${API_URL}/get_content_to_code_matches?paper_id=${paperId}`);
+    if (!response.ok) {
+        throw new Error(`Error retrieving content to code matches for ${paperId}`)
+    }
+    const responseJSON: { matches: paperContentToCodeMatch[] } = await response.json();
+    return responseJSON.matches;
+}
+
+const mapContentToCode = async (content: string | Blob, repoUrl: string, context: string, paperId: string, box: paperContentBox, pageNumber: number): Promise<mapContentTaskResponse> => {
     const formData = new FormData();
     formData.append("content", content);
     formData.append("repo_url", repoUrl);
     formData.append("context", context);
     formData.append("paper_id", paperId);
+    formData.append("box", JSON.stringify(box));
+    formData.append("page_number", String(pageNumber));
     
     console.log(`Submitting content to code mapping: ${content} to ${repoUrl} with context ${context}`);
+    console.log(`Box: ${JSON.stringify(box)}`);
 
     const response: Response = await fetch(`${API_URL}/map_content_to_code`, {
         method: "POST",
         body: formData,
     });
+    
     if (!response.ok) {
-        console.error(response);
-        throw new Error("Failed to map content to code");
+        throw new Error(`Failed to map content to code: ${response}`);
     }
-    const responseJSON: mapContentTaskResponse = await response.json();
-    return responseJSON;
+    return response.json();
 };
 
 const getTaskStatus = async (taskId: string): Promise<mapContentResponse> => {
@@ -154,7 +167,8 @@ export {
     getGithubRepoTree,
     getGithubFileFromBlobUrl,
     mapContentToCode,
-    getContentMappingStatus,
+    getTaskStatus,
     mapCodeToContent,
     getCodeMappingStatus,
+    getContentToCodeMatches
 };
