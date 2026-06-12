@@ -92,7 +92,7 @@ function PdfBoundingHitTarget({
     boxSizing: 'content-box',
     opacity: hover ? 0.5 : 0.25,
     outline: hover ? '2px solid rgba(0, 180, 255, 0.85)' : 'none',
-    backgroundColor: hover ? 'rgba(0, 160, 255, 0.25)' : 'orange',
+    backgroundColor: withAlpha(box.color, hover ? UNDERLINE_HOVER_ALPHA : UNDERLINE_ALPHA),
     cursor: 'pointer',
     pointerEvents: 'auto',
     transition: 'opacity 80ms ease',
