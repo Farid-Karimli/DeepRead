@@ -107,7 +107,7 @@ const mapContentToCode = async (content: string | Blob, repoUrl: string, context
     return responseJSON;
 };
 
-const getContentMappingStatus = async (taskId: string): Promise<mapContentResponse> => {
+const getTaskStatus = async (taskId: string): Promise<mapContentResponse> => {
     const response: Response = await fetch(`${API_URL}/tasks/${taskId}`);
     if (!response.ok) {
         console.error(response);
