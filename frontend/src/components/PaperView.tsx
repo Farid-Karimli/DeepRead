@@ -37,6 +37,7 @@ type PaperHighlight = {
 const CODE_MATCH_VERDICT_TO_COLOR: Record<string, string> = {
     "implemented": "rgba(37, 99, 235, 1)",
     "not_implemented": "rgba(220, 38, 38, 1)",
+    "ai": "rgba(255, 215, 0, 1)",
 }
 /**
  * Must render *inside* ContextProvider + DocumentWrapper so DocumentContext
@@ -103,6 +104,7 @@ function PdfPageList({
                     file_infos: analyzedSection.code_snippets.map((snippet) => `${snippet.filepath}:${snippet.start_line}-${snippet.end_line}`),
                     code_snippets: analyzedSection.code_snippets,
                     description: analyzedSection.section_description,
+                    color: CODE_MATCH_VERDICT_TO_COLOR.ai,
                 })
             }
 
