@@ -104,6 +104,32 @@ interface processPDFResult {
     sections: SectionEntity[];
 }
 
+// This defines a content area (or selection) on the paper
+interface paperContentBox {
+    l: number, 
+    t: number, 
+    w: number, 
+    h: number,
+}
+
+interface paperContentToCodeMatch {
+    cache_key: string,
+    paper_id: string,
+    mapping_type: string,
+    inputs: {
+        content: string,
+        repo_url: string,
+        context: string,
+        box: paperContentBox,
+        page_number?: number,
+    },
+    outputs: {
+        verdict: string,
+        reasoning: string,
+        code_snippet: codeSnippet | null,
+    }
+}
+
 interface mapContentTaskResponse {
     status: string;
     task_id: string | null;
@@ -142,4 +168,7 @@ export type { codeSection,
     mapContentResponse,
     codeToContentMappingResult,
     mapCodeToContentResponse,
-};
+    paperContentToCodeMatch,
+    paperContentBox
+}
+    

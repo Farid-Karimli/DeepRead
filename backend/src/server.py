@@ -7,6 +7,7 @@ from pathlib import Path
 from fastapi import FastAPI, File, HTTPException, UploadFile, Response, Form
 from fastapi.responses import JSONResponse, PlainTextResponse
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import ValidationError
 import uvicorn
 import asyncio
 
@@ -19,9 +20,9 @@ from src.celery_tasks import (
     map_content_to_code_task, 
     map_code_to_content_task
 )
-from src.db import get_file_url, upload_paper_to_storage, get_mapping_by_cache_key, get_paper_record_by_id, get_all_paper_records
+from src.db import get_file_url, upload_paper_to_storage, get_mapping_by_cache_key, get_paper_record_by_id, get_all_paper_records, get_content_to_code_matches_by_paper_id
 from src.utils import download_file as download_file_from_url, get_file_content, get_repo_tree
-from src.types import PaperRecord
+from src.types import PaperRecord, PaperContentBox
 
 logger = logging.getLogger(__name__)
 
@@ -220,13 +221,25 @@ def process_pdf(file: UploadFile = File(...)):
 ##### Ad-Hoc Mapping #######################
 ##########################################
 
+@app.get("/get_content_to_code_matches")
+def get_content_to_code_matches(paper_id: str):
+    matches = get_content_to_code_matches_by_paper_id(paper_id)
+    return {"matches": [match.model_dump(mode="json") for match in matches]}
+
 @app.post("/map_content_to_code")
 def map_content_to_code(
     content: str = Form(...),
     repo_url: str = Form(...),
     context: str = Form(...),
     paper_id: str = Form(...),
+    box: str = Form(...),
+    page_number: int = Form(...),
 ):
+    try:
+        parsed_box = PaperContentBox.model_validate_json(box)
+    except ValidationError as exc:
+        raise HTTPException(status_code=422, detail=f"Invalid box payload: {exc}")
+
     cache_key = hashlib.sha256(
         f"{content}/0{repo_url}/0{context}".encode("utf-8")
     ).hexdigest()
@@ -235,14 +248,16 @@ def map_content_to_code(
 
     if db_record:
         logger.info(f"MAP CONTENT TO CODE: Mapping already exists for cache key {cache_key}, returning...")
-        return {"status": "SUCCESS", "result": db_record.outputs.code_snippet}
+        return {"status": "SUCCESS", "result": db_record.outputs}
 
     task = map_content_to_code_task.delay(
         content=content,
         repo_url=repo_url,
         context=context,
         cache_key=cache_key,
-        paper_id=paper_id
+        paper_id=paper_id,
+        box=parsed_box.model_dump(),
+        page_number=page_number,
     )
     return {"task_id": task.id, "status": "PENDING"}
 

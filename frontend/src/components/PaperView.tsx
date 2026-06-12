@@ -9,13 +9,14 @@ import {
 } from '@allenai/pdf-components';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Group, Panel, Separator } from "react-resizable-panels";
+import { useQuery, useMutation, useQueryClient} from '@tanstack/react-query';
 
-import { mapContentToCode, getContentMappingStatus } from '../api/main.ts';
-import type { codeSectionsResult, githubRepoTreeResponse, processPDFResult } from '../api/types.ts';
+import { mapContentToCode, getTaskStatus, getContentToCodeMatches } from '../api/main.ts';
+import type { codeSectionsResult, githubRepoTreeResponse, processPDFResult, paperContentToCodeMatch, paperContentBox } from '../api/types.ts';
 import { HighlightOverlayDemo, type BoundingBoxWithTooltip } from './CodeOverlay.tsx';
-import { useSidePanel, type CodeInfo } from '../context/SidePanelContext.tsx';
+import { useSidePanel } from '../context/SidePanelContext.tsx';
 import RepoView from './RepoView.tsx';
-
+import { captureSelectionHighlightsFromRange } from '../utils/selectionRangeToPageBox.ts';
 import { usePDFTextSelection } from '../hooks/useTextSelection.tsx';
 
 interface PaperViewProps {
@@ -24,7 +25,7 @@ interface PaperViewProps {
     clearEnvironment: () => void;
     paperFile: File | undefined;
     tree: githubRepoTreeResponse | undefined;
-    githubRepoUrl: string | undefined;
+    githubRepoUrl: string;
     paperId: string;
 }
 
@@ -33,6 +34,11 @@ type PaperHighlight = {
     description: string;
 };
 
+const CODE_MATCH_VERDICT_TO_COLOR: Record<string, string> = {
+    "implemented": "rgba(37, 99, 235, 1)",
+    "not_implemented": "rgba(220, 38, 38, 1)",
+    "ai": "rgba(255, 215, 0, 1)",
+}
 /**
  * Must render *inside* ContextProvider + DocumentWrapper so DocumentContext
  * is the real provider (not the default). Otherwise numPages stays 0 and
@@ -43,11 +49,13 @@ function PdfPageList({
     processResult,
     paperHighlightSections,
     scrollRef,
+    codeMatches,
 }: {
     analysisResult: codeSectionsResult;
     processResult: processPDFResult;
     paperHighlightSections: PaperHighlight[];
     scrollRef: React.RefObject<HTMLDivElement | null>;
+    codeMatches: paperContentToCodeMatch[];
 }) {
     const { numPages, pdfDocProxy, pageDimensions } = React.useContext(DocumentContext);
     const { rotation } = React.useContext(TransformContext);
@@ -57,6 +65,7 @@ function PdfPageList({
         if (!pdfDocProxy || numPages < 1 || pageDimensions.height < 1) {
             return;
         }
+        let cancelled = false;
         let boxes: BoundingBoxWithTooltip[] = [];
 
         const contentToBBoxPaperMage = async () => {
@@ -74,10 +83,11 @@ function PdfPageList({
                     console.warn('No PaperMage section for analyzed section', analyzedSection);
                     continue;
                 }
-                //console.log('paperMageSection for', analyzedSection, " = ", paperMageSection.box);
     
                 const box = paperMageSection.box;
+                if (cancelled) return;
                 const page = await pdfDocProxy.getPage(box.page + 1);
+                if (cancelled) return;
                 const viewport = page.getViewport({ scale: 1, rotation });
 
                 const scaleX = pageDimensions.width / viewport.width;
@@ -93,6 +103,7 @@ function PdfPageList({
                     file_infos: analyzedSection.code_snippets.map((snippet) => `${snippet.filepath}:${snippet.start_line}-${snippet.end_line}`),
                     code_snippets: analyzedSection.code_snippets,
                     description: analyzedSection.section_description,
+                    color: CODE_MATCH_VERDICT_TO_COLOR.ai,
                 })
             }
 
@@ -107,7 +118,9 @@ function PdfPageList({
                 }
 
                 const box = paperMageSection.box;
+                if (cancelled) return;
                 const page = await pdfDocProxy.getPage(box.page + 1);
+                if (cancelled) return;
                 const viewport = page.getViewport({ scale: 1, rotation });
 
                 const scaleX = pageDimensions.width / viewport.width;
@@ -127,6 +140,41 @@ function PdfPageList({
                 });
             }
 
+            for (let k = 0; k < codeMatches.length; k++) {
+                const codeMatch = codeMatches[k];
+                const box = codeMatch.inputs.box;
+                const pageIndex = codeMatch.inputs.page_number;
+                if (pageIndex == null || Number.isNaN(pageIndex)) {
+                    console.warn('Code match missing page_number; skipping overlay', codeMatch);
+                    continue;
+                }
+                if (cancelled) return;
+                const page = await pdfDocProxy.getPage(pageIndex + 1);
+                if (cancelled) return;
+                const viewport = page.getViewport({ scale: 1, rotation });
+                const scaleX = pageDimensions.width / viewport.width;
+                const scaleY = pageDimensions.height / viewport.height;
+
+                const codeSnippet = codeMatch.outputs.code_snippet;
+
+                boxes.push({
+                    page: pageIndex,
+                    top: box.t * viewport.height * scaleY - 5,
+                    left: box.l * viewport.width * scaleX,
+                    width: box.w * viewport.width * scaleX,
+                    height: box.h * viewport.height * scaleY * 1.5,
+                    hitKey: `map-${codeMatch.cache_key ?? k}-${k}`,
+                    file_infos: codeSnippet
+                        ? [`${codeSnippet.filepath}:${codeSnippet.start_line}-${codeSnippet.end_line}`]
+                        : [],
+                    code_snippets: codeSnippet ? [codeSnippet] : [],
+                    description: codeMatch.outputs.reasoning,
+                    variant: 'overlay',
+                    color: CODE_MATCH_VERDICT_TO_COLOR[codeMatch.outputs.verdict] ?? CODE_MATCH_VERDICT_TO_COLOR.not_implemented,
+                });
+            }
+
+            if (cancelled) return;
             setHitBoxes(boxes);
 
             if (paperHighlightSections.length > 0) {
@@ -145,8 +193,16 @@ function PdfPageList({
             }
         }
 
-        contentToBBoxPaperMage();
-    }, [pdfDocProxy, numPages, rotation, pageDimensions, analysisResult, processResult, paperHighlightSections, scrollRef]);
+        contentToBBoxPaperMage().catch((err) => {
+            if (!cancelled) {
+                console.error('Failed to compute paper bounding boxes', err);
+            }
+        });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [pdfDocProxy, numPages, rotation, pageDimensions, analysisResult, processResult, paperHighlightSections, scrollRef, codeMatches]);
 
     return (
         <div className="reader__page-list" ref={scrollRef}>
@@ -165,100 +221,110 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
     const pdfContentRef = useRef<HTMLDivElement>(null);
     const pdfScrollableRef = useRef<HTMLDivElement>(null);
 
+    const [matchingTaskId, setMatchingTaskId] = useState<string | null>(null);
+    const [paperHighlightSections, setPaperHighlightSections] = useState<PaperHighlight[]>([]);
+    const [contentToCodeMatches, setContentToCodeMatches] = useState<paperContentToCodeMatch[]>([]);
+
+    const queryClient = useQueryClient();
+
+    const matchesQuery = useQuery({
+        queryKey: ['matches', paperId],
+        queryFn: () => getContentToCodeMatches(paperId),
+        enabled: Boolean(paperId),
+    })
+
     const [pendingSelection, setPendingSelection] = useState<{
         text: string;
         rect: DOMRect;
         range: Range;
     } | null>(null);
 
-    const [contentMappingLoading, setContentMappingLoading] = useState<Boolean>(false);
+    useEffect(() => {
+        if (matchesQuery.data) {
+            setContentToCodeMatches(matchesQuery.data);
+        }
+    }, [matchesQuery.data])
 
-    console.log('githubRepoUrl', githubRepoUrl);
+    type ContentToCodeInput = {
+        content: string | Blob;
+        repoUrl: string;
+        context: string;
+        paperId: string;
+        box: paperContentBox;
+        pageNumber: number;
+    }
 
-    const [mappingTaskId, setMappingTaskId] = useState<string | null>(null);
+    // This submits a user's selection to the server for Celery task
+    const contentToCodeMutation = useMutation({
+        mutationFn: ({content, repoUrl, context, paperId, box, pageNumber}: ContentToCodeInput) => 
+            mapContentToCode(content, repoUrl, context, paperId, box, pageNumber),
+        onSuccess: (response) => {
+            if (response.status === "SUCCESS") {
+                queryClient.invalidateQueries({queryKey: ["matches", paperId]})
+            } else if (response.status === "PENDING" && response.task_id) {
+                setMatchingTaskId(response.task_id);
+            }
+        },
+        onError: (error) => {
+            console.error(error);
+            setPendingSelection(null);
+            setMatchingTaskId(null);
+        }
+    })
 
-    const [paperHighlightSections, setPaperHighlightSections] = useState<PaperHighlight[]>([]);
+    const matchTaskQuery = useQuery({
+        queryKey: ['matchTask', matchingTaskId], 
+        queryFn: () => {
+            if (!matchingTaskId) throw new Error("No matching task ID set.")
+            return getTaskStatus(matchingTaskId);
+        },
+        refetchInterval: (query) => {
+            const status = query.state.data?.status;
+            return status === 'SUCCESS' || status === 'FAILURE' ? false : 10000;
+          },
+        enabled: Boolean(matchingTaskId),
+    })
+
+    useEffect(() => {
+        if (matchTaskQuery.data?.status === "SUCCESS") {
+            queryClient.invalidateQueries({queryKey: ['matches', paperId]});
+            setMatchingTaskId(null);
+        }
+    }, [matchTaskQuery.data, paperId, queryClient])
+
+    const isMapping =
+        contentToCodeMutation.isPending ||
+        matchingTaskId !== null;
 
     const submitPendingSelection = () => {
-            if (!pendingSelection || mappingTaskId !== null) return;
-    
-            console.log("Selection:", pendingSelection?.text);
-            console.log(pendingSelection?.rect);
-    
-            const content = pendingSelection.text;
-            const repoUrl = githubRepoUrl;
-            const paperIdInput = paperId;
-            if (!repoUrl) {
-                console.error('No GitHub repository URL found');
+            // Block any additional match requests if one is already ongoing
+            if (!pendingSelection || matchingTaskId !== null) return; 
+
+            const selectionHighlight = captureSelectionHighlightsFromRange(pendingSelection.range)[0];
+            if (!selectionHighlight) {
+                console.warn('No selection highlight captured');
                 return;
             }
-            let context = processResult.sections.filter((section) => section.entity_id === "abstract")[0]?.section_content ?? "";
-            if (!context) {
+
+            let selectionContext = processResult.sections.filter((section) => section.entity_id === "abstract")[0]?.section_content ?? "";
+            if (!selectionContext) {
                 console.warn('No context found');
-                context = "";
+                selectionContext = "";
             }
-            setContentMappingLoading(true);
-            mapContentToCode(content, repoUrl, context, paperIdInput).then((response) => {
-                if (response.status === 'SUCCESS') {
-                    setContentMappingLoading(false);
-                    if (!response.result) {
-                        console.error('No snippet found');
-                        return;
-                    }
-                    const snippet: any = response.result;
-                    const codeInfoToShow: CodeInfo = {
-                        filePath: snippet.filepath,
-                        codeRanges: [{ startLine: snippet.start_line, endLine: snippet.end_line }],
-                        description: snippet.description,
-                    }
-                    showCode(codeInfoToShow);
-                    setPendingSelection(null);
-                }
-                else {
-                    setMappingTaskId(response.task_id);
-                }
-            }).catch((error) => {
-                console.error('error', error);
-                setMappingTaskId(null);
-                setPendingSelection(null);
-            });
+
+            const matchTaskInput: ContentToCodeInput = {
+                content: pendingSelection.text,
+                context: selectionContext,
+                repoUrl: githubRepoUrl,
+                paperId: paperId,
+                box: selectionHighlight.box,
+                pageNumber: selectionHighlight.page,
+            }
+            
+            contentToCodeMutation.mutate(matchTaskInput);
     };
 
     usePDFTextSelection(pdfContentRef, setPendingSelection);
-
-    useEffect(()=> {
-        if (!mappingTaskId) return;
-        let cancelled = false;
-        const poll = async () => {
-
-            if (cancelled) {
-                setContentMappingLoading(false);
-                return;
-            };
-            const status = await getContentMappingStatus(mappingTaskId);
-
-            if (cancelled) {
-                setContentMappingLoading(false);
-                return;
-            };
-
-            if (status.status === 'SUCCESS' && status.result !== undefined && status.result !== null) {
-                setContentMappingLoading(false);
-                const snippet: any = status.result;
-                const codeInfoToShow: CodeInfo = {
-                    filePath: snippet.filepath,
-                    codeRanges: [{ startLine: snippet.start_line, endLine: snippet.end_line }],
-                    description: snippet.description,
-                }
-                showCode(codeInfoToShow);
-                cancelled = true;
-                setPendingSelection(null);
-            }
-            setTimeout(poll, 5000);
-        };
-        poll();
-        return () => { cancelled = true; };
-    }, [mappingTaskId]);
     
     const fileForViewer = useMemo(() => paperFile, [paperFile]);
 
@@ -297,7 +363,7 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
                         restore file uploads from storage). Go back, upload your PDF again, then analyze.
                     </p>
                 ) : (
-                    <div className="paper-view-layout__pdf-scroll">
+                    (<div className="paper-view-layout__pdf-scroll">
                         <div className="paper-view-layout__pdf-inner paper-viewer">
                             <ContextProvider>
                                 <DocumentWrapper
@@ -311,11 +377,12 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
                                         processResult={processResult}
                                         paperHighlightSections={paperHighlightSections}
                                         scrollRef={pdfScrollableRef}
+                                        codeMatches={contentToCodeMatches}
                                     />
                                 </DocumentWrapper>
                             </ContextProvider>
                         </div>
-                    </div>
+                    </div>)
                 )}
             </section>
             </Panel>
@@ -348,9 +415,9 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
                 type="button"
                 className="pdf-selection-popover__btn pdf-selection-popover__btn--primary"
                 onClick={submitPendingSelection}
-                disabled={contentMappingLoading !== false}
+                disabled={isMapping}
               >
-                {contentMappingLoading ? "Mapping..." : "Map to code"}
+                {isMapping ? "Mapping..." : "Map to code"}
               </button>
               <button
                 type="button"

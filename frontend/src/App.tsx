@@ -14,6 +14,7 @@ import {
 } from './api/main';
 
 import type { AgentTaskResult, codeSectionsResult } from './api/types.ts';
+import { SidePanelProvider } from './context/SidePanelContext.tsx';
 
 /** Celery stores the agent return value: `{ github_repo_url, code_result }`. */
 
@@ -55,7 +56,7 @@ function App() {
     enabled: Boolean(taskId),
     refetchInterval: (query) => {
       const status = query.state.data?.status;
-      return status === 'SUCCESS' || status === 'FAILURE' ? false : 5000;
+      return status === 'SUCCESS' || status === 'FAILURE' ? false : 10000;
     },
   })
 
@@ -106,6 +107,7 @@ function App() {
     ? new File([fileQuery.data], selectedPaperId, { type: 'application/pdf' })
     : undefined;
 
+  
   const repoTreeQuery = useQuery({
       queryKey: ['repos', githubRepoUrl, 'tree'],
       queryFn: () => getGithubRepoTree(githubRepoUrl!),
@@ -118,10 +120,10 @@ function App() {
     mutationFn: submitPaperAnalysis,
     onSuccess: (response) => {
       setSelectedPaperId(response.paper_id);
-      if (response.status === 'pending' && response.task_id) {
+      if (response.status === 'PENDING' && response.task_id) {
         setTaskId(response.task_id);
       }
-      if (response.status === 'complete') {
+      if (response.status === 'SUCCESS') {
         setTaskId(null);
         queryClient.invalidateQueries({ queryKey: ['papers', response.paper_id] });
       }
@@ -184,15 +186,17 @@ function App() {
     repoTree
   ) {
     return (
-      <PaperView
-        analysisResult={analysisResult}
-        processResult={papermageResult}
-        paperFile={paperFile}
-        tree={repoTree}
-        githubRepoUrl={githubRepoUrl}
-        paperId={selectedPaperId}
-        clearEnvironment={clearEnvironment}
-      />
+      <SidePanelProvider>
+        <PaperView
+          analysisResult={analysisResult}
+          processResult={papermageResult}
+          paperFile={paperFile}
+          tree={repoTree}
+          githubRepoUrl={githubRepoUrl}
+          paperId={selectedPaperId}
+          clearEnvironment={clearEnvironment}
+        />
+      </SidePanelProvider>
     );
   }
 
