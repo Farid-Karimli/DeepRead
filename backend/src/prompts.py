@@ -1,50 +1,6 @@
 from pathlib import Path
 
-
 def build_identify_key_sections_prompt(
-    paper_content_to_analyze: str,
-    github_repository_url: str | None,
-) -> str:
-    return f"""
-        Identify the key sections of the implementation content in the following research paper.
-        Focus on sections that have a high likelihood of being implemented in the code repository. These sections
-        should be ones that aid the reader in understanding the implementation and enable them to compare side-by-side.
-
-        Ignore sections that are not implementation content, such as introduction, conclusion, figures, tables, etc.
-
-        Also, extract the GitHub repository URL from the paper, if it is present.
-
-        Provide JUST the section names, and start and end lines, short descriptions of the section, and the GitHub repository URL, no other text.
-
-        ### Paper Content ###
-        {paper_content_to_analyze}
-        ### End Paper Content ###
-
-        ### GitHub Repository URL ###
-        In case the repository URL is not present in the paper, it is provided here. Note that this may be empty if the URL is present in the paper already.
-        {github_repository_url}
-        ### End GitHub Repository URL ###
-
-        Example:
-        {{ "sections": [
-            {{
-                "section_name": "Section 1",
-                "start_line": 10,
-                "end_line": 20,
-                "description": "A comprehensive description of the section", 
-            }}
-            ],
-            "github_repo_url": "https://github.com/your-repo/your-repo.git"
-        ]}}
-
-        IMPORTANT: Make sure that the section names in your output match the section names in the provided paper EXACTLY.
-        Do not make up section names and do not add
-        descriptive text to the section names. Sections should include subsections within sections, marked with a sub-section number. If there is no sub-section number, 
-        append a sub-section number to the section name with a period. 
-
-        """
-
-def build_identify_key_sections_prompt_v2(
     relevant_sections: dict,
 ) -> str:
     return f"""
@@ -91,10 +47,13 @@ def build_map_key_sections_to_code_prompt(
         {code_path}
         ### End Code ###
 
-        Provide the code snippets for each section, and the line numbers of the code snippets.
-        Provide JUST the code snippets and the line numbers in a JSON object, no other text. 
+        Provide the code snippets for each section, and the line numbers of the code snippets. 
+        Focus on finding actual code snippets (.py, .ipynb, etc.) - try to avoid references to the README or 
+        If no high-quality code match is found for a content section - then return an empty list for the 'code_snippets' key 
+        of the section item. 
 
-        Return only a JSON object. First character must be {{ and last must be }}. No prose.
+        Provide your response in a JSON object outlined below, no other text. 
+        First character must be {{ and last must be }}. No prose.
 
         Example:
         {{
@@ -103,6 +62,7 @@ def build_map_key_sections_to_code_prompt(
                 {{
                     "section_id": "entity_id as it appears in the context",
                     "section_header": "section header as it appears in the context",
+                    "description": "a brief description of what the snippets implement"
                     "code_snippets": [
                         {{
                             "content": "print('Hello, world!')",
@@ -127,40 +87,70 @@ def build_single_content_to_code_mapping_prompt(
 
     if isinstance(content, str): # Piece of text
         return f"""
-            Map the provided piece of content from a scientific research paper to relevant code snippets
-            in its associated code repository. The content could be in text or a path to an image. 
-            The local path to the repository will be provided too. 
-            You could also be provided context surrounding the specific piece of content the user is interested in, 
-            like surrounding text, caption or the paper abstract. 
+            Map the provided piece of content from a scientific research paper to relevant code
+            snippets in its associated code repository, OR determine that no such code exists.
+
+            The content could be text or a path to an image. The local path to the repository
+            will be provided. You may also be given surrounding context (nearby text, a caption,
+            or the paper abstract) to help disambiguate the selection.
 
             ## Content ##
             {content}
-            ## End Content
+            ## End Content ##
 
             ## Context ##
             {context}
-            ## End Context
+            ## End Context ##
 
             ## Local Repository Path ##
             {repo_path}
-            ## End Local Repository Path ## 
+            ## End Local Repository Path ##
 
-            Provide the code snippets for each section, and the line numbers of the code snippets.
-            Return just a JSON object. The first and last character of your output should be {{ and }}. 
-            No prose. 
+            ## Important ##
+            Papers frequently describe methods, components, or results that are NOT present in
+            their associated repository — code is omitted, lives elsewhere, or was never released.
+            Reporting that a method is absent is a correct and valuable outcome, not a failure.
+            It is equally important NOT to invent a match. Returning loosely related or
+            best-guess code when no genuine implementation exists is worse than reporting absence.
 
-            ## Output Format ## 
+            Equally, do not report absence prematurely. Only conclude that code is missing after
+            you have actually inspected the repository and looked where the implementation would
+            plausibly live.
+
+            ## Procedure ##
+            1. Decide whether the selected content is the kind of thing that *should* have a code
+            implementation at all (a concrete method, algorithm, or computation) versus content
+            that would not normally map to code (motivation, related work, a theoretical claim,
+            a dataset description).
+            2. If it should map, search the repository for the implementation. Note which files or
+            modules you inspected and where you expected the code to be.
+            3. Reach one of the verdicts below based on what you found.
+
+            ## Verdicts ##
+            - "implemented": you found code that genuinely implements or corresponds to the content.
+            - "not_implemented": the content describes something that should have code, but no
+            genuine implementation exists in this repository.
+            - "not_applicable": the content is not the kind of thing that maps to code.
+
+            ## Output Format ##
+            Return just a JSON object. The first and last character of your output must be {{ and }}.
+            No prose outside the JSON.
 
             {{
+                "reasoning": "What you looked for, where you searched, and why you reached the verdict.",
+                "verdict": "implemented" | "not_implemented" | "not_applicable",
                 "code_snippets": [
-                        {{
-                            "content": "print('Hello, world!')",
-                            "filepath": path to the file relative to the repository root directory,
-                            "start_line": 10,
-                            "end_line": 20
-                        }},
-                    ],
+                    {{
+                        "content": "print('Hello, world!')",
+                        "filepath": "path relative to the repository root",
+                        "start_line": 10,
+                        "end_line": 20
+                    }}
+                ]
             }}
+
+            When the verdict is "not_implemented" or "not_applicable", "code_snippets" must be an
+            empty list.
         """
 
 def build_code_to_content_mapping_prompt(

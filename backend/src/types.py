@@ -64,7 +64,9 @@ class CodeToContentSection(BaseModel):
 
 
 class ContentToCodeResult(BaseModel):
-    code_snippet: CodeSnippet  # matches what we return today after rerank
+    reasoning: str
+    verdict: str
+    code_snippet: CodeSnippet | None # matches what we return today after rerank or if nothing was found
 
 class CodeToContentResult(BaseModel):
     sections: list[CodeToContentSection]  # section_id + description

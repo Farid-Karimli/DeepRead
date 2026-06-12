@@ -131,12 +131,16 @@ def map_content_to_code_task(
         repo_url=repo_url,
         context=context
     ))
-    
+
     record = PaperMappingRecord(
         mapping_type="content_to_code",
         cache_key=cache_key,
         inputs=ContentToCodeInputs(content=content, repo_url=repo_url, context=context),
-        outputs=ContentToCodeResult(code_snippet=result),
+        outputs=ContentToCodeResult(
+            code_snippet=result.get('code_snippet'), 
+            reasoning=result.get("reasoning"), 
+            verdict=result.get("verdict"),
+        ),
         paper_id=paper_id
     )
     upsert_mapping_result(record)
