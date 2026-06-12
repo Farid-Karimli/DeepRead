@@ -62,9 +62,7 @@ function PdfBoundingHitTarget({
   }
 
   const showAllSnippetsForSelectedFile = (codeSnippets: typeof box.code_snippets, index: number) => {
-    console.log('showAllSnippetsForSelectedFile', codeSnippets, index);
     const s = codeSnippets[index];
-    console.log(`Showing all snippets for selected file: ${JSON.stringify(s)}`);
     if (!s) return;
     const thisFilePath = s.filepath;
     const forFile = codeSnippets.filter((t) => t.filepath === thisFilePath);

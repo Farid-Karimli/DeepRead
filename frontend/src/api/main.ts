@@ -106,9 +106,6 @@ const mapContentToCode = async (content: string | Blob, repoUrl: string, context
     formData.append("box", JSON.stringify(box));
     formData.append("page_number", String(pageNumber));
     
-    console.log(`Submitting content to code mapping: ${content} to ${repoUrl} with context ${context}`);
-    console.log(`Box: ${JSON.stringify(box)}`);
-
     const response: Response = await fetch(`${API_URL}/map_content_to_code`, {
         method: "POST",
         body: formData,

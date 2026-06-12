@@ -14,7 +14,7 @@ import { useQuery, useMutation, useQueryClient} from '@tanstack/react-query';
 import { mapContentToCode, getTaskStatus, getContentToCodeMatches } from '../api/main.ts';
 import type { codeSectionsResult, githubRepoTreeResponse, processPDFResult, paperContentToCodeMatch, paperContentBox } from '../api/types.ts';
 import { HighlightOverlayDemo, type BoundingBoxWithTooltip } from './CodeOverlay.tsx';
-import { useSidePanel, type CodeInfo } from '../context/SidePanelContext.tsx';
+import { useSidePanel } from '../context/SidePanelContext.tsx';
 import RepoView from './RepoView.tsx';
 import { captureSelectionHighlightsFromRange } from '../utils/selectionRangeToPageBox.ts';
 import { usePDFTextSelection } from '../hooks/useTextSelection.tsx';
@@ -83,7 +83,6 @@ function PdfPageList({
                     console.warn('No PaperMage section for analyzed section', analyzedSection);
                     continue;
                 }
-                //console.log('paperMageSection for', analyzedSection, " = ", paperMageSection.box);
     
                 const box = paperMageSection.box;
                 if (cancelled) return;
@@ -141,7 +140,6 @@ function PdfPageList({
                 });
             }
 
-            console.log(`Code matches: ${JSON.stringify(codeMatches)}`);
             for (let k = 0; k < codeMatches.length; k++) {
                 const codeMatch = codeMatches[k];
                 const box = codeMatch.inputs.box;
