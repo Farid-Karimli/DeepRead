@@ -130,6 +130,21 @@ interface paperContentToCodeMatch {
     }
 }
 
+interface codeToContentMatch {
+    cache_key: string,
+    paper_id: string,
+    mapping_type: string,
+    inputs: {
+        code: string,
+        filepath: string,
+        start: number,
+        end: number,
+    },
+    outputs: {
+        sections: { section_id: string; description: string }[];
+    }
+}
+
 interface mapContentTaskResponse {
     status: string;
     task_id: string | null;
@@ -169,6 +184,7 @@ export type { codeSection,
     codeToContentMappingResult,
     mapCodeToContentResponse,
     paperContentToCodeMatch,
-    paperContentBox
+    paperContentBox,
+    codeToContentMatch,
 }
     

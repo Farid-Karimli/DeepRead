@@ -8,7 +8,8 @@ import type {
     mapContentTaskResponse,
     mapCodeToContentResponse,
     paperContentToCodeMatch,
-    paperContentBox
+    paperContentBox,
+    codeToContentMatch,
 } from './types';
 
 const API_URL: string =
@@ -127,10 +128,22 @@ const getTaskStatus = async (taskId: string): Promise<mapContentResponse> => {
     return responseJSON;
 };
 
-const mapCodeToContent = async (code: string, paperId: string): Promise<mapCodeToContentResponse> => {
+const getCodeToContentMatches = async (paperId: string, currentPath: string): Promise<codeToContentMatch[]> => {
+    const response = await fetch(`${API_URL}/get_code_to_content_matches?paper_id=${paperId}&current_path=${currentPath}`);
+    if (!response.ok) {
+        throw new Error(`Error retrieving code to content matches for ${paperId} and ${currentPath}`)
+    }
+    const responseJSON: { matches: codeToContentMatch[] } = await response.json();
+    return responseJSON.matches;
+}
+
+const mapCodeToContent = async (code: string, paperId: string, start: number, end: number, filepath: string): Promise<mapCodeToContentResponse> => {
     const formData = new FormData();
     formData.append("code", code);
     formData.append("paper_id", paperId);
+    formData.append("start", String(start));
+    formData.append("end", String(end));
+    formData.append("filepath", filepath);
 
     const response: Response = await fetch(`${API_URL}/map_code_to_content`, {
         method: "POST",
@@ -167,5 +180,6 @@ export {
     getTaskStatus,
     mapCodeToContent,
     getCodeMappingStatus,
-    getContentToCodeMatches
+    getContentToCodeMatches,
+    getCodeToContentMatches
 };
