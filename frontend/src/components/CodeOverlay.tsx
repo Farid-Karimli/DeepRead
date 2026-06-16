@@ -194,6 +194,7 @@ function PdfBoundingHitTarget({
 }
 
 const UNDERLINE_THICKNESS_PX = 3;
+const UNDERLINE_TOP_GAP_PX = 3;
 const UNDERLINE_ALPHA = 0.6;
 const UNDERLINE_HOVER_ALPHA = 1;
 
@@ -244,23 +245,25 @@ function PdfUnderlineHitTarget({
     top,
     left,
     width,
-    height,
+    height: height + UNDERLINE_TOP_GAP_PX,
     zIndex: 2,
     boxSizing: 'border-box',
-    backgroundColor: 'transparent',
-    cursor: 'pointer',
-    pointerEvents: 'auto',
+    pointerEvents: 'none',
   };
 
+  const lineHeight = hover ? UNDERLINE_THICKNESS_PX + 1 : UNDERLINE_THICKNESS_PX;
   const underlineStyle: React.CSSProperties = {
     position: 'absolute',
     left: 0,
     right: 0,
     bottom: 0,
-    height: hover ? UNDERLINE_THICKNESS_PX + 1 : UNDERLINE_THICKNESS_PX,
-    backgroundColor: withAlpha(box.color, hover ? UNDERLINE_HOVER_ALPHA : UNDERLINE_ALPHA),
+    height: UNDERLINE_TOP_GAP_PX + lineHeight,
+    boxSizing: 'border-box',
+    paddingTop: UNDERLINE_TOP_GAP_PX,
+    borderBottom: `${lineHeight}px solid ${withAlpha(box.color, hover ? UNDERLINE_HOVER_ALPHA : UNDERLINE_ALPHA)}`,
     borderRadius: 1,
-    pointerEvents: 'none',
+    cursor: 'pointer',
+    pointerEvents: 'auto',
   };
 
   const tooltipNode =
@@ -299,24 +302,25 @@ function PdfUnderlineHitTarget({
 
   return (
     <>
-      <div
-        className="pdf-section-underline-hit"
-        style={hitStyle}
-        role="button"
-        tabIndex={0}
-        onMouseEnter={(e) => {
-          if (leaveTimer.current) clearTimeout(leaveTimer.current);
-          setHover(true);
-          setFloating((prev) => prev ?? { x: e.clientX + 12, y: e.clientY + 12 });
-        }}
-        onMouseLeave={() => {
-          leaveTimer.current = setTimeout(() => {
-            setHover(false);
-            setFloating(null);
-          }, 150);
-        }}
-      >
-        <div className="pdf-section-underline" style={underlineStyle} aria-hidden />
+      <div className="pdf-section-underline-hit" style={hitStyle}>
+        <div
+          className="pdf-section-underline"
+          style={underlineStyle}
+          role="button"
+          tabIndex={0}
+          aria-label={box.description}
+          onMouseEnter={(e) => {
+            if (leaveTimer.current) clearTimeout(leaveTimer.current);
+            setHover(true);
+            setFloating((prev) => prev ?? { x: e.clientX + 12, y: e.clientY + 12 });
+          }}
+          onMouseLeave={() => {
+            leaveTimer.current = setTimeout(() => {
+              setHover(false);
+              setFloating(null);
+            }, 150);
+          }}
+        />
       </div>
       {tooltipNode}
     </>
