@@ -87,6 +87,9 @@ class ContentToCodeInputs(BaseModel):
 
 class CodeToContentInputs(BaseModel):
     code: str                 # code snippet selected by the user
+    start: int
+    end: int
+    filepath: str
 
 class PaperMappingRecord(BaseModel):
     paper_id: str
