@@ -11,13 +11,13 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Group, Panel, Separator } from "react-resizable-panels";
 import { useQuery, useMutation, useQueryClient} from '@tanstack/react-query';
 
-import { mapContentToCode, getTaskStatus, getContentToCodeMatches } from '../api/main.ts';
+import { mapContentToCode, getContentToCodeMatches } from '../api/main.ts';
 import type { codeSectionsResult, githubRepoTreeResponse, processPDFResult, paperContentToCodeMatch, paperContentBox } from '../api/types.ts';
 import { HighlightOverlayDemo, type BoundingBoxWithTooltip } from './CodeOverlay.tsx';
-import { useSidePanel } from '../context/SidePanelContext.tsx';
 import RepoView from './RepoView.tsx';
 import { captureSelectionHighlightsFromRange } from '../utils/selectionRangeToPageBox.ts';
 import { usePDFTextSelection } from '../hooks/useTextSelection.tsx';
+import { useCeleryTaskStatus } from '../hooks/useCeleryTaskStatus.ts';
 
 interface PaperViewProps {
     analysisResult: codeSectionsResult;
@@ -48,6 +48,9 @@ const CODE_MATCH_VERDICT_TO_COLOR: Record<string, string> = {
     "not_implemented": "rgba(220, 38, 38, 1)",
     "ai": "rgba(255, 215, 0, 1)",
 }
+
+/** User code→paper mapping underlines in the PDF. */
+const CODE_TO_CONTENT_HIGHLIGHT_COLOR = "rgba(192, 132, 252, 1)";
 /**
  * Must render *inside* ContextProvider + DocumentWrapper so DocumentContext
  * is the real provider (not the default). Otherwise numPages stays 0 and
@@ -148,6 +151,7 @@ function PdfPageList({
                     code_snippets: [],
                     description: highlight.description,
                     variant: 'underline',
+                    color: CODE_TO_CONTENT_HIGHLIGHT_COLOR,
                 });
             }
 
@@ -277,18 +281,7 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
         }
     })
 
-    const matchTaskQuery = useQuery({
-        queryKey: ['matchTask', matchingTaskId], 
-        queryFn: () => {
-            if (!matchingTaskId) throw new Error("No matching task ID set.")
-            return getTaskStatus(matchingTaskId);
-        },
-        refetchInterval: (query) => {
-            const status = query.state.data?.status;
-            return status === 'SUCCESS' || status === 'FAILURE' ? false : 10000;
-          },
-        enabled: Boolean(matchingTaskId),
-    })
+    const matchTaskQuery = useCeleryTaskStatus(matchingTaskId, { queryKey: 'matchTask' });
 
     useEffect(() => {
         if (matchTaskQuery.data?.status === "SUCCESS") {
