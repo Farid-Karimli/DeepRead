@@ -273,15 +273,6 @@ const RepoView = ({ tree, paperId, setPaperHighlightSections }: RepoViewProps) =
                 highlightRanges={highlightRanges as { start: number; end: number; color: string }[]}
                 scrollFocusStart={scrollFocusRange?.start}
                 scrollFocusEnd={scrollFocusRange?.end}
-                onClearHighlight={
-                    highlightRanges.length > 0
-                        ? () => {
-                            setScrollFocusRange(null);
-                            setCurrentCodeDescription(null);
-                            hideCode();
-                        }
-                        : undefined
-                }
             /> : <div className="repo-tree__list">
                 {getCurrentFiles().map((file, index) => (
                     <div key={index} className="repo-tree__row">

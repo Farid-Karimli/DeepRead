@@ -1,6 +1,5 @@
 import { forwardRef, useEffect, useRef, useState } from 'react';
 import { CiLink } from 'react-icons/ci';
-import { IoClose } from 'react-icons/io5';
 import ShikiHighlighter from 'react-shiki';
 
 interface CodeViewerProps {
@@ -9,17 +8,16 @@ interface CodeViewerProps {
    /** 1-based line range to scroll into view; must match one of the highlight ranges. */
    scrollFocusStart?: number;
    scrollFocusEnd?: number;
-   onClearHighlight?: () => void;
 }
 
-type ClearButtonPosition = { top: number; left: number };
+type ActionsPosition = { top: number; left: number };
 
 const CodeViewer = forwardRef<HTMLDivElement, CodeViewerProps>(function CodeViewer(
-    { code, highlightRanges, scrollFocusStart, scrollFocusEnd, onClearHighlight },
+    { code, highlightRanges, scrollFocusStart, scrollFocusEnd },
     ref,
 ) {
     const containerRef = useRef<HTMLDivElement>(null);
-    const [clearButtonPosition, setClearButtonPosition] = useState<ClearButtonPosition | null>(null);
+    const [actionsPosition, setActionsPosition] = useState<ActionsPosition | null>(null);
 
     const setContainerRef = (node: HTMLDivElement | null) => {
         containerRef.current = node;
@@ -54,12 +52,12 @@ const CodeViewer = forwardRef<HTMLDivElement, CodeViewerProps>(function CodeView
         })
         : [];
 
-    const clearTargetRangeIndex =
+    const actionsTargetRangeIndex =
         highlightRanges != null && highlightRanges.length > 0
             ? (() => {
                 if (scrollFocusStart != null && scrollFocusEnd != null) {
                     const focusIndex = highlightRanges.findIndex(
-                        (range, index) =>
+                        (range) =>
                             range.start === scrollFocusStart && range.end === scrollFocusEnd,
                     );
                     if (focusIndex >= 0) return focusIndex;
@@ -69,42 +67,42 @@ const CodeViewer = forwardRef<HTMLDivElement, CodeViewerProps>(function CodeView
             : null;
 
     useEffect(() => {
-        if (onClearHighlight == null || clearTargetRangeIndex == null || !containerRef.current) {
-            setClearButtonPosition(null);
+        if (actionsTargetRangeIndex == null || !containerRef.current) {
+            setActionsPosition(null);
             return;
         }
 
         const container = containerRef.current;
-        const rangeSelector = `.code-viewer__highlighted-line--range-${clearTargetRangeIndex}`;
+        const rangeSelector = `.code-viewer__highlighted-line--range-${actionsTargetRangeIndex}`;
 
-        const updateClearButtonPosition = () => {
+        const updateActionsPosition = () => {
             const firstLine = container.querySelector(rangeSelector);
             if (!firstLine) {
-                setClearButtonPosition(null);
+                setActionsPosition(null);
                 return;
             }
             const containerRect = container.getBoundingClientRect();
             const lineRect = firstLine.getBoundingClientRect();
-            setClearButtonPosition({
+            setActionsPosition({
                 top: lineRect.top - containerRect.top + container.scrollTop,
                 left: lineRect.left - containerRect.left + container.scrollLeft,
             });
         };
 
-        updateClearButtonPosition();
+        updateActionsPosition();
 
-        const observer = new MutationObserver(updateClearButtonPosition);
+        const observer = new MutationObserver(updateActionsPosition);
         observer.observe(container, { childList: true, subtree: true, attributes: true });
 
-        container.addEventListener('scroll', updateClearButtonPosition);
-        window.addEventListener('resize', updateClearButtonPosition);
+        container.addEventListener('scroll', updateActionsPosition);
+        window.addEventListener('resize', updateActionsPosition);
 
         return () => {
             observer.disconnect();
-            container.removeEventListener('scroll', updateClearButtonPosition);
-            window.removeEventListener('resize', updateClearButtonPosition);
+            container.removeEventListener('scroll', updateActionsPosition);
+            window.removeEventListener('resize', updateActionsPosition);
         };
-    }, [code, highlightRanges, scrollFocusStart, scrollFocusEnd, onClearHighlight, clearTargetRangeIndex]);
+    }, [code, highlightRanges, scrollFocusStart, scrollFocusEnd, actionsTargetRangeIndex]);
 
     useEffect(() => {
         if (highlightRanges == null || highlightRanges.length === 0 || !containerRef.current) return;
@@ -142,19 +140,11 @@ const CodeViewer = forwardRef<HTMLDivElement, CodeViewerProps>(function CodeView
             >
                 {code}
             </ShikiHighlighter>
-            {onClearHighlight && clearButtonPosition && (
+            {actionsPosition && (
                 <div
                     className="code-viewer__highlight-actions"
-                    style={{ top: clearButtonPosition.top, left: clearButtonPosition.left }}
+                    style={{ top: actionsPosition.top, left: actionsPosition.left }}
                 >
-                    <button
-                        type="button"
-                        className="code-viewer__clear-highlight"
-                        onClick={onClearHighlight}
-                        aria-label="Clear highlight"
-                    >
-                        <IoClose aria-hidden />
-                    </button>
                     <button
                         type="button"
                         className="code-viewer__show-in-paper"
