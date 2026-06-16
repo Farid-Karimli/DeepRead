@@ -159,6 +159,9 @@ def map_code_to_content_task(
     code: str,
     paper_id: str,
     cache_key: str,
+    start: int,
+    end: int,
+    filepath: str,
 ):
     agent = Agent()
     paper_record = get_paper_record_by_id(paper_id)
@@ -175,7 +178,7 @@ def map_code_to_content_task(
         mapping_type="code_to_content",
         cache_key=cache_key,
         paper_id=paper_id, 
-        inputs=CodeToContentInputs(code=code),
+        inputs=CodeToContentInputs(code=code, start=start, end=end, filepath=filepath),
         outputs=CodeToContentResult(sections=sections),
     )
     upsert_mapping_result(record)
