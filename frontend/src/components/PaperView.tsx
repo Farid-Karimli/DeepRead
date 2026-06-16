@@ -34,6 +34,15 @@ type PaperHighlight = {
     description: string;
 };
 
+type ContentToCodeInput = {
+    content: string | Blob;
+    repoUrl: string;
+    context: string;
+    paperId: string;
+    box: paperContentBox;
+    pageNumber: number;
+}
+
 const CODE_MATCH_VERDICT_TO_COLOR: Record<string, string> = {
     "implemented": "rgba(37, 99, 235, 1)",
     "not_implemented": "rgba(220, 38, 38, 1)",
@@ -69,6 +78,7 @@ function PdfPageList({
         let boxes: BoundingBoxWithTooltip[] = [];
 
         const contentToBBoxPaperMage = async () => {
+            // AI-discovered matches
             for (let i = 0; i < analysisResult.sections.length; i++) {
                 const analyzedSection = analysisResult.sections[i];
 
@@ -107,6 +117,7 @@ function PdfPageList({
                 })
             }
 
+            // Match from user-selected code
             for (let j = 0; j < paperHighlightSections.length; j++) {
                 const highlight = paperHighlightSections[j];
                 const paperMageSection = processResult.sections.find(
@@ -140,6 +151,7 @@ function PdfPageList({
                 });
             }
 
+            // Match from user-selected paper content
             for (let k = 0; k < codeMatches.length; k++) {
                 const codeMatch = codeMatches[k];
                 const box = codeMatch.inputs.box;
@@ -245,14 +257,7 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
         }
     }, [matchesQuery.data])
 
-    type ContentToCodeInput = {
-        content: string | Blob;
-        repoUrl: string;
-        context: string;
-        paperId: string;
-        box: paperContentBox;
-        pageNumber: number;
-    }
+    
 
     // This submits a user's selection to the server for Celery task
     const contentToCodeMutation = useMutation({
@@ -329,8 +334,6 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
     const fileForViewer = useMemo(() => paperFile, [paperFile]);
 
     const hasRealFile = paperFile instanceof File && paperFile.size > 0;
-
-    const { showCode } = useSidePanel();
 
     return (
         <div className="paper-view-layout">
