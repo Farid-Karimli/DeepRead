@@ -1,11 +1,14 @@
-import { useEffect, useRef, useState } from 'react';
-import type { githubRepoTreeResponse } from '../api/types.ts';
-import { getGithubFileFromBlobUrl, mapCodeToContent, getCodeMappingStatus } from '../api/main';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type { codeToContentMatch, githubRepoTreeResponse } from '../api/types.ts';
+import { getGithubFileFromBlobUrl, mapCodeToContent, getCodeToContentMatches } from '../api/main';
+import { dedupeRanges } from '../utils/dedupeRanges.ts';
 import { VscFolder, VscFile } from 'react-icons/vsc';
 import { IoIosArrowBack } from "react-icons/io";
 import CodeViewer from './CodeViewer.tsx';
 import { useSidePanel } from '../context/SidePanelContext.tsx';
 import { usePDFTextSelection } from '../hooks/useTextSelection.tsx';
+import { useCeleryTaskStatus } from '../hooks/useCeleryTaskStatus.ts';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 type PaperHighlight = {
     section_id: string;
@@ -19,17 +22,11 @@ interface RepoViewProps {
     setPaperHighlightSections: (paperHighlightSections: PaperHighlight[]) => void
 }
 
-type HighlightRange = {
-  start: number;
-  end: number;
-}
-
 const RepoView = ({ tree, paperId, setPaperHighlightSections }: RepoViewProps) => {
     const [currentPath, setCurrentPath] = useState(() => "");
     const [currentFileContent, setCurrentFileContent] = useState<string | null>(null);
-    const [highlightRanges, setHighlightRanges] = useState<HighlightRange[] | null>(null);
-    const [scrollFocusRange, setScrollFocusRange] = useState<HighlightRange | null>(null);
-    const { codeInfo } = useSidePanel();
+    const [scrollFocusRange, setScrollFocusRange] = useState<{ start: number; end: number } | null>(null);
+    const { codeInfo, hideCode } = useSidePanel();
     const codeViewerRef = useRef<HTMLDivElement>(null);
 
     const [currentCodeDescription, setCurrentCodeDescription] = useState<string | null>(null);
@@ -40,7 +37,61 @@ const RepoView = ({ tree, paperId, setPaperHighlightSections }: RepoViewProps) =
         range: Range;
     } | null>(null);
     const [codeMappingLoading, setCodeMappingLoading] = useState(false);
-    const [codeMappingTaskId, setCodeMappingTaskId] = useState<string | null>(null);
+    const [codeMatchingTaskId, setCodeMatchingTaskId] = useState<string | null>(null);
+
+    const queryClient = useQueryClient();
+    const codeMatchingTaskQuery = useCeleryTaskStatus(codeMatchingTaskId, { queryKey: 'codeMatchingTask' });
+
+    type CodeToContentInput = {
+        code: string;
+        paperId: string;
+        start: number, 
+        end: number,
+        filepath: string,
+      };
+
+    const codeMatchingMutation = useMutation({
+        mutationFn: ({code, paperId, start, end, filepath}: CodeToContentInput) => mapCodeToContent(code, paperId, start, end, filepath),
+        onSuccess: (response) => {
+            if (response.status === "SUCCESS") {
+                if (response.result) {
+                    setPaperHighlightSections(response.result);
+                }
+                queryClient.invalidateQueries({queryKey: ["codeToContentMatches", paperId, currentPath]})
+            } else if (response.task_id) {
+                setCodeMatchingTaskId(response.task_id);
+            }
+        },
+        onError: (error) => {
+            console.log(`Error occured when matching code to content: ${error}`)
+            setCodeMatchingTaskId(null);
+            setPendingCodeSelection(null);
+        }
+        
+    })
+
+    const codeToContentMatchesQuery = useQuery({
+        queryKey: ["codeToContentMatches", paperId, currentPath],
+        queryFn: () => getCodeToContentMatches(paperId, currentPath),
+        enabled: Boolean(paperId) && Boolean(currentPath),
+    })
+
+    const highlightRanges = useMemo(() => {
+        // Matches from the DB for this code file
+        const fromDB = (codeToContentMatchesQuery.data ?? []).map((match: codeToContentMatch) => ({
+                start: match.inputs.start,
+                end: match.inputs.end,
+                color: "rgba(135, 100, 47, 0.3)",
+        }));
+        // Matches from the user pick
+        const fromUser = codeInfo?.filePath === currentPath ? codeInfo.codeRanges.map((r) => ({ 
+                start: r.startLine, 
+                end: r.endLine, 
+                color: "rgba(145, 102, 189, 0.3)" 
+        })) : [];
+
+        return dedupeRanges([...fromDB, ...fromUser]);
+    }, [codeToContentMatchesQuery.data, codeInfo, currentPath]);
 
     usePDFTextSelection(codeViewerRef, setPendingCodeSelection);
 
@@ -48,79 +99,28 @@ const RepoView = ({ tree, paperId, setPaperHighlightSections }: RepoViewProps) =
         return tree.tree.find((obj, _) => obj.path === path)?.url;
     };
 
-    const submitPendingCodeSelection = () => {
-        if (!pendingCodeSelection || codeMappingTaskId !== null) return;
-
-        setCodeMappingLoading(true);
-        mapCodeToContent(pendingCodeSelection.text, paperId)
-            .then((response) => {
-                if (response.status === 'SUCCESS') {
-                    console.log('Code mapping successful', response.result);
-                    setCodeMappingLoading(false);
-                    if (!response.result) {
-                        console.error('No result found');
-                        return;
-                    }
-                    const result: any = response.result;
-                    setPaperHighlightSections(result);
-                }
-                else {
-                    setCodeMappingTaskId(response.task_id);
-                }
-            })
-            .catch((error) => {
-                console.error('error', error);
-                setCodeMappingLoading(false);
-                setCodeMappingTaskId(null);
-                setPendingCodeSelection(null);
-            });
-    };
-
     useEffect(() => {
-        if (!codeMappingTaskId) return;
-        let cancelled = false;
+        if (codeMatchingTaskQuery.data?.status === 'SUCCESS' && codeMatchingTaskQuery.data.result) {
+            const sections = codeMatchingTaskQuery.data.result as unknown as PaperHighlight[];
+            setPaperHighlightSections(sections);
+            setCodeMatchingTaskId(null);
+            setPendingCodeSelection(null);
+            queryClient.invalidateQueries({ queryKey: ["codeToContentMatches", paperId, currentPath] });
+            return;
+        }
 
-        const poll = async () => {
-            if (cancelled) {
-                setCodeMappingLoading(false);
-                return;
-            }
-
-            const status = await getCodeMappingStatus(codeMappingTaskId);
-
-            if (cancelled) {
-                setCodeMappingLoading(false);
-                return;
-            }
-
-            if (status.status === 'FAILURE') {
-                console.error('Code mapping failed');
-                setCodeMappingLoading(false);
-                setCodeMappingTaskId(null);
-                setPendingCodeSelection(null);
-                return;
-            }
-
-            if (status.status === 'SUCCESS' && status.result) {
-                setCodeMappingLoading(false);
-                setPaperHighlightSections(status.result);
-                setCodeMappingTaskId(null);
-                setPendingCodeSelection(null);
-                return;
-            }
-
-            setTimeout(poll, 5000);
-        };
-
-        poll();
-        return () => { cancelled = true; };
-    }, [codeMappingTaskId, setPaperHighlightSections]);
+        if (codeMatchingTaskQuery.data?.status === 'FAILURE') {
+            console.error('Code mapping failed');
+            setCodeMappingLoading(false);
+            setCodeMatchingTaskId(null);
+            setPendingCodeSelection(null);
+        }
+    }, [codeMatchingTaskQuery.data, setPaperHighlightSections, queryClient, paperId, currentPath]);
 
     useEffect(() => {
         if (codeInfo) {
             setCurrentPath(codeInfo.filePath);
             setCurrentCodeDescription(codeInfo.description);
-            setHighlightRanges(codeInfo.codeRanges.map((codeRange) => ({ start: codeRange.startLine, end: codeRange.endLine })));
             setScrollFocusRange(
                 codeInfo.scrollToRange
                     ? { start: codeInfo.scrollToRange.startLine, end: codeInfo.scrollToRange.endLine }
@@ -158,9 +158,9 @@ const RepoView = ({ tree, paperId, setPaperHighlightSections }: RepoViewProps) =
     }
 
     const onEntryClick = (filepath: string, url: string, isFile: boolean) => {
-        setHighlightRanges([]);
         setScrollFocusRange(null);
         setCurrentCodeDescription(null);
+        hideCode();
         setPendingCodeSelection(null);
         setCurrentPath(filepath);
         if (!isFile) {
@@ -180,15 +180,59 @@ const RepoView = ({ tree, paperId, setPaperHighlightSections }: RepoViewProps) =
         const parentDir = parts.slice(0, -1).join('/');
         if (currentFileContent) {
             setCurrentFileContent(null);
-            setHighlightRanges([] as HighlightRange[]);
             setScrollFocusRange(null);
             setCurrentPath(parentDir);
             setCurrentCodeDescription(null);
+            hideCode();
             setPendingCodeSelection(null);
             return;
         }
         setCurrentPath(parentDir);
     }
+
+    function lineRangeFromRange(fileContent: string, range: Range): { start: number; end: number } {
+        const anchor =
+            range.startContainer instanceof Element
+                ? range.startContainer
+                : range.startContainer.parentElement;
+        const codeRoot = anchor?.closest('code');
+        if (!codeRoot) return { start: 1, end: 1 };
+
+        // Count characters from the top of the rendered <code> block to a range boundary.
+        const offsetInCode = (container: Node, offset: number) => {
+            const probe = document.createRange();
+            probe.selectNodeContents(codeRoot);
+            probe.setEnd(container, offset);
+            return probe.toString().length;
+        };
+
+        const startOffset = offsetInCode(range.startContainer, range.startOffset);
+        const endOffset = offsetInCode(range.endContainer, range.endOffset);
+        const [from, to] = startOffset <= endOffset ? [startOffset, endOffset] : [endOffset, startOffset];
+
+        // 1-based lines, matching CodeViewer highlightStarts/highlightEnds.
+        return {
+            start: fileContent.slice(0, from).split('\n').length,
+            end: fileContent.slice(0, to).split('\n').length,
+        };
+    }
+
+    const handleSelectionSubmit = () => {
+        if (!pendingCodeSelection || !currentFileContent || !currentPath) return;
+
+        const lineRange = lineRangeFromRange(currentFileContent, pendingCodeSelection.range);
+
+        const input: CodeToContentInput = {
+            code: pendingCodeSelection.text,
+            paperId: paperId,
+            start: lineRange.start,
+            end: lineRange.end,
+            filepath: currentPath
+        }
+        codeMatchingMutation.mutate(input);
+    }
+
+    const isMapping = codeMatchingMutation.isPending || codeMatchingTaskId !== null;    
 
     return (
         <div className="repo-tree">
@@ -226,16 +270,15 @@ const RepoView = ({ tree, paperId, setPaperHighlightSections }: RepoViewProps) =
             {currentFileContent ? <CodeViewer
                 ref={codeViewerRef}
                 code={currentFileContent}
-                highlightStarts={highlightRanges?.map((highlightRange) => highlightRange.start)}
-                highlightEnds={highlightRanges?.map((highlightRange) => highlightRange.end)}
+                highlightRanges={highlightRanges as { start: number; end: number; color: string }[]}
                 scrollFocusStart={scrollFocusRange?.start}
                 scrollFocusEnd={scrollFocusRange?.end}
                 onClearHighlight={
-                    highlightRanges && highlightRanges.length > 0
+                    highlightRanges.length > 0
                         ? () => {
-                            setHighlightRanges([]);
                             setScrollFocusRange(null);
                             setCurrentCodeDescription(null);
+                            hideCode();
                         }
                         : undefined
                 }
@@ -265,10 +308,10 @@ const RepoView = ({ tree, paperId, setPaperHighlightSections }: RepoViewProps) =
                         <button
                             type="button"
                             className="pdf-selection-popover__btn pdf-selection-popover__btn--primary"
-                            onClick={submitPendingCodeSelection}
-                            disabled={codeMappingLoading || codeMappingTaskId !== null}
+                            onClick={handleSelectionSubmit}
+                            disabled={isMapping}
                         >
-                            {codeMappingLoading ? 'Mapping...' : 'Map to paper content'}
+                            {isMapping ? 'Mapping...' : 'Map to paper content'}
                         </button>
                         <button
                             type="button"
