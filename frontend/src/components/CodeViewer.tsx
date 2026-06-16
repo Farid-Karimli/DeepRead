@@ -1,11 +1,11 @@
 import { forwardRef, useEffect, useRef, useState } from 'react';
+import { CiLink } from 'react-icons/ci';
 import { IoClose } from 'react-icons/io5';
 import ShikiHighlighter from 'react-shiki';
 
 interface CodeViewerProps {
    code: string;
-   highlightStarts?: number[]; // Could be multiple snippets in the file
-   highlightEnds?: number[];
+   highlightRanges?: { start: number; end: number; color: string }[];
    /** 1-based line range to scroll into view; must match one of the highlight ranges. */
    scrollFocusStart?: number;
    scrollFocusEnd?: number;
@@ -15,7 +15,7 @@ interface CodeViewerProps {
 type ClearButtonPosition = { top: number; left: number };
 
 const CodeViewer = forwardRef<HTMLDivElement, CodeViewerProps>(function CodeViewer(
-    { code, highlightStarts, highlightEnds, scrollFocusStart, scrollFocusEnd, onClearHighlight },
+    { code, highlightRanges, scrollFocusStart, scrollFocusEnd, onClearHighlight },
     ref,
 ) {
     const containerRef = useRef<HTMLDivElement>(null);
@@ -31,9 +31,11 @@ const CodeViewer = forwardRef<HTMLDivElement, CodeViewerProps>(function CodeView
     };
 
     // Decorations for all code snippets in the file
-    const decorations = highlightStarts != null && highlightEnds != null
-        ? highlightStarts.map((highlightStart, index) => {
-            const highlightEnd = highlightEnds[index];
+    const decorations = highlightRanges != null && highlightRanges.length > 0
+        ? highlightRanges.map((highlightRange, index) => {
+            const highlightStart = highlightRange.start;
+            const highlightEnd = highlightRange.end;
+            const highlightColor = highlightRange.color;
             const isScrollFocus =
                 scrollFocusStart != null &&
                 scrollFocusEnd != null &&
@@ -46,18 +48,19 @@ const CodeViewer = forwardRef<HTMLDivElement, CodeViewerProps>(function CodeView
                 end: { line: highlightEnd - 1, character: 0 },
                 properties: {
                     class: `code-viewer__highlighted-line ${rangeClass}${focusClass}`,
+                    style: `background-color: ${highlightColor}`
                 },
             };
         })
         : [];
 
     const clearTargetRangeIndex =
-        highlightStarts != null && highlightEnds != null
+        highlightRanges != null && highlightRanges.length > 0
             ? (() => {
                 if (scrollFocusStart != null && scrollFocusEnd != null) {
-                    const focusIndex = highlightStarts.findIndex(
-                        (start, index) =>
-                            start === scrollFocusStart && highlightEnds[index] === scrollFocusEnd,
+                    const focusIndex = highlightRanges.findIndex(
+                        (range, index) =>
+                            range.start === scrollFocusStart && range.end === scrollFocusEnd,
                     );
                     if (focusIndex >= 0) return focusIndex;
                 }
@@ -101,10 +104,10 @@ const CodeViewer = forwardRef<HTMLDivElement, CodeViewerProps>(function CodeView
             container.removeEventListener('scroll', updateClearButtonPosition);
             window.removeEventListener('resize', updateClearButtonPosition);
         };
-    }, [code, highlightStarts, highlightEnds, scrollFocusStart, scrollFocusEnd, onClearHighlight, clearTargetRangeIndex]);
+    }, [code, highlightRanges, scrollFocusStart, scrollFocusEnd, onClearHighlight, clearTargetRangeIndex]);
 
     useEffect(() => {
-        if (highlightStarts == null || highlightEnds == null || !containerRef.current) return;
+        if (highlightRanges == null || highlightRanges.length === 0 || !containerRef.current) return;
 
         const container = containerRef.current;
         const tryScroll = () => {
@@ -127,7 +130,7 @@ const CodeViewer = forwardRef<HTMLDivElement, CodeViewerProps>(function CodeView
         observer.observe(container, { childList: true, subtree: true });
 
         return () => observer.disconnect();
-    }, [code, highlightStarts, highlightEnds, scrollFocusStart, scrollFocusEnd]);
+    }, [code, highlightRanges, scrollFocusStart, scrollFocusEnd]);
 
     return (
         <div ref={setContainerRef} className="code-viewer">
@@ -140,15 +143,27 @@ const CodeViewer = forwardRef<HTMLDivElement, CodeViewerProps>(function CodeView
                 {code}
             </ShikiHighlighter>
             {onClearHighlight && clearButtonPosition && (
-                <button
-                    type="button"
-                    className="code-viewer__clear-highlight"
+                <div
+                    className="code-viewer__highlight-actions"
                     style={{ top: clearButtonPosition.top, left: clearButtonPosition.left }}
-                    onClick={onClearHighlight}
-                    aria-label="Clear highlight"
                 >
-                    <IoClose aria-hidden />
-                </button>
+                    <button
+                        type="button"
+                        className="code-viewer__clear-highlight"
+                        onClick={onClearHighlight}
+                        aria-label="Clear highlight"
+                    >
+                        <IoClose aria-hidden />
+                    </button>
+                    <button
+                        type="button"
+                        className="code-viewer__show-in-paper"
+                        aria-label="Show in paper"
+                    >
+                        <CiLink aria-hidden />
+                        <span className="code-viewer__show-in-paper-label">Show in paper</span>
+                    </button>
+                </div>
             )}
         </div>
     );
