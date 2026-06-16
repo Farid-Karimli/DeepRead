@@ -20,7 +20,15 @@ from src.celery_tasks import (
     map_content_to_code_task, 
     map_code_to_content_task
 )
-from src.db import get_file_url, upload_paper_to_storage, get_mapping_by_cache_key, get_paper_record_by_id, get_all_paper_records, get_content_to_code_matches_by_paper_id
+from src.db import (get_file_url, 
+    upload_paper_to_storage, 
+    get_mapping_by_cache_key, 
+    get_paper_record_by_id, 
+    get_all_paper_records, 
+    get_content_to_code_matches_by_paper_id, 
+    get_code_to_content_matches_by_paper_id_and_filepath
+)
+
 from src.utils import download_file as download_file_from_url, get_file_content, get_repo_tree
 from src.types import PaperRecord, PaperContentBox
 
@@ -226,6 +234,11 @@ def get_content_to_code_matches(paper_id: str):
     matches = get_content_to_code_matches_by_paper_id(paper_id)
     return {"matches": [match.model_dump(mode="json") for match in matches]}
 
+@app.get("/get_code_to_content_matches")
+def get_code_to_content_matches(paper_id: str, current_path: str):
+    matches = get_code_to_content_matches_by_paper_id_and_filepath(paper_id, current_path)
+    return {"matches": [match.model_dump(mode="json") for match in matches]}
+
 @app.post("/map_content_to_code")
 def map_content_to_code(
     content: str = Form(...),
@@ -265,6 +278,9 @@ def map_content_to_code(
 def map_code_to_content(
     code: str = Form(...),
     paper_id: str = Form(...),
+    start: int = Form(...),
+    end: int = Form(...),
+    filepath: str = Form(...),
 ):
     cache_key = hashlib.sha256(
         f"{code}/0{paper_id}".encode("utf-8")
@@ -279,7 +295,10 @@ def map_code_to_content(
     task = map_code_to_content_task.delay(
         code=code,
         paper_id=paper_id,
-        cache_key=cache_key
+        cache_key=cache_key, 
+        start=start,
+        end=end,
+        filepath=filepath,
     )
     return {"task_id": task.id}
 
