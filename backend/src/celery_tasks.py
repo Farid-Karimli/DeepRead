@@ -179,7 +179,11 @@ def map_code_to_content_task(
         cache_key=cache_key,
         paper_id=paper_id, 
         inputs=CodeToContentInputs(code=code, start=start, end=end, filepath=filepath),
-        outputs=CodeToContentResult(sections=sections),
+        outputs=CodeToContentResult(
+            verdict=result.get("verdict", "Verdict not found"),
+            reasoning=result.get("reasoning", "Reasoning not found"),
+            sections=sections
+            ),
     )
     upsert_mapping_result(record)
-    return sections
+    return result
