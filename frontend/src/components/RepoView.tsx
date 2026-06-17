@@ -22,6 +22,12 @@ interface RepoViewProps {
     setPaperHighlightSections: (paperHighlightSections: PaperHighlight[]) => void
 }
 
+const CONTENT_MATCH_VERDICT_TO_COLOR: Record<string, string> = {
+    "described": "rgba(135, 100, 47, 0.3)",
+    "not_described": "rgb(230, 94, 94)",
+    "not_applicable": "rgba(168, 168, 168, 0.6)",
+}
+
 const RepoView = ({ tree, paperId, setPaperHighlightSections }: RepoViewProps) => {
     const [currentPath, setCurrentPath] = useState(() => "");
     const [currentFileContent, setCurrentFileContent] = useState<string | null>(null);
@@ -81,7 +87,7 @@ const RepoView = ({ tree, paperId, setPaperHighlightSections }: RepoViewProps) =
         const fromDB = (codeToContentMatchesQuery.data ?? []).map((match: codeToContentMatch) => ({
                 start: match.inputs.start,
                 end: match.inputs.end,
-                color: "rgba(135, 100, 47, 0.3)",
+                color: CONTENT_MATCH_VERDICT_TO_COLOR[match.outputs.verdict]
         }));
         // Matches from the user pick
         const fromUser = codeInfo?.filePath === currentPath ? codeInfo.codeRanges.map((r) => ({ 
