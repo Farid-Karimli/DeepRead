@@ -2,21 +2,19 @@ import { useState, useEffect } from 'react'
 import './App.css'
 import Home from './components/Home';
 import PaperView from './components/PaperView.tsx';
-import { SidePanelProvider } from './context/SidePanelContext.tsx';
+import { useQueryClient, useQuery, useMutation } from '@tanstack/react-query';
 
 import {
   submitPaperAnalysis,
   getPaperAnalysisStatus,
-  getCachedPaperById,
+  getPaperById,
+  getPaperFile,
   downloadFile,
   getGithubRepoTree,
-  type paperSubmitResponse,
-  type paperAnalysisStatusResponse,
-  type codeSectionsResult,
-  type CachedPaper,
-  type githubRepoTreeResponse,
 } from './api/main';
-import type { processPDFResult, AgentTaskResult } from './api/types.ts';
+
+import type { AgentTaskResult, codeSectionsResult } from './api/types.ts';
+import { SidePanelProvider } from './context/SidePanelContext.tsx';
 
 /** Celery stores the agent return value: `{ github_repo_url, code_result }`. */
 
@@ -37,115 +35,116 @@ function extractCodeSections(result: unknown): codeSectionsResult | null {
 }
 
 function App() {
+
+  const queryClient = useQueryClient();
+
+  const [selectedPaperId, setSelectedPaperId] = useState<string | null>(() => {
+    const selectedPaperId = localStorage.getItem('selectedPaperId');
+    return selectedPaperId ?? null;
+  });
+
   const [taskId, setTaskId] = useState<string | null>(() => {
     const taskId = localStorage.getItem('taskId');
     return taskId ?? null;
   });
-  const [analysisResult, setAnalysisResult] = useState<codeSectionsResult | undefined>(() => {
-    const analysisResult = localStorage.getItem('analysisResult');
-    return analysisResult ? JSON.parse(analysisResult) : undefined;
-  });
-  const [papermageResult, setPaperMageResult] = useState<processPDFResult | undefined>(() => {
-    const papermageResult = localStorage.getItem('papermageResult');
-    return papermageResult ? JSON.parse(papermageResult) : undefined;
-  });
-  const [githubRepoTree, setGithubRepoTree] = useState<githubRepoTreeResponse | undefined>(() => {
-    const githubRepoTree = localStorage.getItem('githubRepoTree');
-    return githubRepoTree ? JSON.parse(githubRepoTree) : undefined;
-  });
-  const [paperId, setPaperId] = useState<string | null>(() => {
-    const paperId = localStorage.getItem('paperId');
-    return paperId ?? null;
-  });
-  const [githubRepoUrl, setGithubRepoUrl] = useState<string | undefined>(() => {
-    const githubRepoUrl = localStorage.getItem('githubRepoUrl');
-    return githubRepoUrl ?? undefined;
-  });
-  const [paperFile, setPaperFile] = useState<File | undefined>(undefined);
+
   const [submitError, setSubmitError] = useState<string | null>(null);
 
+  const taskQuery = useQuery({
+    queryKey: ['tasks', taskId],
+    queryFn: () => getPaperAnalysisStatus(taskId!),
+    enabled: Boolean(taskId),
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      return status === 'SUCCESS' || status === 'FAILURE' ? false : 10000;
+    },
+  })
+
+  const paperQuery = useQuery({
+    queryKey: ['papers', selectedPaperId],
+    queryFn: () => {
+      if (!selectedPaperId) throw new Error('No paper selected');
+      return getPaperById(selectedPaperId);
+    },
+    enabled: Boolean(selectedPaperId) && !taskId,
+  });
+
+  const fileQuery = useQuery({
+    queryKey: ['papers', selectedPaperId, 'file'],
+    queryFn: () => {
+      if (!paperQuery.data?.file_url) throw new Error('No file URL');
+      return getPaperFile(paperQuery.data.file_url);
+    },
+    enabled: Boolean(paperQuery.data?.file_url),
+  });
+
+  useEffect(()=> {
+    if (!taskQuery.data || !selectedPaperId) return;
+
+    if (taskQuery.data.status === "SUCCESS") {
+      setTaskId(null);
+      queryClient.invalidateQueries({queryKey: ['papers', selectedPaperId]})
+    }
+
+    if (taskQuery.data.status === "FAILURE") {
+      setTaskId(null);
+      setSubmitError(taskQuery.data.error ?? "Analysis failed.");
+    }
+  }, [taskQuery.data, selectedPaperId, queryClient])
+  
+  const paperMetadata = paperQuery.data;
+
+  const analysisResult = paperMetadata ? 
+    extractCodeSections(paperMetadata.analysis_result) : null;
+
+  const papermageResult = paperMetadata ? 
+    paperMetadata.papermage_result : null;
+
+  const githubRepoUrl = paperMetadata ? 
+    extractGithubRepoUrl(paperMetadata.analysis_result) : null;
+
+  const paperFile = fileQuery.data && selectedPaperId
+    ? new File([fileQuery.data], selectedPaperId, { type: 'application/pdf' })
+    : undefined;
+
+  
+  const repoTreeQuery = useQuery({
+      queryKey: ['repos', githubRepoUrl, 'tree'],
+      queryFn: () => getGithubRepoTree(githubRepoUrl!),
+      enabled: Boolean(githubRepoUrl),
+  });
+
+  const repoTree = repoTreeQuery.data ?? null;
+
+  const analyzeMutation = useMutation({
+    mutationFn: submitPaperAnalysis,
+    onSuccess: (response) => {
+      setSelectedPaperId(response.paper_id);
+      if (response.status === 'PENDING' && response.task_id) {
+        setTaskId(response.task_id);
+      }
+      if (response.status === 'SUCCESS') {
+        setTaskId(null);
+        queryClient.invalidateQueries({ queryKey: ['papers', response.paper_id] });
+      }
+    },
+  });
+  
   useEffect(() => {
     if (taskId) {
       localStorage.setItem('taskId', taskId);
     } else {
       localStorage.removeItem('taskId');
     }
-    if (analysisResult) {
-      localStorage.setItem('analysisResult', JSON.stringify(analysisResult));
-    } else {
-      localStorage.removeItem('analysisResult');
-    }
-    if (papermageResult) {
-      localStorage.setItem('papermageResult', JSON.stringify(papermageResult));
-    } else {
-      localStorage.removeItem('papermageResult');
-    }
-    if (paperId) {
-      localStorage.setItem('paperId', paperId);
-    } else {
-      localStorage.removeItem('paperId');
-    }
-    if (githubRepoTree) {
-      localStorage.setItem('githubRepoTree', JSON.stringify(githubRepoTree));
-    } else {
-      localStorage.removeItem('githubRepoTree');
-    }
-  }, [taskId, analysisResult, paperFile, paperId, githubRepoTree, papermageResult, githubRepoUrl]);
+  }, [taskId]);
 
   useEffect(() => {
-    if (!taskId || analysisResult) return;
-
-    let cancelled = false;
-
-    const poll = async () => {
-      if (cancelled) return;
-      try {
-        const status: paperAnalysisStatusResponse = await getPaperAnalysisStatus(taskId);
-        if (cancelled) return;
-
-        if (status.status === 'SUCCESS' && status.result !== undefined && status.result !== null) {
-
-          const sections: codeSectionsResult | null = extractCodeSections(status.result.analysis);
-          const githubRepoUrl: string | null = extractGithubRepoUrl(status.result.analysis);
-          const papermageResult: processPDFResult = status.result.processed;
-
-          if (githubRepoUrl === null) {
-            setSubmitError('Could not extract GitHub repository URL from the result.');
-            setTaskId(null);
-            return;
-          }
-          const tree: githubRepoTreeResponse = await getGithubRepoTree(githubRepoUrl);
-          if (sections !== null && tree !== undefined && papermageResult !== null) {
-            setGithubRepoTree(tree); 
-            setAnalysisResult(sections);
-            setPaperMageResult(papermageResult)
-            setGithubRepoUrl(githubRepoUrl);
-            return;
-          }
-          setSubmitError('Analysis finished but the result format was unexpected.');
-          setTaskId(null);
-          return;
-        }
-
-        if (status.status === 'FAILURE') {
-          setSubmitError(status.error ?? 'Analysis failed. Check the Celery worker logs.');
-          setTaskId(null);
-          return;
-        }
-
-        setTimeout(poll, 5000);
-      } catch {
-        if (cancelled) return;
-        setSubmitError('Could not reach the API. Is the backend running on http://127.0.0.1:8000?');
-        setTaskId(null);
-      }
-    };
-
-    poll();
-    return () => {
-      cancelled = true;
-    };
-  }, [taskId, analysisResult]);
+    if (selectedPaperId) {
+      localStorage.setItem('selectedPaperId', selectedPaperId);
+    } else {
+      localStorage.removeItem('selectedPaperId')
+    }
+  }, [selectedPaperId])
 
   const handlePaperSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -163,83 +162,45 @@ function App() {
       file = new File([blob], link.split('/').pop() ?? 'paper.pdf', { type: 'application/pdf' });
       formData.set('file', file);
     }
-    try {
-      const response: paperSubmitResponse = await submitPaperAnalysis(formData);
-      setPaperFile(file);
-      setPaperId(response.paper_id);
-      if (response.status === 'complete') {
-        const sections = extractCodeSections(response.result);
-        if (sections) {
-          setAnalysisResult(sections);
-          return;
-        }
-        setSubmitError('Analysis finished but the result format was unexpected.');
-      } else {
-        setTaskId(response.task_id ?? null);
-      }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Upload failed';
-      setSubmitError(`${message}. Check the browser console and backend logs.`);
-    }
+
+    analyzeMutation.mutate(formData);
   };
 
   const clearEnvironment = () => {
     setTaskId(null);
-    setAnalysisResult(undefined);
-    setPaperMageResult(undefined);
-    setPaperFile(undefined);
-    setPaperId(null);
+    setSelectedPaperId(null);
     setSubmitError(null);
   };
 
   const openCachedPaper = async (id: string) => {
     setSubmitError(null);
-    try {
-      const cacheResponse: CachedPaper = await getCachedPaperById(id);
-      const { analysisResult, papermageResult, file } = cacheResponse;
-      const sections = extractCodeSections(analysisResult);
-      const githubRepoUrl = extractGithubRepoUrl(analysisResult);
-
-      console.log('sections', sections);
-      console.log('papermageResult', papermageResult);
-      console.log('githubRepoUrl', githubRepoUrl);
-
-      if (sections && githubRepoUrl) {
-        const tree: githubRepoTreeResponse = await getGithubRepoTree(githubRepoUrl);
-        if (tree) {
-          setGithubRepoTree(tree);
-          console.log('tree', tree);
-        }
-        setPaperId(id);
-        setPaperFile(new File([file.buffer as ArrayBuffer], id, { type: 'application/pdf' }));
-        setAnalysisResult(sections);
-        setPaperMageResult(papermageResult);
-        setGithubRepoUrl(githubRepoUrl);
-        return;
-      }
-      setSubmitError('Cached result format was unexpected.');
-    } catch {
-      setSubmitError('Could not load that paper from the server.');
-    }
+    setSelectedPaperId(id);
   };
 
-  if (analysisResult && githubRepoTree && papermageResult && githubRepoUrl && paperId) {
+  if (
+    selectedPaperId &&
+    paperFile &&
+    analysisResult &&
+    papermageResult &&
+    githubRepoUrl &&
+    repoTree
+  ) {
     return (
       <SidePanelProvider>
         <PaperView
           analysisResult={analysisResult}
           processResult={papermageResult}
-          clearEnvironment={clearEnvironment}
           paperFile={paperFile}
-          tree={githubRepoTree}
+          tree={repoTree}
           githubRepoUrl={githubRepoUrl}
-          paperId={paperId}
+          paperId={selectedPaperId}
+          clearEnvironment={clearEnvironment}
         />
-      </SidePanelProvider>  
+      </SidePanelProvider>
     );
   }
 
-  if (taskId) {
+  if (analyzeMutation.isPending) {
     return (
       <section id="center">
         <h1>Analyzing…</h1>

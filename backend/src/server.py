@@ -7,6 +7,7 @@ from pathlib import Path
 from fastapi import FastAPI, File, HTTPException, UploadFile, Response, Form
 from fastapi.responses import JSONResponse, PlainTextResponse
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import ValidationError
 import uvicorn
 import asyncio
 
@@ -19,9 +20,17 @@ from src.celery_tasks import (
     map_content_to_code_task, 
     map_code_to_content_task
 )
-from src.db import get_file_url, upload_paper_to_storage, get_mapping_by_cache_key, get_paper_record_by_id, get_all_paper_records
+from src.db import (get_file_url, 
+    upload_paper_to_storage, 
+    get_mapping_by_cache_key, 
+    get_paper_record_by_id, 
+    get_all_paper_records, 
+    get_content_to_code_matches_by_paper_id, 
+    get_code_to_content_matches_by_paper_id_and_filepath
+)
+
 from src.utils import download_file as download_file_from_url, get_file_content, get_repo_tree
-from src.types import PaperRecord
+from src.types import PaperRecord, PaperContentBox
 
 logger = logging.getLogger(__name__)
 
@@ -188,7 +197,7 @@ def analyze_paper(file: UploadFile = File(...)):
             'analysis': paper_record.analysis_result,
             'processed': paper_record.papermage_result
         }
-        return {"paper_id": paper_id, "status": "complete", "result": result}
+        return {"paper_id": paper_id, "status": "SUCCESS", "result": result}
 
     paper_content = _paper_bytes_to_text(raw, filename)
     paper_content = _normalize_whitespace(paper_content)
@@ -199,7 +208,7 @@ def analyze_paper(file: UploadFile = File(...)):
         paper_id=paper_id,
         original_filename=file.filename,
     )
-    return {"paper_id": paper_id, "status": "pending", "task_id": task.id}
+    return {"paper_id": paper_id, "status": "PENDING", "task_id": task.id}
 
 @app.get("/download_file")
 def download_file(link: str) -> Response:
@@ -220,13 +229,30 @@ def process_pdf(file: UploadFile = File(...)):
 ##### Ad-Hoc Mapping #######################
 ##########################################
 
+@app.get("/get_content_to_code_matches")
+def get_content_to_code_matches(paper_id: str):
+    matches = get_content_to_code_matches_by_paper_id(paper_id)
+    return {"matches": [match.model_dump(mode="json") for match in matches]}
+
+@app.get("/get_code_to_content_matches")
+def get_code_to_content_matches(paper_id: str, current_path: str):
+    matches = get_code_to_content_matches_by_paper_id_and_filepath(paper_id, current_path)
+    return {"matches": [match.model_dump(mode="json") for match in matches]}
+
 @app.post("/map_content_to_code")
 def map_content_to_code(
     content: str = Form(...),
     repo_url: str = Form(...),
     context: str = Form(...),
     paper_id: str = Form(...),
+    box: str = Form(...),
+    page_number: int = Form(...),
 ):
+    try:
+        parsed_box = PaperContentBox.model_validate_json(box)
+    except ValidationError as exc:
+        raise HTTPException(status_code=422, detail=f"Invalid box payload: {exc}")
+
     cache_key = hashlib.sha256(
         f"{content}/0{repo_url}/0{context}".encode("utf-8")
     ).hexdigest()
@@ -235,14 +261,16 @@ def map_content_to_code(
 
     if db_record:
         logger.info(f"MAP CONTENT TO CODE: Mapping already exists for cache key {cache_key}, returning...")
-        return {"status": "SUCCESS", "result": db_record.outputs.code_snippet}
+        return {"status": "SUCCESS", "result": db_record.outputs}
 
     task = map_content_to_code_task.delay(
         content=content,
         repo_url=repo_url,
         context=context,
         cache_key=cache_key,
-        paper_id=paper_id
+        paper_id=paper_id,
+        box=parsed_box.model_dump(),
+        page_number=page_number,
     )
     return {"task_id": task.id, "status": "PENDING"}
 
@@ -250,6 +278,9 @@ def map_content_to_code(
 def map_code_to_content(
     code: str = Form(...),
     paper_id: str = Form(...),
+    start: int = Form(...),
+    end: int = Form(...),
+    filepath: str = Form(...),
 ):
     cache_key = hashlib.sha256(
         f"{code}/0{paper_id}".encode("utf-8")
@@ -264,7 +295,10 @@ def map_code_to_content(
     task = map_code_to_content_task.delay(
         code=code,
         paper_id=paper_id,
-        cache_key=cache_key
+        cache_key=cache_key, 
+        start=start,
+        end=end,
+        filepath=filepath,
     )
     return {"task_id": task.id}
 

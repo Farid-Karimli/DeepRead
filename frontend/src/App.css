@@ -835,22 +835,29 @@
   background: rgba(192, 132, 252, 0.24);
 }
 
-.code-viewer__clear-highlight {
+.code-viewer__highlight-actions {
   position: absolute;
   z-index: 2;
   display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  transform: translateY(-50%);
+}
+
+.code-viewer__clear-highlight,
+.code-viewer__show-in-paper {
+  display: flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
   height: 18px;
-  margin: 0;
+  margin: 0 0 0 -9px;
   padding: 0;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 4px;
   background: rgba(24, 24, 27, 0.92);
   color: #d4d4d8;
   cursor: pointer;
-  transform: translate(-50%, -50%);
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.35);
   transition:
     background-color 0.12s ease,
@@ -858,18 +865,66 @@
     border-color 0.12s ease;
 }
 
-.code-viewer__clear-highlight svg {
+.code-viewer__clear-highlight {
+  width: 18px;
+  flex-shrink: 0;
+}
+
+.code-viewer__show-in-paper {
+  justify-content: flex-start;
+  box-sizing: border-box;
+  width: 18px;
+  max-width: 18px;
+  padding-inline: 3px;
+  overflow: hidden;
+  flex-shrink: 0;
+  transition:
+    background-color 0.12s ease,
+    color 0.12s ease,
+    border-color 0.12s ease,
+    max-width 0.15s ease;
+}
+
+.code-viewer__clear-highlight svg,
+.code-viewer__show-in-paper svg {
+  flex-shrink: 0;
   width: 12px;
   height: 12px;
 }
 
-.code-viewer__clear-highlight:hover {
+.code-viewer__show-in-paper-label {
+  overflow: hidden;
+  max-width: 0;
+  opacity: 0;
+  white-space: nowrap;
+  font-size: 0.65rem;
+  line-height: 1;
+  transition:
+    max-width 0.15s ease,
+    opacity 0.12s ease,
+    margin-left 0.15s ease;
+}
+
+.code-viewer__clear-highlight:hover,
+.code-viewer__show-in-paper:hover {
   background: rgba(39, 39, 42, 0.98);
   color: #fafafa;
   border-color: rgba(255, 255, 255, 0.2);
 }
 
-.code-viewer__clear-highlight:focus-visible {
+.code-viewer__show-in-paper:hover {
+  max-width: 10rem;
+  width: auto;
+}
+
+.code-viewer__show-in-paper:hover .code-viewer__show-in-paper-label {
+  max-width: 10rem;
+  margin-left: 4px;
+  opacity: 1;
+}
+
+.code-viewer__clear-highlight:focus-visible,
+.code-viewer__show-in-paper:focus-visible {
   outline: 2px solid var(--accent-border);
   outline-offset: 1px;
 }

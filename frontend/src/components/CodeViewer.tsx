@@ -1,25 +1,23 @@
 import { forwardRef, useEffect, useRef, useState } from 'react';
-import { IoClose } from 'react-icons/io5';
+import { CiLink } from 'react-icons/ci';
 import ShikiHighlighter from 'react-shiki';
 
 interface CodeViewerProps {
    code: string;
-   highlightStarts?: number[]; // Could be multiple snippets in the file
-   highlightEnds?: number[];
+   highlightRanges?: { start: number; end: number; color: string }[];
    /** 1-based line range to scroll into view; must match one of the highlight ranges. */
    scrollFocusStart?: number;
    scrollFocusEnd?: number;
-   onClearHighlight?: () => void;
 }
 
-type ClearButtonPosition = { top: number; left: number };
+type ActionsPosition = { top: number; left: number };
 
 const CodeViewer = forwardRef<HTMLDivElement, CodeViewerProps>(function CodeViewer(
-    { code, highlightStarts, highlightEnds, scrollFocusStart, scrollFocusEnd, onClearHighlight },
+    { code, highlightRanges, scrollFocusStart, scrollFocusEnd },
     ref,
 ) {
     const containerRef = useRef<HTMLDivElement>(null);
-    const [clearButtonPosition, setClearButtonPosition] = useState<ClearButtonPosition | null>(null);
+    const [actionsPosition, setActionsPosition] = useState<ActionsPosition | null>(null);
 
     const setContainerRef = (node: HTMLDivElement | null) => {
         containerRef.current = node;
@@ -31,9 +29,11 @@ const CodeViewer = forwardRef<HTMLDivElement, CodeViewerProps>(function CodeView
     };
 
     // Decorations for all code snippets in the file
-    const decorations = highlightStarts != null && highlightEnds != null
-        ? highlightStarts.map((highlightStart, index) => {
-            const highlightEnd = highlightEnds[index];
+    const decorations = highlightRanges != null && highlightRanges.length > 0
+        ? highlightRanges.map((highlightRange, index) => {
+            const highlightStart = highlightRange.start;
+            const highlightEnd = highlightRange.end;
+            const highlightColor = highlightRange.color;
             const isScrollFocus =
                 scrollFocusStart != null &&
                 scrollFocusEnd != null &&
@@ -46,18 +46,19 @@ const CodeViewer = forwardRef<HTMLDivElement, CodeViewerProps>(function CodeView
                 end: { line: highlightEnd - 1, character: 0 },
                 properties: {
                     class: `code-viewer__highlighted-line ${rangeClass}${focusClass}`,
+                    style: `background-color: ${highlightColor}`
                 },
             };
         })
         : [];
 
-    const clearTargetRangeIndex =
-        highlightStarts != null && highlightEnds != null
+    const actionsTargetRangeIndex =
+        highlightRanges != null && highlightRanges.length > 0
             ? (() => {
                 if (scrollFocusStart != null && scrollFocusEnd != null) {
-                    const focusIndex = highlightStarts.findIndex(
-                        (start, index) =>
-                            start === scrollFocusStart && highlightEnds[index] === scrollFocusEnd,
+                    const focusIndex = highlightRanges.findIndex(
+                        (range) =>
+                            range.start === scrollFocusStart && range.end === scrollFocusEnd,
                     );
                     if (focusIndex >= 0) return focusIndex;
                 }
@@ -66,45 +67,45 @@ const CodeViewer = forwardRef<HTMLDivElement, CodeViewerProps>(function CodeView
             : null;
 
     useEffect(() => {
-        if (onClearHighlight == null || clearTargetRangeIndex == null || !containerRef.current) {
-            setClearButtonPosition(null);
+        if (actionsTargetRangeIndex == null || !containerRef.current) {
+            setActionsPosition(null);
             return;
         }
 
         const container = containerRef.current;
-        const rangeSelector = `.code-viewer__highlighted-line--range-${clearTargetRangeIndex}`;
+        const rangeSelector = `.code-viewer__highlighted-line--range-${actionsTargetRangeIndex}`;
 
-        const updateClearButtonPosition = () => {
+        const updateActionsPosition = () => {
             const firstLine = container.querySelector(rangeSelector);
             if (!firstLine) {
-                setClearButtonPosition(null);
+                setActionsPosition(null);
                 return;
             }
             const containerRect = container.getBoundingClientRect();
             const lineRect = firstLine.getBoundingClientRect();
-            setClearButtonPosition({
+            setActionsPosition({
                 top: lineRect.top - containerRect.top + container.scrollTop,
                 left: lineRect.left - containerRect.left + container.scrollLeft,
             });
         };
 
-        updateClearButtonPosition();
+        updateActionsPosition();
 
-        const observer = new MutationObserver(updateClearButtonPosition);
+        const observer = new MutationObserver(updateActionsPosition);
         observer.observe(container, { childList: true, subtree: true, attributes: true });
 
-        container.addEventListener('scroll', updateClearButtonPosition);
-        window.addEventListener('resize', updateClearButtonPosition);
+        container.addEventListener('scroll', updateActionsPosition);
+        window.addEventListener('resize', updateActionsPosition);
 
         return () => {
             observer.disconnect();
-            container.removeEventListener('scroll', updateClearButtonPosition);
-            window.removeEventListener('resize', updateClearButtonPosition);
+            container.removeEventListener('scroll', updateActionsPosition);
+            window.removeEventListener('resize', updateActionsPosition);
         };
-    }, [code, highlightStarts, highlightEnds, scrollFocusStart, scrollFocusEnd, onClearHighlight, clearTargetRangeIndex]);
+    }, [code, highlightRanges, scrollFocusStart, scrollFocusEnd, actionsTargetRangeIndex]);
 
     useEffect(() => {
-        if (highlightStarts == null || highlightEnds == null || !containerRef.current) return;
+        if (highlightRanges == null || highlightRanges.length === 0 || !containerRef.current) return;
 
         const container = containerRef.current;
         const tryScroll = () => {
@@ -127,7 +128,7 @@ const CodeViewer = forwardRef<HTMLDivElement, CodeViewerProps>(function CodeView
         observer.observe(container, { childList: true, subtree: true });
 
         return () => observer.disconnect();
-    }, [code, highlightStarts, highlightEnds, scrollFocusStart, scrollFocusEnd]);
+    }, [code, highlightRanges, scrollFocusStart, scrollFocusEnd]);
 
     return (
         <div ref={setContainerRef} className="code-viewer">
@@ -139,16 +140,20 @@ const CodeViewer = forwardRef<HTMLDivElement, CodeViewerProps>(function CodeView
             >
                 {code}
             </ShikiHighlighter>
-            {onClearHighlight && clearButtonPosition && (
-                <button
-                    type="button"
-                    className="code-viewer__clear-highlight"
-                    style={{ top: clearButtonPosition.top, left: clearButtonPosition.left }}
-                    onClick={onClearHighlight}
-                    aria-label="Clear highlight"
+            {actionsPosition && (
+                <div
+                    className="code-viewer__highlight-actions"
+                    style={{ top: actionsPosition.top, left: actionsPosition.left }}
                 >
-                    <IoClose aria-hidden />
-                </button>
+                    <button
+                        type="button"
+                        className="code-viewer__show-in-paper"
+                        aria-label="Show in paper"
+                    >
+                        <CiLink aria-hidden />
+                        <span className="code-viewer__show-in-paper-label">Show in paper</span>
+                    </button>
+                </div>
             )}
         </div>
     );

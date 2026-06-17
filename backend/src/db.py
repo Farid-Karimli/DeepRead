@@ -140,6 +140,34 @@ def upsert_mapping_result(
         logger.exception("Supabase upsert_mapping_result failed mapping_record=%s", mapping_record)
         return False
 
+def get_content_to_code_matches_by_paper_id(paper_id: str) -> list[PaperMappingRecord]:
+    if not is_configured():
+        return []
+    try:
+        supabase = get_supabase_client()
+        response = supabase.table("mappings").select('*').eq('paper_id', paper_id).eq('mapping_type', 'content_to_code').execute()
+        return [PaperMappingRecord.model_validate(row) for row in response.data]
+    except Exception:
+        logger.exception("Supabase get_content_to_code_matches failed paper_id=%s", paper_id)
+        return []
+
+def get_code_to_content_matches_by_paper_id_and_filepath(paper_id: str, current_path: str) -> list[PaperMappingRecord]:
+    if not is_configured():
+        return []
+    try:
+        supabase = get_supabase_client()
+        response = (
+            supabase.table("mappings")
+            .select('*')
+            .eq('paper_id', paper_id)
+            .eq('mapping_type', 'code_to_content')
+            .eq('inputs->>filepath', current_path)
+            .execute()
+        )
+        return [PaperMappingRecord.model_validate(row) for row in response.data]
+    except Exception:
+        logger.exception("Supabase get_code_to_content_matches failed paper_id=%s current_path=%s", paper_id, current_path)
+
 if __name__ == "__main__":
     filepath = "/Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/papers/controlnext.pdf"
     with open(filepath, "rb") as f:

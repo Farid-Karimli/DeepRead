@@ -1,5 +1,7 @@
-import React, { useEffect, useState } from 'react';
-import { listCachedPapers, type cachedPaperSummary } from '../api/main';
+import React from 'react';
+import {useQuery} from '@tanstack/react-query';
+
+import { getAvailPapers } from '../api/main';
 
 interface HomeProps {
     handlePaperSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
@@ -8,28 +10,10 @@ interface HomeProps {
 }
 
 export default function Home({ handlePaperSubmit, onOpenCachedPaper, errorMessage }: HomeProps) {
-    const [papers, setPapers] = useState<cachedPaperSummary[]>([]);
-    const [papersLoading, setPapersLoading] = useState(true);
-    const [papersError, setPapersError] = useState<string | null>(null);
-
-    useEffect(() => {
-        let cancelled = false;
-        setPapersLoading(true);
-        setPapersError(null);
-        listCachedPapers()
-            .then((rows) => {
-                if (!cancelled) setPapers(rows);
-            })
-            .catch(() => {
-                if (!cancelled) setPapersError('Could not load saved analyses.');
-            })
-            .finally(() => {
-                if (!cancelled) setPapersLoading(false);
-            });
-        return () => {
-            cancelled = true;
-        };
-    }, []);
+    const papersQuery = useQuery({
+        queryKey: ['paperRecords'],
+        queryFn: getAvailPapers
+    })
 
     return (
         <>
@@ -61,17 +45,17 @@ export default function Home({ handlePaperSubmit, onOpenCachedPaper, errorMessag
 
                 <div className="home-papers">
                     <h2 className="home-papers__title">Computed papers</h2>
-                    {papersLoading ? (
+                    {papersQuery.isPending ? (
                         <p className="home-papers__muted">Loading…</p>
-                    ) : papersError ? (
+                    ) : papersQuery.error ? (
                         <p className="home-papers__muted" role="status">
-                            {papersError}
+                            {papersQuery.error.message}
                         </p>
-                    ) : papers.length === 0 ? (
+                    ) : papersQuery.data.papers.length === 0 ? (
                         <p className="home-papers__muted">No analyses in cache yet.</p>
                     ) : (
                         <ul className="home-papers__list">
-                            {papers.map((p) => (
+                            {papersQuery.data.papers.map((p) => (
                                 <li key={p.paper_id} className="home-papers__item">
                                     <button
                                         type="button"

@@ -27,6 +27,7 @@ export type BoundingBoxWithTooltip = BoundingBoxType & {
   hitKey: string;
   /** Default `overlay` (filled highlight). `underline` draws a line under the section only. */
   variant?: 'overlay' | 'underline';
+  color?: string;
 };
 
 type overlayProps = {
@@ -61,7 +62,6 @@ function PdfBoundingHitTarget({
   }
 
   const showAllSnippetsForSelectedFile = (codeSnippets: typeof box.code_snippets, index: number) => {
-    console.log('showAllSnippetsForSelectedFile', codeSnippets, index);
     const s = codeSnippets[index];
     if (!s) return;
     const thisFilePath = s.filepath;
@@ -90,7 +90,7 @@ function PdfBoundingHitTarget({
     boxSizing: 'content-box',
     opacity: hover ? 0.5 : 0.25,
     outline: hover ? '2px solid rgba(0, 180, 255, 0.85)' : 'none',
-    backgroundColor: hover ? 'rgba(0, 160, 255, 0.25)' : 'orange',
+    backgroundColor: withAlpha(box.color, hover ? UNDERLINE_HOVER_ALPHA : UNDERLINE_ALPHA),
     cursor: 'pointer',
     pointerEvents: 'auto',
     transition: 'opacity 80ms ease',
@@ -194,6 +194,24 @@ function PdfBoundingHitTarget({
 }
 
 const UNDERLINE_THICKNESS_PX = 3;
+const UNDERLINE_TOP_GAP_PX = 3;
+const UNDERLINE_ALPHA = 0.6;
+const UNDERLINE_HOVER_ALPHA = 1;
+
+/** Override the alpha channel of an rgb()/rgba() color string. Returns the input unchanged if it can't be parsed. */
+function withAlpha(color: string | undefined, alpha: number): string | undefined {
+  if (!color) {
+    return color;
+  }
+  const match = color.match(
+    /^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*[\d.]+\s*)?\)$/i,
+  );
+  if (!match) {
+    return color;
+  }
+  const [, r, g, b] = match;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
 
 /**
  * Section mapping from code→paper: a bottom underline instead of a filled overlay.
@@ -227,23 +245,25 @@ function PdfUnderlineHitTarget({
     top,
     left,
     width,
-    height,
+    height: height + UNDERLINE_TOP_GAP_PX,
     zIndex: 2,
     boxSizing: 'border-box',
-    backgroundColor: 'transparent',
-    cursor: 'pointer',
-    pointerEvents: 'auto',
+    pointerEvents: 'none',
   };
 
+  const lineHeight = hover ? UNDERLINE_THICKNESS_PX + 1 : UNDERLINE_THICKNESS_PX;
   const underlineStyle: React.CSSProperties = {
     position: 'absolute',
     left: 0,
     right: 0,
     bottom: 0,
-    height: hover ? UNDERLINE_THICKNESS_PX + 1 : UNDERLINE_THICKNESS_PX,
-    backgroundColor: hover ? 'rgba(37, 99, 235, 0.95)' : 'rgba(37, 99, 235, 0.75)',
+    height: UNDERLINE_TOP_GAP_PX + lineHeight,
+    boxSizing: 'border-box',
+    paddingTop: UNDERLINE_TOP_GAP_PX,
+    borderBottom: `${lineHeight}px solid ${withAlpha(box.color, hover ? UNDERLINE_HOVER_ALPHA : UNDERLINE_ALPHA)}`,
     borderRadius: 1,
-    pointerEvents: 'none',
+    cursor: 'pointer',
+    pointerEvents: 'auto',
   };
 
   const tooltipNode =
@@ -282,24 +302,25 @@ function PdfUnderlineHitTarget({
 
   return (
     <>
-      <div
-        className="pdf-section-underline-hit"
-        style={hitStyle}
-        role="button"
-        tabIndex={0}
-        onMouseEnter={(e) => {
-          if (leaveTimer.current) clearTimeout(leaveTimer.current);
-          setHover(true);
-          setFloating((prev) => prev ?? { x: e.clientX + 12, y: e.clientY + 12 });
-        }}
-        onMouseLeave={() => {
-          leaveTimer.current = setTimeout(() => {
-            setHover(false);
-            setFloating(null);
-          }, 150);
-        }}
-      >
-        <div className="pdf-section-underline" style={underlineStyle} aria-hidden />
+      <div className="pdf-section-underline-hit" style={hitStyle}>
+        <div
+          className="pdf-section-underline"
+          style={underlineStyle}
+          role="button"
+          tabIndex={0}
+          aria-label={box.description}
+          onMouseEnter={(e) => {
+            if (leaveTimer.current) clearTimeout(leaveTimer.current);
+            setHover(true);
+            setFloating((prev) => prev ?? { x: e.clientX + 12, y: e.clientY + 12 });
+          }}
+          onMouseLeave={() => {
+            leaveTimer.current = setTimeout(() => {
+              setHover(false);
+              setFloating(null);
+            }, 150);
+          }}
+        />
       </div>
       {tooltipNode}
     </>

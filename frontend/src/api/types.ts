@@ -22,9 +22,9 @@ interface codeSection {
     code_snippets: codeSnippet[];
   }
   /** Root object: `{ "sections": [ ... ] }` */
-  interface codeSectionsResult {
+interface codeSectionsResult {
     sections: codeSection[];
-  }
+}
 
 interface paperAnalysisPayload {
     analysis: AgentTaskResult;
@@ -32,7 +32,7 @@ interface paperAnalysisPayload {
 }
 
 interface paperSubmitResponse {
-    status: 'complete' | 'pending';
+    status: string,
     task_id?: string;
     paper_id: string;
     result?: paperAnalysisPayload;
@@ -54,7 +54,7 @@ interface paperByIdResponse {
 
 }
 
-interface cachedPaperSummary {
+interface PaperMetadataSummary {
     paper_id: string;
     paper_title?: string | null;
     github_repo_url?: string | null;
@@ -62,14 +62,15 @@ interface cachedPaperSummary {
     label?: string | null;
 }
 
-interface CachedPaper {
-    analysisResult: AgentTaskResult;
-    papermageResult: processPDFResult;
-    file: Uint8Array;
+interface PaperMetadata {
+    analysis_result: AgentTaskResult,
+    papermage_result: processPDFResult;
+    file_url: string,
+    paper_id: string
 }
 
 interface listCachedPapersResponse {
-    papers: cachedPaperSummary[];
+    papers: PaperMetadataSummary[];
 }
 
 interface githubRepoTreeResponse {
@@ -103,6 +104,49 @@ interface processPDFResult {
     sections: SectionEntity[];
 }
 
+// This defines a content area (or selection) on the paper
+interface paperContentBox {
+    l: number, 
+    t: number, 
+    w: number, 
+    h: number,
+}
+
+interface paperContentToCodeMatch {
+    cache_key: string,
+    paper_id: string,
+    mapping_type: string,
+    inputs: {
+        content: string,
+        repo_url: string,
+        context: string,
+        box: paperContentBox,
+        page_number?: number,
+    },
+    outputs: {
+        verdict: string,
+        reasoning: string,
+        code_snippet: codeSnippet | null,
+    }
+}
+
+interface codeToContentMatch {
+    cache_key: string,
+    paper_id: string,
+    mapping_type: string,
+    inputs: {
+        code: string,
+        filepath: string,
+        start: number,
+        end: number,
+    },
+    outputs: {
+        verdict: string,
+        reasoning: string,
+        sections: { section_id: string; description: string }[];
+    }
+}
+
 interface mapContentTaskResponse {
     status: string;
     task_id: string | null;
@@ -131,14 +175,18 @@ export type { codeSection,
     paperSubmitResponse, 
     paperAnalysisStatusResponse, 
     paperByIdResponse, 
-    cachedPaperSummary, 
+    PaperMetadataSummary, 
+    PaperMetadata,
     listCachedPapersResponse, 
     githubRepoTreeResponse,
     processPDFResult,
     AgentTaskResult,
-    CachedPaper,
     mapContentTaskResponse,
     mapContentResponse,
     codeToContentMappingResult,
     mapCodeToContentResponse,
-};
+    paperContentToCodeMatch,
+    paperContentBox,
+    codeToContentMatch,
+}
+    
