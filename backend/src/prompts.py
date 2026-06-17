@@ -158,30 +158,51 @@ def build_code_to_content_mapping_prompt(
     paper_content: list[dict],
 ):
     return f"""
-        Map the provided code snippets to the content in the corresponding research paper.
+        Map the provided snippet of code to the content in the corresponding research paper.
         The code will be provided in text format. 
         The paper content will be provided as a list of dicts, with section_id, section_header and section_content fields.
 
-        ### Code ###
-        {code}
-        ### End Code ###
-
-        ### Paper Content ###
+        ## Paper Content ##
         {paper_content}
-        ### End Paper Content ###
+        ## End Paper Content ##
 
-        Provide the corresponding sections for the code snippet.
-        The section id is the entity_id as it appears in the context.
-        The description is a short description of how the section relates to the code snippet.
-        Return just a JSON object. The first and last character of your output should be {{ and }}. 
-        No prose. 
+        ## Code ##
+        {code}
+        ## End Code ##
+
+        ## Important ##
+
+        Reporting that a piece of code does NOT have an explanation in the paper content should be considered a valid response.
+        Papers can often omit details or misrepresent the implementation. You should not returning loosely related paper content 
+        just for the sake of returning something.
+
+        ## Procedure ##
+        1. Decide whether the selected code snippet is the kind of thing that *should* 
+        be referenced in the paper content at all. For example, things like project description READMEs,
+        config files, environment and init files like __init__.py, git files cannot be expected to have references in the paper content.
+        You should focus on files that perform actual computation relevant to the method described in the paper. 
+        2. If it should map, search the paper sections for references.
+        3. Reach one of the verdicts below based on what you found.
+
+        ## Verdicts ##
+        - "described": you found code that genuinely implements or corresponds to the paper's content.
+        - "not_described": the code describes something that should have an explanation/description in the paper, 
+        but no genuine reference exists in the paper.
+        - "not_applicable": the code is not the kind of thing that maps to paper content.
+
+        ## Output Format ## 
+        Return just a JSON object. The section id is the entity_id as it appears in the context.
+        If your verdict is "not_described" or "not_applicable", the "sections" key should be an empty list.
+        The first and last character of your output should be {{ and }}. No prose. 
         
         Example:
         {{
+            "reasoning": "Concisely - what you looked for, where you searched, and why you reached the verdict.",
+            "verdict": "described" | "not_described" | "not_applicable",
             "sections": [
                 {{
                     "section_id": "entity_id as it appears in the context",
-                    "description": "how the section relates to the code snippet",
+                    "description": "briefly, how the section relates to the code snippet",
                 }}
             ]
         }}
