@@ -8,19 +8,23 @@ interface CodeViewerProps {
    /** 1-based line range to scroll into view; must match one of the highlight ranges. */
    scrollFocusStart?: number;
    scrollFocusEnd?: number;
+   /** Invoked with the highlighted code range when "Show in paper" is clicked. */
+   onShowInPaper?: (range: { start: number; end: number }) => void;
 }
 
-type ActionsPosition = { top: number; left: number };
+type RangeActionPosition = { index: number; top: number; left: number };
 
 const CodeViewer = forwardRef<HTMLDivElement, CodeViewerProps>(function CodeViewer(
-    { code, highlightRanges, scrollFocusStart, scrollFocusEnd },
+    { code, highlightRanges, scrollFocusStart, scrollFocusEnd, onShowInPaper },
     ref,
 ) {
-    const containerRef = useRef<HTMLDivElement>(null);
-    const [actionsPosition, setActionsPosition] = useState<ActionsPosition | null>(null);
+    // The scroller holds the code (and the forwarded ref so text selection works);
+    // actions live in the non-scrolling outer wrapper so they can never scroll away.
+    const scrollRef = useRef<HTMLDivElement>(null);
+    const [actionsPositions, setActionsPositions] = useState<RangeActionPosition[]>([]);
 
-    const setContainerRef = (node: HTMLDivElement | null) => {
-        containerRef.current = node;
+    const setScrollRef = (node: HTMLDivElement | null) => {
+        scrollRef.current = node;
         if (typeof ref === 'function') {
             ref(node);
         } else if (ref) {
@@ -52,62 +56,55 @@ const CodeViewer = forwardRef<HTMLDivElement, CodeViewerProps>(function CodeView
         })
         : [];
 
-    const actionsTargetRangeIndex =
-        highlightRanges != null && highlightRanges.length > 0
-            ? (() => {
-                if (scrollFocusStart != null && scrollFocusEnd != null) {
-                    const focusIndex = highlightRanges.findIndex(
-                        (range) =>
-                            range.start === scrollFocusStart && range.end === scrollFocusEnd,
-                    );
-                    if (focusIndex >= 0) return focusIndex;
-                }
-                return 0;
-            })()
-            : null;
-
     useEffect(() => {
-        if (actionsTargetRangeIndex == null || !containerRef.current) {
-            setActionsPosition(null);
+        if (!highlightRanges?.length || !scrollRef.current) {
+            setActionsPositions([]);
             return;
         }
 
-        const container = containerRef.current;
-        const rangeSelector = `.code-viewer__highlighted-line--range-${actionsTargetRangeIndex}`;
+        const scroller = scrollRef.current;
 
         const updateActionsPosition = () => {
-            const firstLine = container.querySelector(rangeSelector);
-            if (!firstLine) {
-                setActionsPosition(null);
-                return;
-            }
-            const containerRect = container.getBoundingClientRect();
-            const lineRect = firstLine.getBoundingClientRect();
-            setActionsPosition({
-                top: lineRect.top - containerRect.top + container.scrollTop,
-                left: lineRect.left - containerRect.left + container.scrollLeft,
+            const scrollerRect = scroller.getBoundingClientRect();
+            const positions = highlightRanges.flatMap((_, index) => {
+                const firstLine = scroller.querySelector(
+                    `.code-viewer__highlighted-line--range-${index}`,
+                );
+                if (!firstLine) return [];
+
+                const lineRect = firstLine.getBoundingClientRect();
+                return [{
+                    index,
+                    top: Math.min(
+                        Math.max(lineRect.top - scrollerRect.top, 9),
+                        scrollerRect.height - 9,
+                    ),
+                    left: Math.max(lineRect.left - scrollerRect.left, 0),
+                }];
             });
+
+            setActionsPositions(positions);
         };
 
         updateActionsPosition();
 
         const observer = new MutationObserver(updateActionsPosition);
-        observer.observe(container, { childList: true, subtree: true, attributes: true });
+        observer.observe(scroller, { childList: true, subtree: true, attributes: true });
 
-        container.addEventListener('scroll', updateActionsPosition);
+        scroller.addEventListener('scroll', updateActionsPosition);
         window.addEventListener('resize', updateActionsPosition);
 
         return () => {
             observer.disconnect();
-            container.removeEventListener('scroll', updateActionsPosition);
+            scroller.removeEventListener('scroll', updateActionsPosition);
             window.removeEventListener('resize', updateActionsPosition);
         };
-    }, [code, highlightRanges, scrollFocusStart, scrollFocusEnd, actionsTargetRangeIndex]);
+    }, [code, highlightRanges, scrollFocusStart, scrollFocusEnd]);
 
     useEffect(() => {
-        if (highlightRanges == null || highlightRanges.length === 0 || !containerRef.current) return;
+        if (highlightRanges == null || highlightRanges.length === 0 || !scrollRef.current) return;
 
-        const container = containerRef.current;
+        const container = scrollRef.current;
         const tryScroll = () => {
             const focusEl = container.querySelector('.code-viewer__highlighted-line--scroll-focus');
             const el =
@@ -131,30 +128,37 @@ const CodeViewer = forwardRef<HTMLDivElement, CodeViewerProps>(function CodeView
     }, [code, highlightRanges, scrollFocusStart, scrollFocusEnd]);
 
     return (
-        <div ref={setContainerRef} className="code-viewer">
-            <ShikiHighlighter
-                theme="github-dark"
-                language="python"
-                showLineNumbers
-                decorations={decorations}
-            >
-                {code}
-            </ShikiHighlighter>
-            {actionsPosition && (
+        <div className="code-viewer">
+            <div ref={setScrollRef} className="code-viewer__scroll">
+                <ShikiHighlighter
+                    theme="github-dark"
+                    language="python"
+                    showLineNumbers
+                    decorations={decorations}
+                >
+                    {code}
+                </ShikiHighlighter>
+            </div>
+            {actionsPositions.map(({ index, top, left }) => (
                 <div
+                    key={index}
                     className="code-viewer__highlight-actions"
-                    style={{ top: actionsPosition.top, left: actionsPosition.left }}
+                    style={{ top, left }}
                 >
                     <button
                         type="button"
                         className="code-viewer__show-in-paper"
                         aria-label="Show in paper"
+                        onClick={() => {
+                            const range = highlightRanges?.[index];
+                            if (range) onShowInPaper?.({ start: range.start, end: range.end });
+                        }}
                     >
                         <CiLink aria-hidden />
                         <span className="code-viewer__show-in-paper-label">Show in paper</span>
                     </button>
                 </div>
-            )}
+            ))}
         </div>
     );
 });

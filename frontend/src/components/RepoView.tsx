@@ -101,6 +101,15 @@ const RepoView = ({ tree, paperId, setPaperHighlightSections }: RepoViewProps) =
 
     usePDFTextSelection(codeViewerRef, setPendingCodeSelection);
 
+    const handleShowInPaper = (range: { start: number; end: number }) => {
+        const match = (codeToContentMatchesQuery.data ?? []).find(
+            (m: codeToContentMatch) => m.inputs.start === range.start && m.inputs.end === range.end,
+        );
+        if (match?.outputs.sections) {
+            setPaperHighlightSections(match.outputs.sections);
+        }
+    };
+
     const getFileURLByPath = (path: string) => {
         return tree.tree.find((obj, _) => obj.path === path)?.url;
     };
@@ -279,6 +288,7 @@ const RepoView = ({ tree, paperId, setPaperHighlightSections }: RepoViewProps) =
                 highlightRanges={highlightRanges as { start: number; end: number; color: string }[]}
                 scrollFocusStart={scrollFocusRange?.start}
                 scrollFocusEnd={scrollFocusRange?.end}
+                onShowInPaper={handleShowInPaper}
             /> : <div className="repo-tree__list">
                 {getCurrentFiles().map((file, index) => (
                     <div key={index} className="repo-tree__row">
