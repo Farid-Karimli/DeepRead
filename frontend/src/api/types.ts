@@ -141,6 +141,8 @@ interface codeToContentMatch {
         end: number,
     },
     outputs: {
+        verdict: string,
+        reasoning: string,
         sections: { section_id: string; description: string }[];
     }
 }
