@@ -8,6 +8,7 @@ import {
     TransformContext,
 } from '@allenai/pdf-components';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { IoChevronDown } from 'react-icons/io5';
 import { Group, Panel, Separator } from "react-resizable-panels";
 import { useQuery, useMutation, useQueryClient} from '@tanstack/react-query';
 
@@ -51,6 +52,28 @@ const CODE_MATCH_VERDICT_TO_COLOR: Record<string, string> = {
 
 /** User code→paper mapping underlines in the PDF. */
 const CODE_TO_CONTENT_HIGHLIGHT_COLOR = "rgba(192, 132, 252, 1)";
+
+type MatchFilter = 'all' | 'hide' | 'ai' | 'mine' | 'not_implemented';
+
+const MATCH_FILTER_STORAGE_KEY = 'deepread.matchFilter';
+const DEFAULT_MATCH_FILTER: MatchFilter = 'all';
+
+const MATCH_FILTER_OPTIONS: { value: MatchFilter; label: string }[] = [
+    { value: 'all', label: 'Show all matches' },
+    { value: 'hide', label: 'Hide all matches' },
+    { value: 'ai', label: 'Show AI matches' },
+    { value: 'mine', label: 'Show matches selected by me' },
+    { value: 'not_implemented', label: 'Show failed matches'}
+];
+
+const readStoredMatchFilter = (): MatchFilter => {
+    if (typeof window === 'undefined') return DEFAULT_MATCH_FILTER;
+    const stored = window.localStorage.getItem(MATCH_FILTER_STORAGE_KEY);
+    if (stored === 'all' || stored === 'hide' || stored === 'ai' || stored === 'mine' || stored === 'not_implemented') {
+        return stored;
+    }
+    return DEFAULT_MATCH_FILTER;
+};
 /**
  * Must render *inside* ContextProvider + DocumentWrapper so DocumentContext
  * is the real provider (not the default). Otherwise numPages stays 0 and
@@ -240,6 +263,9 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
     const [matchingTaskId, setMatchingTaskId] = useState<string | null>(null);
     const [paperHighlightSections, setPaperHighlightSections] = useState<PaperHighlight[]>([]);
     const [contentToCodeMatches, setContentToCodeMatches] = useState<paperContentToCodeMatch[]>([]);
+    const [isMatchFilterOpen, setIsMatchFilterOpen] = useState(false);
+    const [matchFilter, setMatchFilter] = useState<MatchFilter>(readStoredMatchFilter);
+    const matchFilterRef = useRef<HTMLDivElement>(null);
 
     const queryClient = useQueryClient();
 
@@ -260,6 +286,21 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
             setContentToCodeMatches(matchesQuery.data);
         }
     }, [matchesQuery.data])
+
+    useEffect(() => {
+        window.localStorage.setItem(MATCH_FILTER_STORAGE_KEY, matchFilter);
+    }, [matchFilter])
+
+    useEffect(() => {
+        if (!isMatchFilterOpen) return;
+        const handleClickOutside = (event: MouseEvent) => {
+            if (matchFilterRef.current && !matchFilterRef.current.contains(event.target as Node)) {
+                setIsMatchFilterOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [isMatchFilterOpen])
 
     
 
@@ -328,7 +369,32 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
 
     const hasRealFile = paperFile instanceof File && paperFile.size > 0;
 
-    return (
+    // Match visibility filter: 'all' shows everything, 'hide' nothing,
+    // 'ai' only analysisResult matches, 'mine' only successful user matches,
+    // 'not_implemented' only paper→code matches where no implementation was found.
+    const showAiMatches = matchFilter === 'all' || matchFilter === 'ai';
+    const showMyMatches = matchFilter === 'all' || matchFilter === 'mine';
+    const showFailedMatches = matchFilter === 'all' || matchFilter === 'not_implemented';
+
+    const filteredAnalysisResult = useMemo(
+        () => (showAiMatches ? analysisResult : { ...analysisResult, sections: [] }),
+        [showAiMatches, analysisResult],
+    );
+    const filteredPaperHighlightSections = useMemo(
+        () => (showMyMatches ? paperHighlightSections : []),
+        [showMyMatches, paperHighlightSections],
+    );
+    const filteredContentToCodeMatches = useMemo(
+        () => contentToCodeMatches.filter((match) => {
+            const failed = match.outputs.verdict === 'not_implemented';
+            if (matchFilter === 'hide' || matchFilter === 'ai') return false;
+            if (failed) return showFailedMatches;
+            return showMyMatches;
+        }),
+        [contentToCodeMatches, matchFilter, showMyMatches, showFailedMatches],
+    );
+
+    return ( 
         <div className="paper-view-layout">
             <Group orientation="horizontal" className="paper-view-layout__group">
             <Panel defaultSize={53} minSize={15}>
@@ -351,6 +417,37 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
                         >
                             Clear Paper Highlights
                         </button>}
+                        <div className="match-filter" ref={matchFilterRef}>
+                            <button
+                                type="button"
+                                className="outline-action-btn match-filter__toggle"
+                                aria-haspopup="true"
+                                aria-expanded={isMatchFilterOpen}
+                                onClick={() => setIsMatchFilterOpen((open) => !open)}
+                            >
+                                Filter matches
+                                <IoChevronDown aria-hidden />
+                            </button>
+                            {isMatchFilterOpen && (
+                                <div className="match-filter__menu" role="menu">
+                                    {MATCH_FILTER_OPTIONS.map((option) => (
+                                        <button
+                                            key={option.value}
+                                            type="button"
+                                            className={`match-filter__item${matchFilter === option.value ? ' match-filter__item--active' : ''}`}
+                                            role="menuitemradio"
+                                            aria-checked={matchFilter === option.value}
+                                            onClick={() => {
+                                                setMatchFilter(option.value);
+                                                setIsMatchFilterOpen(false);
+                                            }}
+                                        >
+                                            {option.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                 {!hasRealFile ? (
@@ -369,11 +466,11 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
                                     inputRef={pdfContentRef}
                                 >
                                     <PdfPageList
-                                        analysisResult={analysisResult}
+                                        analysisResult={filteredAnalysisResult}
                                         processResult={processResult}
-                                        paperHighlightSections={paperHighlightSections}
+                                        paperHighlightSections={filteredPaperHighlightSections}
                                         scrollRef={pdfScrollableRef}
-                                        codeMatches={contentToCodeMatches}
+                                        codeMatches={filteredContentToCodeMatches}
                                     />
                                 </DocumentWrapper>
                             </ContextProvider>
