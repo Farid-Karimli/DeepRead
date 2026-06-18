@@ -7,7 +7,7 @@ import {
     RENDER_TYPE,
     TransformContext,
 } from '@allenai/pdf-components';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { IoChevronDown } from 'react-icons/io5';
 import { Group, Panel, Separator } from "react-resizable-panels";
 import { useQuery, useMutation, useQueryClient} from '@tanstack/react-query';
@@ -19,6 +19,7 @@ import RepoView from './RepoView.tsx';
 import { captureSelectionHighlightsFromRange } from '../utils/selectionRangeToPageBox.ts';
 import { usePDFTextSelection } from '../hooks/useTextSelection.tsx';
 import { useCeleryTaskStatus } from '../hooks/useCeleryTaskStatus.ts';
+import { UserContext } from '../context/userContext.tsx';
 
 interface PaperViewProps {
     analysisResult: codeSectionsResult;
@@ -42,6 +43,7 @@ type ContentToCodeInput = {
     paperId: string;
     box: paperContentBox;
     pageNumber: number;
+    user_id: number;
 }
 
 const CODE_MATCH_VERDICT_TO_COLOR: Record<string, string> = {
@@ -53,7 +55,7 @@ const CODE_MATCH_VERDICT_TO_COLOR: Record<string, string> = {
 /** User code→paper mapping underlines in the PDF. */
 const CODE_TO_CONTENT_HIGHLIGHT_COLOR = "rgba(192, 132, 252, 1)";
 
-type MatchFilter = 'all' | 'hide' | 'ai' | 'mine' | 'not_implemented';
+type MatchFilter = 'all' | 'hide' | 'ai' | 'my' | 'others' | 'not_implemented';
 
 const MATCH_FILTER_STORAGE_KEY = 'deepread.matchFilter';
 const DEFAULT_MATCH_FILTER: MatchFilter = 'all';
@@ -62,14 +64,22 @@ const MATCH_FILTER_OPTIONS: { value: MatchFilter; label: string }[] = [
     { value: 'all', label: 'Show all matches' },
     { value: 'hide', label: 'Hide all matches' },
     { value: 'ai', label: 'Show AI matches' },
-    { value: 'mine', label: 'Show matches selected by me' },
+    { value: 'my', label: 'Show matches by me' },
+    { value: 'others', label: 'Show matches by others' },
     { value: 'not_implemented', label: 'Show failed matches'}
 ];
 
 const readStoredMatchFilter = (): MatchFilter => {
     if (typeof window === 'undefined') return DEFAULT_MATCH_FILTER;
     const stored = window.localStorage.getItem(MATCH_FILTER_STORAGE_KEY);
-    if (stored === 'all' || stored === 'hide' || stored === 'ai' || stored === 'mine' || stored === 'not_implemented') {
+    if (
+        stored === 'all' ||
+        stored === 'hide' ||
+        stored === 'ai' ||
+        stored === 'my' ||
+        stored === 'others' ||
+        stored === 'not_implemented'
+    ) {
         return stored;
     }
     return DEFAULT_MATCH_FILTER;
@@ -260,6 +270,8 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
     const pdfContentRef = useRef<HTMLDivElement>(null);
     const pdfScrollableRef = useRef<HTMLDivElement>(null);
 
+    const {currentUser} = useContext(UserContext);
+
     const [matchingTaskId, setMatchingTaskId] = useState<string | null>(null);
     const [paperHighlightSections, setPaperHighlightSections] = useState<PaperHighlight[]>([]);
     const [contentToCodeMatches, setContentToCodeMatches] = useState<paperContentToCodeMatch[]>([]);
@@ -306,8 +318,8 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
 
     // This submits a user's selection to the server for Celery task
     const contentToCodeMutation = useMutation({
-        mutationFn: ({content, repoUrl, context, paperId, box, pageNumber}: ContentToCodeInput) => 
-            mapContentToCode(content, repoUrl, context, paperId, box, pageNumber),
+        mutationFn: ({content, repoUrl, context, paperId, box, pageNumber, user_id}: ContentToCodeInput) => 
+            mapContentToCode(content, repoUrl, context, paperId, box, pageNumber, user_id),
         onSuccess: (response) => {
             if (response.status === "SUCCESS") {
                 queryClient.invalidateQueries({queryKey: ["matches", paperId]})
@@ -358,6 +370,7 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
                 paperId: paperId,
                 box: selectionHighlight.box,
                 pageNumber: selectionHighlight.page,
+                user_id: currentUser?.id ?? 1,
             }
             
             contentToCodeMutation.mutate(matchTaskInput);
@@ -369,11 +382,9 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
 
     const hasRealFile = paperFile instanceof File && paperFile.size > 0;
 
-    // Match visibility filter: 'all' shows everything, 'hide' nothing,
-    // 'ai' only analysisResult matches, 'mine' only successful user matches,
-    // 'not_implemented' only paper→code matches where no implementation was found.
+    // Match visibility filter: 'my'/'others' split persisted user matches by creator.
     const showAiMatches = matchFilter === 'all' || matchFilter === 'ai';
-    const showMyMatches = matchFilter === 'all' || matchFilter === 'mine';
+    const showMyMatches = matchFilter === 'all' || matchFilter === 'my';
     const showFailedMatches = matchFilter === 'all' || matchFilter === 'not_implemented';
 
     const filteredAnalysisResult = useMemo(
@@ -386,12 +397,16 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
     );
     const filteredContentToCodeMatches = useMemo(
         () => contentToCodeMatches.filter((match) => {
+            const isMyMatch = currentUser != null && match.created_by === currentUser.id;
+            if (matchFilter === 'my') return isMyMatch;
+            if (matchFilter === 'others') return !isMyMatch;
+
             const failed = match.outputs.verdict === 'not_implemented';
             if (matchFilter === 'hide' || matchFilter === 'ai') return false;
             if (failed) return showFailedMatches;
             return showMyMatches;
         }),
-        [contentToCodeMatches, matchFilter, showMyMatches, showFailedMatches],
+        [contentToCodeMatches, currentUser, matchFilter, showMyMatches, showFailedMatches],
     );
 
     return ( 

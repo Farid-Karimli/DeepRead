@@ -1,3 +1,4 @@
+import type { User } from '../context/userContext';
 import type { 
     paperSubmitResponse, 
     paperAnalysisStatusResponse, 
@@ -98,7 +99,7 @@ const getContentToCodeMatches = async (paperId: string): Promise<paperContentToC
     return responseJSON.matches;
 }
 
-const mapContentToCode = async (content: string | Blob, repoUrl: string, context: string, paperId: string, box: paperContentBox, pageNumber: number): Promise<mapContentTaskResponse> => {
+const mapContentToCode = async (content: string | Blob, repoUrl: string, context: string, paperId: string, box: paperContentBox, pageNumber: number, user_id: number): Promise<mapContentTaskResponse> => {
     const formData = new FormData();
     formData.append("content", content);
     formData.append("repo_url", repoUrl);
@@ -106,6 +107,7 @@ const mapContentToCode = async (content: string | Blob, repoUrl: string, context
     formData.append("paper_id", paperId);
     formData.append("box", JSON.stringify(box));
     formData.append("page_number", String(pageNumber));
+    formData.append("user_id", String(user_id));
     
     const response: Response = await fetch(`${API_URL}/map_content_to_code`, {
         method: "POST",
@@ -137,14 +139,15 @@ const getCodeToContentMatches = async (paperId: string, currentPath: string): Pr
     return responseJSON.matches;
 }
 
-const mapCodeToContent = async (code: string, paperId: string, start: number, end: number, filepath: string): Promise<mapCodeToContentResponse> => {
+const mapCodeToContent = async (code: string, paperId: string, start: number, end: number, filepath: string, user_id: number): Promise<mapCodeToContentResponse> => {
     const formData = new FormData();
     formData.append("code", code);
     formData.append("paper_id", paperId);
     formData.append("start", String(start));
     formData.append("end", String(end));
     formData.append("filepath", filepath);
-
+    formData.append("user_id", String(user_id));
+    console.log(formData);
     const response: Response = await fetch(`${API_URL}/map_code_to_content`, {
         method: "POST",
         body: formData,
@@ -167,6 +170,15 @@ const getCodeMappingStatus = async (taskId: string): Promise<mapCodeToContentRes
     return responseJSON;
 };
 
+const getUserByUsername = async (username: string): Promise<User | null> => {
+    const response = await fetch(`${API_URL}/user?username=${username}`)
+    if (!response.ok) {
+        console.error(response);
+        throw new Error("Failed to get code mapping status");
+    }
+    return response.json();
+}
+
 export {
     submitPaperAnalysis,
     getPaperAnalysisStatus,
@@ -181,5 +193,6 @@ export {
     mapCodeToContent,
     getCodeMappingStatus,
     getContentToCodeMatches,
-    getCodeToContentMatches
+    getCodeToContentMatches,
+    getUserByUsername
 };

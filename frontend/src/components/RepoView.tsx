@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { codeToContentMatch, githubRepoTreeResponse } from '../api/types.ts';
 import { getGithubFileFromBlobUrl, mapCodeToContent, getCodeToContentMatches } from '../api/main';
 import { dedupeRanges } from '../utils/dedupeRanges.ts';
@@ -10,6 +10,8 @@ import { useSidePanel } from '../context/SidePanelContext.tsx';
 import { usePDFTextSelection } from '../hooks/useTextSelection.tsx';
 import { useCeleryTaskStatus } from '../hooks/useCeleryTaskStatus.ts';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+
+import { UserContext } from '../context/userContext.tsx';
 
 type PaperHighlight = {
     section_id: string;
@@ -29,7 +31,7 @@ const CONTENT_MATCH_VERDICT_TO_COLOR: Record<string, string> = {
     "not_applicable": "rgba(168, 168, 168, 0.6)",
 }
 
-type CodeMatchFilter = 'all' | 'hide' | 'described' | 'not_described' | 'not_applicable';
+type CodeMatchFilter = 'all' | 'hide' | 'my' | 'others' | 'described' | 'not_described' | 'not_applicable';
 
 const CODE_MATCH_FILTER_STORAGE_KEY = 'deepread.codeMatchFilter';
 const DEFAULT_CODE_MATCH_FILTER: CodeMatchFilter = 'all';
@@ -37,6 +39,8 @@ const DEFAULT_CODE_MATCH_FILTER: CodeMatchFilter = 'all';
 const CODE_MATCH_FILTER_OPTIONS: { value: CodeMatchFilter; label: string }[] = [
     { value: 'all', label: 'Show all code matches' },
     { value: 'hide', label: 'Hide code matches' },
+    { value: 'my', label: 'Show matches by me' },
+    { value: 'others', label: 'Show matches by others' },
     { value: 'described', label: 'Show described matches' },
     { value: 'not_described', label: 'Show not described matches' },
     { value: 'not_applicable', label: 'Show not applicable matches' },
@@ -48,6 +52,8 @@ const readStoredCodeMatchFilter = (): CodeMatchFilter => {
     if (
         stored === 'all' ||
         stored === 'hide' ||
+        stored === 'my' ||
+        stored === 'others' ||
         stored === 'described' ||
         stored === 'not_described' ||
         stored === 'not_applicable'
@@ -58,6 +64,7 @@ const readStoredCodeMatchFilter = (): CodeMatchFilter => {
 };
 
 const RepoView = ({ tree, paperId, setPaperHighlightSections }: RepoViewProps) => {
+    const {currentUser} = useContext(UserContext);
     const [currentPath, setCurrentPath] = useState(() => "");
     const [currentFileContent, setCurrentFileContent] = useState<string | null>(null);
     const [scrollFocusRange, setScrollFocusRange] = useState<{ start: number; end: number } | null>(null);
@@ -86,10 +93,11 @@ const RepoView = ({ tree, paperId, setPaperHighlightSections }: RepoViewProps) =
         start: number, 
         end: number,
         filepath: string,
+        user_id: number,
       };
 
     const codeMatchingMutation = useMutation({
-        mutationFn: ({code, paperId, start, end, filepath}: CodeToContentInput) => mapCodeToContent(code, paperId, start, end, filepath),
+        mutationFn: ({code, paperId, start, end, filepath, user_id}: CodeToContentInput) => mapCodeToContent(code, paperId, start, end, filepath, user_id),
         onSuccess: (response) => {
             if (response.status === "SUCCESS") {
                 if (response.result) {
@@ -133,8 +141,11 @@ const RepoView = ({ tree, paperId, setPaperHighlightSections }: RepoViewProps) =
         // Matches from the DB for this code file
         const fromDB = (codeToContentMatchesQuery.data ?? [])
             .filter((match: codeToContentMatch) => {
+                const isMyMatch = currentUser != null && match.created_by === currentUser.id;
                 if (codeMatchFilter === 'hide') return false;
                 if (codeMatchFilter === 'all') return true;
+                if (codeMatchFilter === 'my') return isMyMatch;
+                if (codeMatchFilter === 'others') return !isMyMatch;
                 return match.outputs.verdict === codeMatchFilter;
             })
             .map((match: codeToContentMatch) => ({
@@ -150,7 +161,7 @@ const RepoView = ({ tree, paperId, setPaperHighlightSections }: RepoViewProps) =
         })) : [];
 
         return dedupeRanges([...fromDB, ...fromUser]);
-    }, [codeToContentMatchesQuery.data, codeInfo, currentPath, codeMatchFilter]);
+    }, [codeToContentMatchesQuery.data, codeInfo, currentPath, codeMatchFilter, currentUser]);
 
     usePDFTextSelection(codeViewerRef, setPendingCodeSelection);
 
@@ -295,7 +306,8 @@ const RepoView = ({ tree, paperId, setPaperHighlightSections }: RepoViewProps) =
             paperId: paperId,
             start: lineRange.start,
             end: lineRange.end,
-            filepath: currentPath
+            filepath: currentPath,
+            user_id: currentUser?.id ?? 1,
         }
         codeMatchingMutation.mutate(input);
     }

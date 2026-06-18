@@ -4,7 +4,7 @@ import logging
 import os
 from pathlib import Path
 
-from fastapi import FastAPI, File, HTTPException, UploadFile, Response, Form
+from fastapi import FastAPI, File, HTTPException, UploadFile, Response, Form, Query
 from fastapi.responses import JSONResponse, PlainTextResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import ValidationError
@@ -26,11 +26,13 @@ from src.db import (get_file_url,
     get_paper_record_by_id, 
     get_all_paper_records, 
     get_content_to_code_matches_by_paper_id, 
-    get_code_to_content_matches_by_paper_id_and_filepath
+    get_code_to_content_matches_by_paper_id_and_filepath,
+    get_user_by_username_db,
+    create_user_db
 )
 
 from src.utils import download_file as download_file_from_url, get_file_content, get_repo_tree
-from src.types import PaperRecord, PaperContentBox
+from src.types import PaperRecord, PaperContentBox, UserRecord
 
 logger = logging.getLogger(__name__)
 
@@ -136,9 +138,23 @@ def test_claude_code():
     result = asyncio.run(agent._test_claude_code())
     return {"result": result}
 
-##########################################
-##### Paper Content Upload #######################
-##########################################
+###################################
+##### Users #######################
+###################################
+
+@app.get('/user')
+def get_user_by_username(username: str) -> dict:
+    user = get_user_by_username_db(username)
+    if user is None:
+        logger.warning(f"Username {username} not found, creating new user...")
+        user = create_user_db(username)
+        if user is None:
+            raise HTTPException(status_code=500, detail="Failed to create user")
+    return user.model_dump(mode="json")
+
+###################################
+##### Paper Content Upload ########
+###################################
 
 
 def _paper_list_item(paper: PaperRecord) -> dict:
@@ -247,6 +263,7 @@ def map_content_to_code(
     paper_id: str = Form(...),
     box: str = Form(...),
     page_number: int = Form(...),
+    user_id: int = Form(...),
 ):
     try:
         parsed_box = PaperContentBox.model_validate_json(box)
@@ -271,6 +288,7 @@ def map_content_to_code(
         paper_id=paper_id,
         box=parsed_box.model_dump(),
         page_number=page_number,
+        user_id=user_id,
     )
     return {"task_id": task.id, "status": "PENDING"}
 
@@ -281,6 +299,7 @@ def map_code_to_content(
     start: int = Form(...),
     end: int = Form(...),
     filepath: str = Form(...),
+    user_id: int = Form(...),
 ):
     cache_key = hashlib.sha256(
         f"{code}/0{paper_id}".encode("utf-8")
@@ -299,6 +318,7 @@ def map_code_to_content(
         start=start,
         end=end,
         filepath=filepath,
+        user_id=user_id,
     )
     return {"task_id": task.id}
 

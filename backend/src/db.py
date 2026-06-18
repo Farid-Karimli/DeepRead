@@ -7,7 +7,7 @@ import hashlib
 import io
 import logging
 
-from src.types import PaperMappingRecord, PaperRecord
+from src.types import PaperMappingRecord, PaperRecord, UserRecord
 from supabase import Client, create_client
 
 from src.config import SUPABASE_URL, SUPABASE_KEY
@@ -24,6 +24,19 @@ def get_supabase_client() -> Client:
     if not is_configured():
         raise RuntimeError("SUPABASE_URL and SUPABASE_KEY must be set")
     return create_client(SUPABASE_URL, SUPABASE_KEY)
+
+def get_user_by_username_db(username: str) -> UserRecord | None:
+    if not is_configured():
+        return None
+    try:
+        supabase = get_supabase_client()
+        response = supabase.table("users").select("*").eq("username", username).execute()
+        if not response.data or len(response.data) == 0:
+            return None
+        return UserRecord.model_validate(response.data[0])
+    except Exception:
+        logger.exception("Supabase get_user_by_username failed username=%s", username)
+        return None
 
 def upsert_paper(
     paper_record: PaperRecord,
@@ -167,6 +180,19 @@ def get_code_to_content_matches_by_paper_id_and_filepath(paper_id: str, current_
         return [PaperMappingRecord.model_validate(row) for row in response.data]
     except Exception:
         logger.exception("Supabase get_code_to_content_matches failed paper_id=%s current_path=%s", paper_id, current_path)
+
+def create_user_db(username: str) -> UserRecord | None:
+    if not is_configured():
+        return None
+    try:
+        supabase = get_supabase_client()
+        response = supabase.table("users").insert({"username": username}).execute()
+        if not response.data or len(response.data) == 0:
+            return None
+        return UserRecord.model_validate(response.data[0])
+    except Exception:
+        logger.exception("Supabase create_user_db failed username=%s", username)
+        return None
 
 if __name__ == "__main__":
     filepath = "/Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/papers/controlnext.pdf"
