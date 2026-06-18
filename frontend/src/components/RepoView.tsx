@@ -367,7 +367,6 @@ const RepoView = ({ tree, paperId, setPaperHighlightSections }: RepoViewProps) =
                     </div>
                 )}
             </div>
-            {currentPath !== "" && <button style={{ background: 'none', border: 'none', cursor: 'pointer' }} onClick={backButtonClick} className="repo-tree__link"><IoIosArrowBack /></button>}
             {currentFileContent ? <CodeViewer
                 ref={codeViewerRef}
                 code={currentFileContent}
