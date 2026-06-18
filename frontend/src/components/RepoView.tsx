@@ -322,7 +322,7 @@ const RepoView = ({ tree, paperId, setPaperHighlightSections }: RepoViewProps) =
                             currentPathParts.map((part, index) => (
                                 <span key={index}>
                                     {part}
-                                    {index < currentPathParts.length - 1 ? '/ ' : ''}
+                                    {index < currentPathParts.length - 1 ? '/' : ''}
                                 </span>
                             ))
                         ) : (
