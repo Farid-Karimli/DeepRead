@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { codeToContentMatch, githubRepoTreeResponse } from '../api/types.ts';
 import { getGithubFileFromBlobUrl, mapCodeToContent, getCodeToContentMatches } from '../api/main';
 import { dedupeRanges } from '../utils/dedupeRanges.ts';
@@ -10,6 +10,8 @@ import { useSidePanel } from '../context/SidePanelContext.tsx';
 import { usePDFTextSelection } from '../hooks/useTextSelection.tsx';
 import { useCeleryTaskStatus } from '../hooks/useCeleryTaskStatus.ts';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+
+import { UserContext } from '../context/userContext.tsx';
 
 type PaperHighlight = {
     section_id: string;
@@ -58,6 +60,7 @@ const readStoredCodeMatchFilter = (): CodeMatchFilter => {
 };
 
 const RepoView = ({ tree, paperId, setPaperHighlightSections }: RepoViewProps) => {
+    const {currentUser} = useContext(UserContext);
     const [currentPath, setCurrentPath] = useState(() => "");
     const [currentFileContent, setCurrentFileContent] = useState<string | null>(null);
     const [scrollFocusRange, setScrollFocusRange] = useState<{ start: number; end: number } | null>(null);
@@ -86,10 +89,11 @@ const RepoView = ({ tree, paperId, setPaperHighlightSections }: RepoViewProps) =
         start: number, 
         end: number,
         filepath: string,
+        user_id: number,
       };
 
     const codeMatchingMutation = useMutation({
-        mutationFn: ({code, paperId, start, end, filepath}: CodeToContentInput) => mapCodeToContent(code, paperId, start, end, filepath),
+        mutationFn: ({code, paperId, start, end, filepath, user_id}: CodeToContentInput) => mapCodeToContent(code, paperId, start, end, filepath, user_id),
         onSuccess: (response) => {
             if (response.status === "SUCCESS") {
                 if (response.result) {
@@ -295,7 +299,8 @@ const RepoView = ({ tree, paperId, setPaperHighlightSections }: RepoViewProps) =
             paperId: paperId,
             start: lineRange.start,
             end: lineRange.end,
-            filepath: currentPath
+            filepath: currentPath,
+            user_id: currentUser?.id ?? 1,
         }
         codeMatchingMutation.mutate(input);
     }

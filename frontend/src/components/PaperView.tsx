@@ -7,7 +7,7 @@ import {
     RENDER_TYPE,
     TransformContext,
 } from '@allenai/pdf-components';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { IoChevronDown } from 'react-icons/io5';
 import { Group, Panel, Separator } from "react-resizable-panels";
 import { useQuery, useMutation, useQueryClient} from '@tanstack/react-query';
@@ -19,6 +19,7 @@ import RepoView from './RepoView.tsx';
 import { captureSelectionHighlightsFromRange } from '../utils/selectionRangeToPageBox.ts';
 import { usePDFTextSelection } from '../hooks/useTextSelection.tsx';
 import { useCeleryTaskStatus } from '../hooks/useCeleryTaskStatus.ts';
+import { UserContext } from '../context/userContext.tsx';
 
 interface PaperViewProps {
     analysisResult: codeSectionsResult;
@@ -42,6 +43,7 @@ type ContentToCodeInput = {
     paperId: string;
     box: paperContentBox;
     pageNumber: number;
+    user_id: number;
 }
 
 const CODE_MATCH_VERDICT_TO_COLOR: Record<string, string> = {
@@ -260,6 +262,8 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
     const pdfContentRef = useRef<HTMLDivElement>(null);
     const pdfScrollableRef = useRef<HTMLDivElement>(null);
 
+    const {currentUser} = useContext(UserContext);
+
     const [matchingTaskId, setMatchingTaskId] = useState<string | null>(null);
     const [paperHighlightSections, setPaperHighlightSections] = useState<PaperHighlight[]>([]);
     const [contentToCodeMatches, setContentToCodeMatches] = useState<paperContentToCodeMatch[]>([]);
@@ -306,8 +310,8 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
 
     // This submits a user's selection to the server for Celery task
     const contentToCodeMutation = useMutation({
-        mutationFn: ({content, repoUrl, context, paperId, box, pageNumber}: ContentToCodeInput) => 
-            mapContentToCode(content, repoUrl, context, paperId, box, pageNumber),
+        mutationFn: ({content, repoUrl, context, paperId, box, pageNumber, user_id}: ContentToCodeInput) => 
+            mapContentToCode(content, repoUrl, context, paperId, box, pageNumber, user_id),
         onSuccess: (response) => {
             if (response.status === "SUCCESS") {
                 queryClient.invalidateQueries({queryKey: ["matches", paperId]})
@@ -358,6 +362,7 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
                 paperId: paperId,
                 box: selectionHighlight.box,
                 pageNumber: selectionHighlight.page,
+                user_id: currentUser?.id ?? 1,
             }
             
             contentToCodeMutation.mutate(matchTaskInput);
