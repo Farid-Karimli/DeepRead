@@ -126,6 +126,7 @@ def map_content_to_code_task(
     paper_id: str,
     box: dict,
     page_number: int,
+    user_id: int,
 ):
     agent = Agent()
     result = asyncio.run(agent.map_content_to_code(
@@ -149,7 +150,8 @@ def map_content_to_code_task(
             reasoning=result.get("reasoning"), 
             verdict=result.get("verdict"),
         ),
-        paper_id=paper_id
+        paper_id=paper_id,
+        created_by=user_id,
     )
     upsert_mapping_result(record)
     return result
@@ -162,6 +164,7 @@ def map_code_to_content_task(
     start: int,
     end: int,
     filepath: str,
+    user_id: int,
 ):
     agent = Agent()
     paper_record = get_paper_record_by_id(paper_id)
@@ -184,6 +187,7 @@ def map_code_to_content_task(
             reasoning=result.get("reasoning", "Reasoning not found"),
             sections=sections
             ),
+        created_by=user_id,
     )
     upsert_mapping_result(record)
     return result

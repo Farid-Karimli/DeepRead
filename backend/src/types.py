@@ -2,6 +2,11 @@ from datetime import datetime
 from typing import List, Literal
 from pydantic import BaseModel
 
+class UserRecord(BaseModel):
+    id: int
+    username: str
+    created_at: datetime | None = None
+
 #############################
 # Key Section Analysis and PaperMage Result
 # These are 1:1 with the paper
@@ -99,6 +104,8 @@ class PaperMappingRecord(BaseModel):
     cache_key: str
     inputs: ContentToCodeInputs | CodeToContentInputs
     outputs: ContentToCodeResult | CodeToContentResult
+    created_by: int | None = None # foreign key to UserRecord.id
+
 
 class PaperRecord(BaseModel):
     id: str
@@ -107,3 +114,4 @@ class PaperRecord(BaseModel):
     created_at: datetime
     papermage_result: PaperMageResult | None = None
     analysis_result: KeySectionsResult | None = None
+   
