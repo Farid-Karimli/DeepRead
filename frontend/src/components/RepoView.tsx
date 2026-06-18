@@ -4,6 +4,7 @@ import { getGithubFileFromBlobUrl, mapCodeToContent, getCodeToContentMatches } f
 import { dedupeRanges } from '../utils/dedupeRanges.ts';
 import { VscFolder, VscFile } from 'react-icons/vsc';
 import { IoIosArrowBack } from "react-icons/io";
+import { IoChevronDown } from 'react-icons/io5';
 import CodeViewer from './CodeViewer.tsx';
 import { useSidePanel } from '../context/SidePanelContext.tsx';
 import { usePDFTextSelection } from '../hooks/useTextSelection.tsx';
@@ -28,12 +29,43 @@ const CONTENT_MATCH_VERDICT_TO_COLOR: Record<string, string> = {
     "not_applicable": "rgba(168, 168, 168, 0.6)",
 }
 
+type CodeMatchFilter = 'all' | 'hide' | 'described' | 'not_described' | 'not_applicable';
+
+const CODE_MATCH_FILTER_STORAGE_KEY = 'deepread.codeMatchFilter';
+const DEFAULT_CODE_MATCH_FILTER: CodeMatchFilter = 'all';
+
+const CODE_MATCH_FILTER_OPTIONS: { value: CodeMatchFilter; label: string }[] = [
+    { value: 'all', label: 'Show all code matches' },
+    { value: 'hide', label: 'Hide code matches' },
+    { value: 'described', label: 'Show described matches' },
+    { value: 'not_described', label: 'Show not described matches' },
+    { value: 'not_applicable', label: 'Show not applicable matches' },
+];
+
+const readStoredCodeMatchFilter = (): CodeMatchFilter => {
+    if (typeof window === 'undefined') return DEFAULT_CODE_MATCH_FILTER;
+    const stored = window.localStorage.getItem(CODE_MATCH_FILTER_STORAGE_KEY);
+    if (
+        stored === 'all' ||
+        stored === 'hide' ||
+        stored === 'described' ||
+        stored === 'not_described' ||
+        stored === 'not_applicable'
+    ) {
+        return stored;
+    }
+    return DEFAULT_CODE_MATCH_FILTER;
+};
+
 const RepoView = ({ tree, paperId, setPaperHighlightSections }: RepoViewProps) => {
     const [currentPath, setCurrentPath] = useState(() => "");
     const [currentFileContent, setCurrentFileContent] = useState<string | null>(null);
     const [scrollFocusRange, setScrollFocusRange] = useState<{ start: number; end: number } | null>(null);
     const { codeInfo, hideCode } = useSidePanel();
     const codeViewerRef = useRef<HTMLDivElement>(null);
+    const codeMatchFilterRef = useRef<HTMLDivElement>(null);
+    const [isCodeMatchFilterOpen, setIsCodeMatchFilterOpen] = useState(false);
+    const [codeMatchFilter, setCodeMatchFilter] = useState<CodeMatchFilter>(readStoredCodeMatchFilter);
 
     const [currentCodeDescription, setCurrentCodeDescription] = useState<string | null>(null);
 
@@ -82,13 +114,34 @@ const RepoView = ({ tree, paperId, setPaperHighlightSections }: RepoViewProps) =
         enabled: Boolean(paperId) && Boolean(currentPath),
     })
 
+    useEffect(() => {
+        window.localStorage.setItem(CODE_MATCH_FILTER_STORAGE_KEY, codeMatchFilter);
+    }, [codeMatchFilter]);
+
+    useEffect(() => {
+        if (!isCodeMatchFilterOpen) return;
+        const handleClickOutside = (event: MouseEvent) => {
+            if (codeMatchFilterRef.current && !codeMatchFilterRef.current.contains(event.target as Node)) {
+                setIsCodeMatchFilterOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [isCodeMatchFilterOpen]);
+
     const highlightRanges = useMemo(() => {
         // Matches from the DB for this code file
-        const fromDB = (codeToContentMatchesQuery.data ?? []).map((match: codeToContentMatch) => ({
+        const fromDB = (codeToContentMatchesQuery.data ?? [])
+            .filter((match: codeToContentMatch) => {
+                if (codeMatchFilter === 'hide') return false;
+                if (codeMatchFilter === 'all') return true;
+                return match.outputs.verdict === codeMatchFilter;
+            })
+            .map((match: codeToContentMatch) => ({
                 start: match.inputs.start,
                 end: match.inputs.end,
                 color: CONTENT_MATCH_VERDICT_TO_COLOR[match.outputs.verdict]
-        }));
+            }));
         // Matches from the user pick
         const fromUser = codeInfo?.filePath === currentPath ? codeInfo.codeRanges.map((r) => ({ 
                 start: r.startLine, 
@@ -97,7 +150,7 @@ const RepoView = ({ tree, paperId, setPaperHighlightSections }: RepoViewProps) =
         })) : [];
 
         return dedupeRanges([...fromDB, ...fromUser]);
-    }, [codeToContentMatchesQuery.data, codeInfo, currentPath]);
+    }, [codeToContentMatchesQuery.data, codeInfo, currentPath, codeMatchFilter]);
 
     usePDFTextSelection(codeViewerRef, setPendingCodeSelection);
 
@@ -279,6 +332,39 @@ const RepoView = ({ tree, paperId, setPaperHighlightSections }: RepoViewProps) =
                 </div>
                 {currentCodeDescription && (
                     <div className="repo-tree__description">{currentCodeDescription}</div>
+                )}
+                {currentFileContent && (
+                    <div className="match-filter" ref={codeMatchFilterRef}>
+                        <button
+                            type="button"
+                            className="outline-action-btn match-filter__toggle"
+                            aria-haspopup="true"
+                            aria-expanded={isCodeMatchFilterOpen}
+                            onClick={() => setIsCodeMatchFilterOpen((open) => !open)}
+                        >
+                            Filter code matches
+                            <IoChevronDown aria-hidden />
+                        </button>
+                        {isCodeMatchFilterOpen && (
+                            <div className="match-filter__menu" role="menu">
+                                {CODE_MATCH_FILTER_OPTIONS.map((option) => (
+                                    <button
+                                        key={option.value}
+                                        type="button"
+                                        className={`match-filter__item${codeMatchFilter === option.value ? ' match-filter__item--active' : ''}`}
+                                        role="menuitemradio"
+                                        aria-checked={codeMatchFilter === option.value}
+                                        onClick={() => {
+                                            setCodeMatchFilter(option.value);
+                                            setIsCodeMatchFilterOpen(false);
+                                        }}
+                                    >
+                                        {option.label}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
                 )}
             </div>
             {currentPath !== "" && <button style={{ background: 'none', border: 'none', cursor: 'pointer' }} onClick={backButtonClick} className="repo-tree__link"><IoIosArrowBack /></button>}
