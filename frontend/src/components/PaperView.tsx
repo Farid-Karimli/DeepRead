@@ -55,7 +55,7 @@ const CODE_MATCH_VERDICT_TO_COLOR: Record<string, string> = {
 /** User code→paper mapping underlines in the PDF. */
 const CODE_TO_CONTENT_HIGHLIGHT_COLOR = "rgba(192, 132, 252, 1)";
 
-type MatchFilter = 'all' | 'hide' | 'ai' | 'mine' | 'not_implemented';
+type MatchFilter = 'all' | 'hide' | 'ai' | 'my' | 'others' | 'not_implemented';
 
 const MATCH_FILTER_STORAGE_KEY = 'deepread.matchFilter';
 const DEFAULT_MATCH_FILTER: MatchFilter = 'all';
@@ -64,14 +64,22 @@ const MATCH_FILTER_OPTIONS: { value: MatchFilter; label: string }[] = [
     { value: 'all', label: 'Show all matches' },
     { value: 'hide', label: 'Hide all matches' },
     { value: 'ai', label: 'Show AI matches' },
-    { value: 'mine', label: 'Show matches selected by me' },
+    { value: 'my', label: 'Show matches by me' },
+    { value: 'others', label: 'Show matches by others' },
     { value: 'not_implemented', label: 'Show failed matches'}
 ];
 
 const readStoredMatchFilter = (): MatchFilter => {
     if (typeof window === 'undefined') return DEFAULT_MATCH_FILTER;
     const stored = window.localStorage.getItem(MATCH_FILTER_STORAGE_KEY);
-    if (stored === 'all' || stored === 'hide' || stored === 'ai' || stored === 'mine' || stored === 'not_implemented') {
+    if (
+        stored === 'all' ||
+        stored === 'hide' ||
+        stored === 'ai' ||
+        stored === 'my' ||
+        stored === 'others' ||
+        stored === 'not_implemented'
+    ) {
         return stored;
     }
     return DEFAULT_MATCH_FILTER;
@@ -374,11 +382,9 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
 
     const hasRealFile = paperFile instanceof File && paperFile.size > 0;
 
-    // Match visibility filter: 'all' shows everything, 'hide' nothing,
-    // 'ai' only analysisResult matches, 'mine' only successful user matches,
-    // 'not_implemented' only paper→code matches where no implementation was found.
+    // Match visibility filter: 'my'/'others' split persisted user matches by creator.
     const showAiMatches = matchFilter === 'all' || matchFilter === 'ai';
-    const showMyMatches = matchFilter === 'all' || matchFilter === 'mine';
+    const showMyMatches = matchFilter === 'all' || matchFilter === 'my';
     const showFailedMatches = matchFilter === 'all' || matchFilter === 'not_implemented';
 
     const filteredAnalysisResult = useMemo(
@@ -391,12 +397,16 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
     );
     const filteredContentToCodeMatches = useMemo(
         () => contentToCodeMatches.filter((match) => {
+            const isMyMatch = currentUser != null && match.created_by === currentUser.id;
+            if (matchFilter === 'my') return isMyMatch;
+            if (matchFilter === 'others') return !isMyMatch;
+
             const failed = match.outputs.verdict === 'not_implemented';
             if (matchFilter === 'hide' || matchFilter === 'ai') return false;
             if (failed) return showFailedMatches;
             return showMyMatches;
         }),
-        [contentToCodeMatches, matchFilter, showMyMatches, showFailedMatches],
+        [contentToCodeMatches, currentUser, matchFilter, showMyMatches, showFailedMatches],
     );
 
     return ( 

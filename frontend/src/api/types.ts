@@ -116,6 +116,7 @@ interface paperContentToCodeMatch {
     cache_key: string,
     paper_id: string,
     mapping_type: string,
+    created_by?: number | null,
     inputs: {
         content: string,
         repo_url: string,
@@ -134,6 +135,7 @@ interface codeToContentMatch {
     cache_key: string,
     paper_id: string,
     mapping_type: string,
+    created_by?: number | null,
     inputs: {
         code: string,
         filepath: string,
