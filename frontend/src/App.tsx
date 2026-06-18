@@ -15,6 +15,7 @@ import {
 
 import type { AgentTaskResult, codeSectionsResult } from './api/types.ts';
 import { SidePanelProvider } from './context/SidePanelContext.tsx';
+import { UserContext, type User } from './context/userContext.tsx';
 
 /** Celery stores the agent return value: `{ github_repo_url, code_result }`. */
 
@@ -35,6 +36,13 @@ function extractCodeSections(result: unknown): codeSectionsResult | null {
 }
 
 function App() {
+  const [currentUser, setUser] = useState<User | null>(() => {
+    const userString = localStorage.getItem('user');
+    if (userString) {
+      return JSON.parse(userString);
+    }
+    return null;
+  });
 
   const queryClient = useQueryClient();
 
@@ -177,6 +185,8 @@ function App() {
     setSelectedPaperId(id);
   };
 
+  const defaultUser: User = {username: "faridkar", id: 1}
+
   if (
     selectedPaperId &&
     paperFile &&
@@ -186,17 +196,22 @@ function App() {
     repoTree
   ) {
     return (
-      <SidePanelProvider>
-        <PaperView
-          analysisResult={analysisResult}
-          processResult={papermageResult}
-          paperFile={paperFile}
-          tree={repoTree}
-          githubRepoUrl={githubRepoUrl}
-          paperId={selectedPaperId}
-          clearEnvironment={clearEnvironment}
-        />
-      </SidePanelProvider>
+        <SidePanelProvider>
+            <UserContext 
+                value={{
+                  currentUser, setUser
+                }}>
+                <PaperView
+                  analysisResult={analysisResult}
+                  processResult={papermageResult}
+                  paperFile={paperFile}
+                  tree={repoTree}
+                  githubRepoUrl={githubRepoUrl}
+                  paperId={selectedPaperId}
+                  clearEnvironment={clearEnvironment}
+                />
+            </UserContext>
+        </SidePanelProvider>
     );
   }
 
@@ -214,11 +229,16 @@ function App() {
   }
 
   return (
-    <Home
-      handlePaperSubmit={handlePaperSubmit}
-      onOpenCachedPaper={openCachedPaper}
-      errorMessage={submitError}
-    />
+    <UserContext 
+        value={{
+          currentUser, setUser
+        }}>
+        <Home
+          handlePaperSubmit={handlePaperSubmit}
+          onOpenCachedPaper={openCachedPaper}
+          errorMessage={submitError}
+        />
+   </UserContext>
   );
 }
 
