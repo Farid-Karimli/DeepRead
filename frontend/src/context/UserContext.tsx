@@ -11,6 +11,6 @@ type sidePanelContext = {
   };
   
 export const UserContext = createContext<sidePanelContext>({
-    currentUser: null, //TODO: REMOVE DEFAULT VALUE
+    currentUser: null,
     setUser: () => {},
 });
