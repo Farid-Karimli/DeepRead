@@ -2,6 +2,7 @@ import {
     ContextProvider,
     DocumentContext,
     DocumentWrapper,
+    getPageWidth,
     Overlay,
     PageWrapper,
     RENDER_TYPE,
@@ -103,8 +104,27 @@ function PdfPageList({
     codeMatches: paperContentToCodeMatch[];
 }) {
     const { numPages, pdfDocProxy, pageDimensions } = React.useContext(DocumentContext);
-    const { rotation } = React.useContext(TransformContext);
+    const { rotation, setScale } = React.useContext(TransformContext);
     const [hitBoxes, setHitBoxes] = useState<BoundingBoxWithTooltip[]>([]);
+
+    // Auto-fit the rendered page to the panel width, recomputing whenever the
+    // panel is resized (e.g. dragging the layout separator) or the window changes.
+    useEffect(() => {
+        const container = scrollRef.current;
+        if (!container || pageDimensions.width < 1) return;
+
+        const fitToWidth = () => {
+            const pageWidth = getPageWidth(pageDimensions, rotation);
+            const available = container.clientWidth - 24; // gutter for padding/scrollbar
+            if (pageWidth < 1 || available < 1) return;
+            setScale(available / pageWidth);
+        };
+
+        fitToWidth();
+        const observer = new ResizeObserver(fitToWidth);
+        observer.observe(container);
+        return () => observer.disconnect();
+    }, [scrollRef, pageDimensions, rotation, setScale]);
 
     useEffect(() => {
         if (!pdfDocProxy || numPages < 1 || pageDimensions.height < 1) {
