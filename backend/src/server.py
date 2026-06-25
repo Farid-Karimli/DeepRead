@@ -309,7 +309,7 @@ def map_code_to_content(
 
     if db_record:
         logger.info(f"MAP CODE TO CONTENT: Mapping already exists for cache key {cache_key}, returning...")
-        return {"status": "SUCCESS", "result": db_record.outputs.sections}
+        return {"status": "SUCCESS", "result": db_record.outputs}
 
     task = map_code_to_content_task.delay(
         code=code,

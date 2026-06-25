@@ -308,9 +308,15 @@ class Agent:
     ):
         papermage_result = paper_record.papermage_result
 
+        os.makedirs("/tmp", exist_ok=True)
+        path = f"/tmp/{paper_record.id}.papermage.json"
+
+        with open(path, "w") as f:
+            json.dump(papermage_result.model_dump(), f, indent=4)
+
         prompt = build_code_to_content_mapping_prompt(
             code=code,
-            paper_content=papermage_result,
+            papermage_result_path=path,
         )
 
         options = ClaudeAgentOptions(
