@@ -1,4 +1,4 @@
-import type { User } from '../context/userContext';
+import type { User } from '../context/UserContext';
 import type { 
     paperSubmitResponse, 
     paperAnalysisStatusResponse, 
@@ -11,7 +11,7 @@ import type {
     paperContentToCodeMatch,
     paperContentBox,
     codeToContentMatch,
-} from './types';
+} from './types.ts';
 
 const API_URL: string =
   import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8000";

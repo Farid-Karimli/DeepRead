@@ -15,7 +15,7 @@ import {
 
 import type { AgentTaskResult, codeSectionsResult } from './api/types.ts';
 import { SidePanelProvider } from './context/SidePanelContext.tsx';
-import { UserContext, type User } from './context/userContext.tsx';
+import { UserContext, type User } from './context/UserContext.tsx';
 
 /** Celery stores the agent return value: `{ github_repo_url, code_result }`. */
 

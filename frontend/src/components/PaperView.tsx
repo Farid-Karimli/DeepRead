@@ -14,13 +14,13 @@ import { Group, Panel, Separator } from "react-resizable-panels";
 import { useQuery, useMutation, useQueryClient} from '@tanstack/react-query';
 
 import { mapContentToCode, getContentToCodeMatches } from '../api/main.ts';
-import type { codeSectionsResult, githubRepoTreeResponse, processPDFResult, paperContentToCodeMatch, paperContentBox } from '../api/types.ts';
+import type { codeSectionsResult, githubRepoTreeResponse, processPDFResult, paperContentToCodeMatch, paperContentBox, PaperContentMatch } from '../api/types.ts';
 import { HighlightOverlayDemo, type BoundingBoxWithTooltip } from './CodeOverlay.tsx';
 import RepoView from './RepoView.tsx';
 import { captureSelectionHighlightsFromRange } from '../utils/selectionRangeToPageBox.ts';
 import { usePDFTextSelection } from '../hooks/useTextSelection.tsx';
 import { useCeleryTaskStatus } from '../hooks/useCeleryTaskStatus.ts';
-import { UserContext } from '../context/userContext.tsx';
+import { UserContext } from '../context/UserContext.tsx';
 
 interface PaperViewProps {
     analysisResult: codeSectionsResult;
@@ -31,11 +31,6 @@ interface PaperViewProps {
     githubRepoUrl: string;
     paperId: string;
 }
-
-type PaperHighlight = {
-    section_id: string;
-    description: string;
-};
 
 type ContentToCodeInput = {
     content: string | Blob;
@@ -93,13 +88,13 @@ const readStoredMatchFilter = (): MatchFilter => {
 function PdfPageList({
     analysisResult,
     processResult,
-    paperHighlightSections,
+    paperContentMatches,
     scrollRef,
     codeMatches,
 }: {
     analysisResult: codeSectionsResult;
     processResult: processPDFResult;
-    paperHighlightSections: PaperHighlight[];
+    paperContentMatches: PaperContentMatch[];
     scrollRef: React.RefObject<HTMLDivElement | null>;
     codeMatches: paperContentToCodeMatch[];
 }) {
@@ -174,13 +169,13 @@ function PdfPageList({
             }
 
             // Match from user-selected code
-            for (let j = 0; j < paperHighlightSections.length; j++) {
-                const highlight = paperHighlightSections[j];
+            for (let j = 0; j < paperContentMatches.length; j++) {
+                const match = paperContentMatches[j];
                 const paperMageSection = processResult.sections.find(
-                    (section) => section.entity_id === highlight.section_id,
+                    (section) => section.entity_id === match.entity_id,
                 );
                 if (!paperMageSection) {
-                    console.warn('No PaperMage section for mapped highlight', highlight);
+                    console.warn('No PaperMage section for match', match);
                     continue;
                 }
 
@@ -199,10 +194,10 @@ function PdfPageList({
                     left: box.l * viewport.width * scaleX,
                     width: box.w * viewport.width * scaleX,
                     height: box.h * viewport.height * scaleY,
-                    hitKey: `map-${highlight.section_id}-${j}`,
+                    hitKey: `map-${match.entity_id}-${j}`,
                     file_infos: [],
                     code_snippets: [],
-                    description: highlight.description,
+                    description: match.description,
                     variant: 'underline',
                     color: CODE_TO_CONTENT_HIGHLIGHT_COLOR,
                 });
@@ -246,9 +241,9 @@ function PdfPageList({
             if (cancelled) return;
             setHitBoxes(boxes);
 
-            if (paperHighlightSections.length > 0) {
+            if (paperContentMatches.length > 0) {
                 const firstSection = processResult.sections.find(
-                    (s) => s.entity_id === paperHighlightSections[0].section_id,
+                    (s) => s.entity_id === paperContentMatches[0].entity_id,
                 );
                 const pageIndex = firstSection?.box.page;
                 requestAnimationFrame(() => {
@@ -271,7 +266,7 @@ function PdfPageList({
         return () => {
             cancelled = true;
         };
-    }, [pdfDocProxy, numPages, rotation, pageDimensions, analysisResult, processResult, paperHighlightSections, scrollRef, codeMatches]);
+    }, [pdfDocProxy, numPages, rotation, pageDimensions, analysisResult, processResult, paperContentMatches, scrollRef, codeMatches]);
 
     return (
         <div className="reader__page-list" ref={scrollRef}>
@@ -293,7 +288,7 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
     const {currentUser} = useContext(UserContext);
 
     const [matchingTaskId, setMatchingTaskId] = useState<string | null>(null);
-    const [paperHighlightSections, setPaperHighlightSections] = useState<PaperHighlight[]>([]);
+    const [paperContentMatches, setPaperContentMatches] = useState<PaperContentMatch[]>([]);
     const [contentToCodeMatches, setContentToCodeMatches] = useState<paperContentToCodeMatch[]>([]);
     const [isMatchFilterOpen, setIsMatchFilterOpen] = useState(false);
     const [matchFilter, setMatchFilter] = useState<MatchFilter>(readStoredMatchFilter);
@@ -411,9 +406,9 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
         () => (showAiMatches ? analysisResult : { ...analysisResult, sections: [] }),
         [showAiMatches, analysisResult],
     );
-    const filteredPaperHighlightSections = useMemo(
-        () => (showMyMatches ? paperHighlightSections : []),
-        [showMyMatches, paperHighlightSections],
+    const filteredPaperContentMatches = useMemo(
+        () => (showMyMatches ? paperContentMatches : []),
+        [showMyMatches, paperContentMatches],
     );
     const filteredContentToCodeMatches = useMemo(
         () => contentToCodeMatches.filter((match) => {
@@ -443,11 +438,11 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
                         >
                             Clear Environment
                         </button>
-                        {paperHighlightSections.length > 0 && <button
+                        {paperContentMatches.length > 0 && <button
                             type="button"
                             className="outline-action-btn temp-action-btn"
                             onClick={() => {
-                                setPaperHighlightSections([]);
+                                setPaperContentMatches([]);
                             }}
                         >
                             Clear Paper Highlights
@@ -503,7 +498,7 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
                                     <PdfPageList
                                         analysisResult={filteredAnalysisResult}
                                         processResult={processResult}
-                                        paperHighlightSections={filteredPaperHighlightSections}
+                                        paperContentMatches={filteredPaperContentMatches}
                                         scrollRef={pdfScrollableRef}
                                         codeMatches={filteredContentToCodeMatches}
                                     />
@@ -524,7 +519,7 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
                         </button> */}
                     </div>
                     <div className="paper-view-layout__code-scroll">
-                        {<RepoView tree={tree} paperId={paperId} setPaperHighlightSections={setPaperHighlightSections} />}
+                        {<RepoView tree={tree} paperId={paperId} setPaperContentMatches={setPaperContentMatches} />}
                     </div>
                 </aside>
             )}

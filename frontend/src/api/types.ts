@@ -104,6 +104,14 @@ interface processPDFResult {
     sections: SectionEntity[];
 }
 
+type PaperContentMatch = {
+    entity_id: string;
+    description: string;
+    entity_type: "section" | "paragraph" | "sentence" | "equation";
+    paragraph_id: string | null;
+    sentence_id: string | null;
+};
+
 // This defines a content area (or selection) on the paper
 interface paperContentBox {
     l: number, 
@@ -145,7 +153,7 @@ interface codeToContentMatch {
     outputs: {
         verdict: string,
         reasoning: string,
-        sections: { section_id: string; description: string }[];
+        matches: PaperContentMatch[];
     }
 }
 
@@ -162,12 +170,16 @@ interface mapContentResponse {
 }
 
 interface codeToContentMappingResult {
-    sections: { section_id: string; description: string }[];
+    matches: codeToContentMatch[];
 }
 
 interface mapCodeToContentResponse {
     status: string;
-    result: { section_id: string; description: string }[] | null;
+    result?: {
+        verdict: string,
+        reasoning: string,
+        matches: PaperContentMatch[];
+    } | null,
     task_id: string | null;
 }
 
@@ -190,5 +202,6 @@ export type { codeSection,
     paperContentToCodeMatch,
     paperContentBox,
     codeToContentMatch,
+    PaperContentMatch,
 }
     
