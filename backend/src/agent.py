@@ -329,7 +329,7 @@ class Agent:
                 "json_schema": single_code_map_schema
             }
         )
-        
+
         parsed_result = None
         async for message in query(prompt=prompt, options=options):
             if isinstance(message, ResultMessage):
@@ -338,6 +338,8 @@ class Agent:
                     cleaned = message.result.replace("```json", "").replace("```", "").strip()
                     logger.warning("map_code_to_content: failed to parse JSON result raw=%s", cleaned)
                     parsed_result = None
+
+        os.remove(path)
         return parsed_result
 
 
