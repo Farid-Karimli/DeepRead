@@ -18,6 +18,9 @@ services:
       REDIS_URL: redis://redis:6379/0
       CORS_ORIGINS: http://localhost:8080,http://127.0.0.1:8080,http://localhost:5173,http://127.0.0.1:5173
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      SUPABASE_URL: ${SUPABASE_URL:-}
+      SUPABASE_KEY: ${SUPABASE_KEY:-}
+      WANDB_API_KEY: ${WANDB_API_KEY:-}
     depends_on:
       redis:
         condition: service_healthy
@@ -41,6 +44,9 @@ services:
     environment:
       REDIS_URL: redis://redis:6379/0
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      SUPABASE_URL: ${SUPABASE_URL:-}
+      SUPABASE_KEY: ${SUPABASE_KEY:-}
+      WANDB_API_KEY: ${WANDB_API_KEY:-}
     depends_on:
       redis:
         condition: service_healthy
