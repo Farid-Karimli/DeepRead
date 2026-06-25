@@ -101,10 +101,12 @@ class PaperContentBox(BaseModel):
     h: float
 
 
-class CodeToContentSection(BaseModel):
-    section_id: str
+class CodeToContentMatch(BaseModel):
+    entity_type: Literal["section", "paragraph", "sentence", "equation"]
+    entity_id: str
     description: str
-
+    paragraph_id: str | None = None
+    sentence_id: str | None = None
 
 class ContentToCodeResult(BaseModel):
     reasoning: str
@@ -117,7 +119,7 @@ class ContentToCodeResult(BaseModel):
 class CodeToContentResult(BaseModel):
     verdict: str
     reasoning: str
-    sections: list[CodeToContentSection]  # section_id + description
+    matches: list[CodeToContentMatch]  # section_id + description
 
 
 class ContentToCodeInputs(BaseModel):
