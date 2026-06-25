@@ -155,16 +155,64 @@ def build_single_content_to_code_mapping_prompt(
 
 def build_code_to_content_mapping_prompt(
     code: str, # a single piece of code
-    paper_content: list[dict],
+    papermage_result_path: Path,
 ):
     return f"""
         Map the provided snippet of code to the content in the corresponding research paper.
         The code will be provided in text format. 
-        The paper content will be provided as a list of dicts, with section_id, section_header and section_content fields.
+        The paper content will be provided as a JSON file path. 
+        The JSON file contains content for each section, paragraph, sentence and equation. 
+        The schema of the JSON file is the following:
 
-        ## Paper Content ##
-        {paper_content}
-        ## End Paper Content ##
+        Root object (PaperMageResult):
+        {{
+            "paper_title": string,
+            "n_pages": number,
+            "equations": [EquationEntity, ...],   // top-level; not nested under sections
+            "sections": [SectionEntity, ...]      // ordered; includes a synthetic "abstract" section first
+        }}
+
+        SectionEntity:
+        {{
+            "entity_id": string,                  // use this as section_id in your output (e.g. "abstract", "sec_12")
+            "section_header": string,             // heading text (sections are header-only spans; body is separate)
+            "section_content": string,            // full body text from this header until the next section
+            "page_index": number,               // zero-based page of the section header
+            "box": {{ "page": number, "l": number, "t": number, "w": number, "h": number }},  // layout; ignore for mapping
+            "paragraphs": [ParagraphEntity, ...], // paragraphs whose spans fall within this section's body
+            "sentences": [SentenceEntity, ...]    // sentences whose spans fall within this section's body
+        }}
+
+        ParagraphEntity:
+        {{
+            "entity_id": string,                  // e.g. "prg_42"
+            "paragraph_content": string,
+            "page_index": number,
+            "box": {{ "page": number, "l": number, "t": number, "w": number, "h": number }}
+        }}
+
+        SentenceEntity:
+        {{
+            "entity_id": string,                  // e.g. "sen_105"
+            "sentence_content": string,
+            "page_index": number,
+            "box": {{ "page": number, "l": number, "t": number, "w": number, "h": number }}
+        }}
+
+        EquationEntity:
+        {{
+            "entity_id": string,                  // e.g. "eq_3"
+            "equation_content": string,
+            "page_index": number,
+            "box": {{ "page": number, "l": number, "t": number, "w": number, "h": number }}
+        }}
+
+        Search tips: prefer section_content for broad matches; drill into nested paragraphs/sentences for precise spans.
+        Equations live only in the top-level "equations" array.
+
+        ## Paper Content JSON File Path##
+        {papermage_result_path}
+        ## End Paper Content JSON File Path ##
 
         ## Code ##
         {code}
@@ -181,7 +229,7 @@ def build_code_to_content_mapping_prompt(
         be referenced in the paper content at all. For example, things like project description READMEs,
         config files, environment and init files like __init__.py, git files cannot be expected to have references in the paper content.
         You should focus on files that perform actual computation relevant to the method described in the paper. 
-        2. If it should map, search the paper sections for references.
+        2. If it should map, search the paper's semantic layers in the content JSON file for references.
         3. Reach one of the verdicts below based on what you found.
 
         ## Verdicts ##
@@ -191,18 +239,35 @@ def build_code_to_content_mapping_prompt(
         - "not_applicable": the code is not the kind of thing that maps to paper content.
 
         ## Output Format ## 
-        Return just a JSON object. The section id is the entity_id as it appears in the context.
-        If your verdict is "not_described" or "not_applicable", the "sections" key should be an empty list.
-        The first and last character of your output should be {{ and }}. No prose. 
+        Return just a JSON object. The first and last character of your output should be {{ and }}. No prose. 
+
+        If your verdict is "not_described" or "not_applicable", the "matches" key should be an empty list.
         
+        Provide the type of the entity under the "entity_type" key.
+
+        If matching down to the sentences, the entity_id should be the entity_id of the sentence that matches the code snippet
+        and you should also provide the entity_id of the paragraph and section that contains the sentence under paragraph_id and section_id respectively.
+
+        If matching down to the paragraphs, the entity_id should be the entity_id of the paragraph that matches the code snippet
+        and you should also provide the entity_id of the section that contains the paragraph under section_id. Leave paragraph_id empty.
+
+        If matching down to the sections, the entity_id should be the entity_id of the section that matches the code snippet.
+        Leave paragraph_id and sentence_id empty.
+
+        If matching to an equation, the entity_id should be the entity_id of the equation that matches the code snippet. 
+        In that case, make the section_id and paragraph_id keys empty strings.
+
         Example:
         {{
             "reasoning": "Concisely - what you looked for, where you searched, and why you reached the verdict.",
             "verdict": "described" | "not_described" | "not_applicable",
-            "sections": [
+            "matches": [
                 {{
-                    "section_id": "entity_id as it appears in the context",
-                    "description": "briefly, how the section relates to the code snippet",
+                    "entity_type": "section" | "paragraph" | "sentence" | "equation",
+                    "entity_id": "entity_id as it appears in the context",
+                    "description": "briefly, how the entity relates to the code snippet",
+                    "section_id": "entity_id of the section that contains the entity", 
+                    "paragraph_id": "entity_id of the paragraph that contains the entity", 
                 }}
             ]
         }}
