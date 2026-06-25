@@ -176,16 +176,16 @@ def map_code_to_content_task(
         paper_record=paper_record
     ))
 
-    sections = result.get("sections", []) if isinstance(result, dict) else []
+    matches = result.get("matches", []) if isinstance(result, dict) else []
     record = PaperMappingRecord(
         mapping_type="code_to_content",
         cache_key=cache_key,
         paper_id=paper_id, 
         inputs=CodeToContentInputs(code=code, start=start, end=end, filepath=filepath),
         outputs=CodeToContentResult(
-            verdict=result.get("verdict", "Verdict not found"),
-            reasoning=result.get("reasoning", "Reasoning not found"),
-            sections=sections
+                verdict=result.get("verdict", "Verdict not found"),
+                reasoning=result.get("reasoning", "Reasoning not found"),
+                matches=matches
             ),
         created_by=user_id,
     )
