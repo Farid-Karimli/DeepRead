@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import List, Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, model_validator
 
 
 class UserRecord(BaseModel):
@@ -75,15 +75,15 @@ class SectionEntity(BaseModel):
     entity_id: str
     section_header: str
     section_content: str # Full section content
-    paragraphs: List[ParagraphEntity]
-    sentences: List[SentenceEntity]
+    paragraphs: List[ParagraphEntity] = Field(default_factory=list)
+    sentences: List[SentenceEntity] = Field(default_factory=list)
     page_index: int
     box: BoxModel
 
 class PaperMageResult(BaseModel):
     paper_title: str
     n_pages: int
-    equations: List[EquationEntity] # list of list of equations for each page
+    equations: List[EquationEntity] = Field(default_factory=list)
     sections: List[SectionEntity]  # list of list of sections for each page
 
 
@@ -102,11 +102,48 @@ class PaperContentBox(BaseModel):
 
 
 class CodeToContentMatch(BaseModel):
-    entity_type: Literal["section", "paragraph", "sentence", "equation"]
+    entity_type: Literal["section", "paragraph", "sentence", "equation"] = "section"
     entity_id: str
     description: str
     paragraph_id: str | None = None
     sentence_id: str | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_legacy_fields(cls, data):
+        if not isinstance(data, dict):
+            return data
+        data = dict(data)
+        if "entity_id" not in data and "section_id" in data:
+            data["entity_id"] = data["section_id"]
+        data.setdefault("entity_type", "section")
+        return data
+
+
+class CodeToContentResult(BaseModel):
+    verdict: str
+    reasoning: str
+    matches: list[CodeToContentMatch] = Field(default_factory=list)
+
+    @model_validator(mode="before")
+    @classmethod
+    def migrate_legacy_sections(cls, data):
+        if not isinstance(data, dict):
+            return data
+        data = dict(data)
+        if not data.get("matches") and data.get("sections"):
+            data["matches"] = [
+                {
+                    "entity_type": "section",
+                    "entity_id": item["section_id"],
+                    "description": item["description"],
+                }
+                for item in data["sections"]
+                if isinstance(item, dict) and "section_id" in item
+            ]
+        data.setdefault("matches", [])
+        return data
+
 
 class ContentToCodeResult(BaseModel):
     reasoning: str
@@ -114,12 +151,6 @@ class ContentToCodeResult(BaseModel):
     code_snippet: (
         CodeSnippet | None
     )  # matches what we return today after rerank or if nothing was found
-
-
-class CodeToContentResult(BaseModel):
-    verdict: str
-    reasoning: str
-    matches: list[CodeToContentMatch]  # section_id + description
 
 
 class ContentToCodeInputs(BaseModel):

@@ -180,6 +180,7 @@ def get_code_to_content_matches_by_paper_id_and_filepath(paper_id: str, current_
         return [PaperMappingRecord.model_validate(row) for row in response.data]
     except Exception:
         logger.exception("Supabase get_code_to_content_matches failed paper_id=%s current_path=%s", paper_id, current_path)
+        return []
 
 def create_user_db(username: str) -> UserRecord | None:
     if not is_configured():
