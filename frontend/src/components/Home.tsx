@@ -2,7 +2,7 @@ import React, { useContext, useState, useEffect } from 'react';
 import {useQuery} from '@tanstack/react-query';
 
 import { getAvailPapers, getUserByUsername } from '../api/main';
-import { UserContext } from '../context/userContext';
+import { UserContext } from '../context/UserContext';
 
 interface HomeProps {
     handlePaperSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
@@ -29,6 +29,7 @@ export default function Home({ handlePaperSubmit, onOpenCachedPaper, errorMessag
     useEffect(()=>{
         if (userQuery.data) {
             const user = userQuery.data;
+            console.log(user);
             setUser(user)
             localStorage.setItem('user', JSON.stringify(user))
         }
