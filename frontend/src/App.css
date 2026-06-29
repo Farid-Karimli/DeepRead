@@ -86,7 +86,41 @@
   top: 0;
   right: 0;
   z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   padding: 16px 20px;
+}
+
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--social-bg);
+  color: var(--text-h);
+  cursor: pointer;
+  font-size: 1.75rem;
+  line-height: 1;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.theme-toggle:hover {
+  border-color: var(--accent-border);
+  background: var(--accent-bg);
+}
+
+.theme-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.theme-toggle--toolbar-end {
+  margin-left: auto;
 }
 
 .user-menu {

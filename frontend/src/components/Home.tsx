@@ -5,6 +5,7 @@ import { IoPersonCircleOutline, IoGridOutline, IoListOutline, IoDocumentOutline,
 import { getAvailPapers, getUserByUsername } from '../api/main';
 import type { PaperMetadataSummary } from '../api/types';
 import { UserContext } from '../context/userContext';
+import ThemeToggle from './ThemeToggle';
 interface HomeProps {
     handlePaperSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
     onOpenCachedPaper: (paperId: string) => void;
@@ -100,6 +101,7 @@ export default function Home({ onOpenCachedPaper }: HomeProps) {
     return (
         <>
             <div className="home-top-bar">
+                <ThemeToggle />
                 <div className="user-menu" ref={userMenuRef}>
                     <button
                         type="button"
