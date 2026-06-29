@@ -133,6 +133,7 @@ export default function Home({ handlePaperSubmit, onOpenCachedPaper, errorMessag
                         </button>
                     </form>
                 </div>
+                */}
             </section>
         </>
     );
