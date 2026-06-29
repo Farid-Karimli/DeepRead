@@ -17,6 +17,24 @@ function getPaperTitle(paper: PaperMetadataSummary): string {
     return paper.paper_title?.trim() || paper.label?.trim() || paper.paper_id;
 }
 
+function PaperThumbnail({ url }: { url?: string | null }) {
+    const [failed, setFailed] = useState(false);
+    if (!url || failed) {
+        return <IoDocumentOutline />;
+    }
+    return (
+        <img
+            src={url}
+            style={{
+                height: "100%",
+                width: "100%"
+            }}
+            alt=""
+            onError={() => setFailed(true)}
+        />
+    );
+}
+
 export default function Home({ onOpenCachedPaper }: HomeProps) {
     const papersQuery = useQuery({
         queryKey: ['paperRecords'],
@@ -205,7 +223,7 @@ export default function Home({ onOpenCachedPaper }: HomeProps) {
                                         onClick={() => onOpenCachedPaper(p.paper_id)}
                                     >
                                         <div className="home-papers__thumb" aria-hidden>
-                                            <IoDocumentOutline />
+                                            <PaperThumbnail url={p.thumbnail_url} />
                                         </div>
                                         <div className="home-papers__body">
                                             <span className="home-papers__label">
