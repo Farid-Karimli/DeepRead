@@ -145,7 +145,8 @@ const RepoView = ({ tree, paperId, setPaperContentMatches }: RepoViewProps) => {
             .map((match: codeToContentMatch) => ({
                 start: match.inputs.start,
                 end: match.inputs.end,
-                color: CONTENT_MATCH_VERDICT_TO_COLOR[match.outputs.verdict]
+                color: CONTENT_MATCH_VERDICT_TO_COLOR[match.outputs.verdict] 
+                // TODO: Add attribute for displaying the verdict and reasoning.
             }));
         // Matches from the user pick
         const fromUser = codeInfo?.filePath === currentPath ? codeInfo.codeRanges.map((r) => ({ 
