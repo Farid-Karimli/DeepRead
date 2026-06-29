@@ -220,7 +220,7 @@ def build_code_to_content_mapping_prompt(
 
         ## Important ##
 
-        Reporting that a piece of code does NOT have an explanation in the paper content should be considered a valid response.
+        Reporting that a piece of code does NOT have an reference in the paper content should be considered a valid response.
         Papers can often omit details or misrepresent the implementation. You should not returning loosely related paper content 
         just for the sake of returning something.
 
@@ -228,14 +228,16 @@ def build_code_to_content_mapping_prompt(
         1. Decide whether the selected code snippet is the kind of thing that *should* 
         be referenced in the paper content at all. For example, things like project description READMEs,
         config files, environment and init files like __init__.py, git files cannot be expected to have references in the paper content.
-        You should focus on files that perform actual computation relevant to the method described in the paper. 
-        2. If it should map, search the paper's semantic layers in the content JSON file for references.
+        You should focus on files that perform actual computation relevant to the method described in the paper.
+        2. If it should map, search the paper's semantic layers in the content JSON file for references. 
+        Note that the paper may not go deep into the details of the implementation, but rather a higher-level overview.
+        Your objective is to find the most relevant references to the code snippet in the paper content, not whether
+        everything about the code snippet is explicitly described in the paper content. Remember that we're dealing with academic papers, not code documentation.
         3. Reach one of the verdicts below based on what you found.
 
         ## Verdicts ##
-        - "described": you found code that genuinely implements or corresponds to the paper's content.
-        - "not_described": the code describes something that should have an explanation/description in the paper, 
-        but no genuine reference exists in the paper.
+        - "described": you found paper content that references the code snippet
+        - "not_described": the code snippet should but does not have ANY references of any kind in the paper content.
         - "not_applicable": the code is not the kind of thing that maps to paper content.
 
         ## Output Format ## 
