@@ -14,7 +14,8 @@ import { Group, Panel, Separator } from "react-resizable-panels";
 import { useQuery, useMutation, useQueryClient} from '@tanstack/react-query';
 
 import { mapContentToCode, getContentToCodeMatches } from '../api/main.ts';
-import type { codeSectionsResult, githubRepoTreeResponse, processPDFResult, paperContentToCodeMatch, paperContentBox, PaperContentMatch } from '../api/types.ts';
+import type { codeMatchesResult, githubRepoTreeResponse, processPDFResult, paperContentToCodeMatch, paperContentBox, PaperContentMatch } from '../api/types.ts';
+import { resolvePaperMageEntity } from '../utils/resolvePaperMageEntity.ts';
 import { HighlightOverlayDemo, type BoundingBoxWithTooltip } from './CodeOverlay.tsx';
 import RepoView from './RepoView.tsx';
 import { captureSelectionHighlightsFromRange } from '../utils/selectionRangeToPageBox.ts';
@@ -23,7 +24,7 @@ import { useCeleryTaskStatus } from '../hooks/useCeleryTaskStatus.ts';
 import { UserContext } from '../context/UserContext.tsx';
 
 interface PaperViewProps {
-    analysisResult: codeSectionsResult;
+    analysisResult: codeMatchesResult;
     processResult: processPDFResult;
     clearEnvironment: () => void;
     paperFile: File | undefined;
@@ -92,7 +93,7 @@ function PdfPageList({
     scrollRef,
     codeMatches,
 }: {
-    analysisResult: codeSectionsResult;
+    analysisResult: codeMatchesResult;
     processResult: processPDFResult;
     paperContentMatches: PaperContentMatch[];
     scrollRef: React.RefObject<HTMLDivElement | null>;
@@ -129,23 +130,23 @@ function PdfPageList({
         let boxes: BoundingBoxWithTooltip[] = [];
 
         const contentToBBoxPaperMage = async () => {
+            const aiMatches = analysisResult.matches ?? [];
             // AI-discovered matches
-            for (let i = 0; i < analysisResult.sections.length; i++) {
-                const analyzedSection = analysisResult.sections[i];
+            for (let i = 0; i < aiMatches.length; i++) {
+                const analyzedMatch = aiMatches[i];
 
-                if (analyzedSection.code_snippets.length === 0) {
-                    console.warn("No code snippets listed for section", analyzedSection);
+                if (analyzedMatch.code_snippets.length === 0) {
+                    console.warn("No code snippets listed for match", analyzedMatch);
                     continue;
                 }
 
-                const paperMageSection = processResult.sections.filter((section)=>section.entity_id === analyzedSection.section_id)[0];
-
-                if (!paperMageSection) {
-                    console.warn('No PaperMage section for analyzed section', analyzedSection);
+                const resolved = resolvePaperMageEntity(processResult, analyzedMatch);
+                if (!resolved) {
+                    console.warn('No PaperMage entity for analyzed match', analyzedMatch);
                     continue;
                 }
-    
-                const box = paperMageSection.box;
+
+                const box = resolved.box;
                 if (cancelled) return;
                 const page = await pdfDocProxy.getPage(box.page + 1);
                 if (cancelled) return;
@@ -161,9 +162,10 @@ function PdfPageList({
                     width:  box.w   * viewport.width * scaleX,
                     height: box.h   * viewport.height * scaleY,
                     hitKey: `p${box.page}-h${i}`,
-                    file_infos: analyzedSection.code_snippets.map((snippet) => `${snippet.filepath}:${snippet.start_line}-${snippet.end_line}`),
-                    code_snippets: analyzedSection.code_snippets,
-                    description: analyzedSection.section_description,
+                    file_infos: analyzedMatch.code_snippets.map((snippet) => `${snippet.filepath}:${snippet.start_line}-${snippet.end_line}`),
+                    code_snippets: analyzedMatch.code_snippets,
+                    description: analyzedMatch.description || analyzedMatch.content,
+                    content_type: analyzedMatch.content_type,
                     color: CODE_MATCH_VERDICT_TO_COLOR.ai,
                 })
             }
@@ -171,15 +173,13 @@ function PdfPageList({
             // Match from user-selected code
             for (let j = 0; j < paperContentMatches.length; j++) {
                 const match = paperContentMatches[j];
-                const paperMageSection = processResult.sections.find(
-                    (section) => section.entity_id === match.entity_id,
-                );
-                if (!paperMageSection) {
-                    console.warn('No PaperMage section for match', match);
+                const resolved = resolvePaperMageEntity(processResult, match);
+                if (!resolved) {
+                    console.warn('No PaperMage entity for match', match);
                     continue;
                 }
 
-                const box = paperMageSection.box;
+                const box = resolved.box;
                 if (cancelled) return;
                 const page = await pdfDocProxy.getPage(box.page + 1);
                 if (cancelled) return;
@@ -242,10 +242,8 @@ function PdfPageList({
             setHitBoxes(boxes);
 
             if (paperContentMatches.length > 0) {
-                const firstSection = processResult.sections.find(
-                    (s) => s.entity_id === paperContentMatches[0].entity_id,
-                );
-                const pageIndex = firstSection?.box.page;
+                const firstResolved = resolvePaperMageEntity(processResult, paperContentMatches[0]);
+                const pageIndex = firstResolved?.box.page;
                 requestAnimationFrame(() => {
                     if (pageIndex != null) {
                         scrollRef.current?.children[pageIndex]?.scrollIntoView({
@@ -403,7 +401,7 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
     const showFailedMatches = matchFilter === 'all' || matchFilter === 'not_implemented';
 
     const filteredAnalysisResult = useMemo(
-        () => (showAiMatches ? analysisResult : { ...analysisResult, sections: [] }),
+        () => (showAiMatches ? analysisResult : { ...analysisResult, matches: [] }),
         [showAiMatches, analysisResult],
     );
     const filteredPaperContentMatches = useMemo(

@@ -28,6 +28,7 @@ export type BoundingBoxWithTooltip = BoundingBoxType & {
   /** Default `overlay` (filled highlight). `underline` draws a line under the section only. */
   variant?: 'overlay' | 'underline';
   color?: string;
+  content_type?: string;
 };
 
 type overlayProps = {
@@ -125,7 +126,10 @@ function PdfBoundingHitTarget({
           setFloating(null);
         }}
       >
-        <div className="pdf-hit-tooltip__description">{box.description}</div>
+        <div className="pdf-hit-tooltip__description">
+          {box.content_type ? `[${box.content_type}] ` : ''}
+          {box.description}
+        </div>
         {box.code_snippets.length > 0 && (
           <div className="pdf-hit-tooltip__path">{box.file_infos[codeIndex]}</div>
         )}
@@ -295,7 +299,10 @@ function PdfUnderlineHitTarget({
           setFloating(null);
         }}
       >
-        <div className="pdf-hit-tooltip__description">{box.description}</div>
+        <div className="pdf-hit-tooltip__description">
+          {box.content_type ? `[${box.content_type}] ` : ''}
+          {box.description}
+        </div>
       </div>,
       document.body,
     );

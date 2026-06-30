@@ -175,8 +175,9 @@ const RepoView = ({ tree, paperId, setPaperContentMatches }: RepoViewProps) => {
 
     useEffect(() => {
         if (codeMatchingTaskQuery.data?.status === 'SUCCESS' && codeMatchingTaskQuery.data.result) {
-            const sections = codeMatchingTaskQuery.data.result as unknown as PaperContentMatch[];
-            setPaperContentMatches(sections);
+            const raw = codeMatchingTaskQuery.data.result as { matches?: PaperContentMatch[] };
+            const matches = Array.isArray(raw?.matches) ? raw.matches : [];
+            setPaperContentMatches(matches);
             setCodeMatchingTaskId(null);
             setPendingCodeSelection(null);
             queryClient.invalidateQueries({ queryKey: ["codeToContentMatches", paperId, currentPath] });

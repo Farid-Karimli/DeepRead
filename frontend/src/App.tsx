@@ -13,7 +13,7 @@ import {
   getGithubRepoTree,
 } from './api/main';
 
-import type { AgentTaskResult, codeSectionsResult } from './api/types.ts';
+import type { AgentTaskResult, codeEntityMatch, codeMatchesResult, codeSectionsResult } from './api/types.ts';
 import { SidePanelProvider } from './context/SidePanelContext.tsx';
 import { UserContext, type User } from './context/UserContext.tsx';
 
@@ -27,12 +27,43 @@ function extractGithubRepoUrl(result: unknown): string | null {
   return r.github_repo_url as string;
 }
 
-function extractCodeSections(result: unknown): codeSectionsResult | null {
+function migrateLegacySectionsToMatches(
+  sections: codeSectionsResult['sections'],
+): codeEntityMatch[] {
+  return sections.map((section) => ({
+    entity_id: section.section_id,
+    content_type: 'section' as const,
+    content: section.section_description || section.section_header || '',
+    section_id: section.section_id,
+    description: section.section_description,
+    code_snippets: section.code_snippets ?? [],
+  }));
+}
+
+function extractCodeMatches(result: unknown): codeMatchesResult | null {
   if (!result || typeof result !== 'object') return null;
-  const r = result as AgentTaskResult & codeSectionsResult;
-  if (r.code_result?.sections) return r.code_result;
-  if (Array.isArray(r.sections)) return r as codeSectionsResult;
-  return null;
+  const r = result as AgentTaskResult & Partial<codeMatchesResult & codeSectionsResult>;
+
+  const codeResult = r.code_result;
+  if (codeResult && typeof codeResult === 'object') {
+    if ('matches' in codeResult && Array.isArray(codeResult.matches) && codeResult.matches.length > 0) {
+      return { paper_title: codeResult.paper_title, matches: codeResult.matches };
+    }
+    if ('sections' in codeResult && Array.isArray(codeResult.sections) && codeResult.sections.length > 0) {
+      return {
+        paper_title: codeResult.paper_title,
+        matches: migrateLegacySectionsToMatches(codeResult.sections),
+      };
+    }
+  }
+
+  if (Array.isArray(r.matches) && r.matches.length > 0) {
+    return { paper_title: r.paper_title ?? undefined, matches: r.matches };
+  }
+  if (Array.isArray(r.sections) && r.sections.length > 0) {
+    return { matches: migrateLegacySectionsToMatches(r.sections) };
+  }
+  return { matches: [] };
 }
 
 function App() {
@@ -103,7 +134,7 @@ function App() {
   const paperMetadata = paperQuery.data;
 
   const analysisResult = paperMetadata ? 
-    extractCodeSections(paperMetadata.analysis_result) : null;
+    extractCodeMatches(paperMetadata.analysis_result) : null;
 
   const papermageResult = paperMetadata ? 
     paperMetadata.papermage_result : null;

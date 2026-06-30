@@ -1,7 +1,7 @@
 interface AgentTaskResult {
     paper_title: string | null;
     github_repo_url: string | null;
-    code_result: codeSectionsResult | null;
+    code_result: codeMatchesResult | codeSectionsResult | null;
 };
 
 interface codeSnippet {
@@ -9,9 +9,26 @@ interface codeSnippet {
     filepath: string;
     start_line: number;
     end_line: number;
-    ranking: number;
+    ranking?: number;
 }
 
+type ContentEntityType = "section" | "paragraph" | "sentence" | "equation";
+
+interface codeEntityMatch {
+    entity_id: string;
+    content_type: ContentEntityType;
+    content: string;
+    section_id?: string | null;
+    description?: string;
+    code_snippets: codeSnippet[];
+}
+
+interface codeMatchesResult {
+    paper_title?: string;
+    matches: codeEntityMatch[];
+}
+
+/** @deprecated Legacy section-centric match row; migrated to codeEntityMatch at read time. */
 interface codeSection {
     section_id: string;
     section_header: string;
@@ -20,9 +37,12 @@ interface codeSection {
     paper_end_line?: number;
     paper_section_description?: string;
     code_snippets: codeSnippet[];
-  }
-  /** Root object: `{ "sections": [ ... ] }` */
+}
+
+/** @deprecated Use codeMatchesResult; sections[] is migrated to matches[] at read time. */
 interface codeSectionsResult {
+    paper_title?: string;
+    matches?: codeEntityMatch[];
     sections: codeSection[];
 }
 
@@ -91,23 +111,48 @@ interface PaperMageBox {
     h: number, 
     w: number
 }
+interface ParagraphEntity {
+    entity_id: string;
+    paragraph_content: string;
+    page_index: number;
+    box: PaperMageBox;
+}
+
+interface SentenceEntity {
+    entity_id: string;
+    sentence_content: string;
+    page_index: number;
+    box: PaperMageBox;
+}
+
+interface EquationEntity {
+    entity_id: string;
+    equation_content: string;
+    page_index: number;
+    box: PaperMageBox;
+}
+
 interface SectionEntity {
     entity_id: string,
     page_index: number,
     box: PaperMageBox,
     section_content: string;
     section_header: string;
+    paragraphs?: ParagraphEntity[];
+    sentences?: SentenceEntity[];
 }
 interface processPDFResult {
     paper_title: string,
     n_pages: number,
+    equations?: EquationEntity[];
     sections: SectionEntity[];
 }
 
 type PaperContentMatch = {
     entity_id: string;
     description: string;
-    entity_type: "section" | "paragraph" | "sentence" | "equation";
+    entity_type: ContentEntityType;
+    section_id?: string | null;
     paragraph_id: string | null;
     sentence_id: string | null;
 };
@@ -185,7 +230,15 @@ interface mapCodeToContentResponse {
 
 export type { codeSection, 
     codeSnippet,
-    codeSectionsResult, 
+    codeEntityMatch,
+    codeMatchesResult,
+    codeSectionsResult,
+    ContentEntityType,
+    PaperMageBox,
+    ParagraphEntity,
+    SentenceEntity,
+    EquationEntity,
+    SectionEntity,
     paperSubmitResponse, 
     paperAnalysisStatusResponse, 
     paperByIdResponse, 
