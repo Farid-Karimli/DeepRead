@@ -10,6 +10,7 @@ from papermage.magelib.names import ParagraphsFieldName, SentencesFieldName, Tok
 from papermage.magelib.span import Span
 from papermage.recipes import CoreRecipe
 
+from src.papermage_compat import filter_noise_spans_from_papermage
 from src.types import BoxModel, EquationEntity, PaperMageResult, ParagraphEntity, SectionEntity, SentenceEntity
 
 logger = logging.getLogger("PAPERMAGE_PROCESSOR")
@@ -184,7 +185,7 @@ def papermage_process(file_input: Path | bytes) -> PaperMageResult:
             )
         )
 
-    return result_payload.model_dump()
+    return filter_noise_spans_from_papermage(result_payload.model_dump())
 
 
 if __name__ == "__main__":

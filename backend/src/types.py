@@ -23,15 +23,65 @@ class CodeSnippet(BaseModel):
     end_line: int
 
 
+class ContentEntity(BaseModel):
+    content_type: Literal["section", "paragraph", "sentence", "equation"]
+    entity_id: str
+    content: str
+    section_id: str | None = None
+
+
+class CodeEntityMatch(BaseModel):
+    entity_id: str
+    content_type: Literal["section", "paragraph", "sentence", "equation"] = "section"
+    content: str = ""
+    section_id: str | None = None
+    description: str | None = None
+    code_snippets: list[CodeSnippet] = Field(default_factory=list)
+
+
 class KeySectionsMappedSection(BaseModel):
+    """Legacy section-centric match row (migrated to CodeEntityMatch)."""
     section_id: str
     section_header: str
     code_snippets: list[CodeSnippet]
 
 
 class KeySectionsCodeResult(BaseModel):
-    paper_title: str
-    sections: list[KeySectionsMappedSection]
+    paper_title: str | None = None
+    matches: list[CodeEntityMatch] = Field(default_factory=list)
+    sections: list[KeySectionsMappedSection] = Field(default_factory=list)
+
+    @model_validator(mode="before")
+    @classmethod
+    def migrate_legacy_sections(cls, data):
+        if not isinstance(data, dict):
+            return data
+        data = dict(data)
+        if data.get("matches"):
+            return data
+        legacy = data.get("sections")
+        if not isinstance(legacy, list):
+            return data
+        matches = []
+        for item in legacy:
+            if not isinstance(item, dict):
+                continue
+            section_id = item.get("section_id") or item.get("entity_id")
+            if not isinstance(section_id, str):
+                continue
+            matches.append({
+                "entity_id": section_id,
+                "content_type": "section",
+                "content": item.get("content")
+                or item.get("section_content")
+                or item.get("section_description")
+                or "",
+                "section_id": section_id,
+                "description": item.get("section_description") or item.get("description"),
+                "code_snippets": item.get("code_snippets") or [],
+            })
+        data["matches"] = matches
+        return data
 
 
 class KeySectionsResult(BaseModel):
@@ -105,6 +155,7 @@ class CodeToContentMatch(BaseModel):
     entity_type: Literal["section", "paragraph", "sentence", "equation"] = "section"
     entity_id: str
     description: str
+    section_id: str | None = None
     paragraph_id: str | None = None
     sentence_id: str | None = None
 
@@ -117,6 +168,8 @@ class CodeToContentMatch(BaseModel):
         if "entity_id" not in data and "section_id" in data:
             data["entity_id"] = data["section_id"]
         data.setdefault("entity_type", "section")
+        if data.get("section_id") == data.get("entity_id") and data.get("entity_type") == "section":
+            data.setdefault("section_id", data.get("entity_id"))
         return data
 
 
