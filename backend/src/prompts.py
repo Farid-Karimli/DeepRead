@@ -1,68 +1,122 @@
 from pathlib import Path
 
 def build_identify_key_sections_prompt(
-    relevant_sections: dict,
+    papermage_result_path: Path,
 ) -> str:
     return f"""
-        Identify the key sections of the implementation content in the following research paper.
-        Focus on sections that are important to the implementation of the method and have a high likelihood of being implemented in the code repository. 
-        These sections should be ones that aid the reader in understanding the implementation and enable them to compare side-by-side.
+        Identify the key pieces of implementation content in the following research paper.
+        Focus on content (sections, paragraphs, sentences, equations) that are important to the implementation of the method 
+        and have a high likelihood of being implemented in the code repository. 
+        These pieces of content should be ones that aid the reader in understanding the implementation and enable them to compare side-by-side.
 
-        You'll be provided sections in JSON format - with entity_id, section_eader and section_content fields.
+        You'll be provided the processed paper content from PaperMage as a JSON file path, with sections, paragraphs, sentences and equations. 
+        Each piece of content is referenced by an entity_id and contains the content itself. Note that sentences and paragraphs are nested within sections.
+        Equations are not nested within sections.
 
-        Provide JUST the section names, short descriptions of the section, and the section ids, no other text.
+        The schema of the JSON file is the following:
 
-        ### Paper Content ###
-        {relevant_sections}
-        ### End Paper Content ###
+        Root object (PaperMageResult):
+        {{
+            "paper_title": string,
+            "n_pages": number,
+            "equations": [EquationEntity, ...],   // top-level; not nested under sections
+            "sections": [SectionEntity, ...]      // ordered; includes a synthetic "abstract" section first
+        }}
+
+        SectionEntity:
+        {{
+            "entity_id": string,                  // use this as section_id in your output (e.g. "abstract", "sec_12")
+            "section_header": string,             // heading text (sections are header-only spans; body is separate)
+            "section_content": string,            // full body text from this header until the next section
+            "page_index": number,               // zero-based page of the section header
+            "box": {{ "page": number, "l": number, "t": number, "w": number, "h": number }},  // layout; ignore for mapping
+            "paragraphs": [ParagraphEntity, ...], // paragraphs whose spans fall within this section's body
+            "sentences": [SentenceEntity, ...]    // sentences whose spans fall within this section's body
+        }}
+
+        ParagraphEntity:
+        {{
+            "entity_id": string,                  // e.g. "prg_42"
+            "paragraph_content": string,
+            "page_index": number,
+            "box": {{ "page": number, "l": number, "t": number, "w": number, "h": number }}
+        }}
+
+        SentenceEntity:
+        {{
+            "entity_id": string,                  // e.g. "sen_105"
+            "sentence_content": string,
+            "page_index": number,
+            "box": {{ "page": number, "l": number, "t": number, "w": number, "h": number }}
+        }}
+
+        EquationEntity:
+        {{
+            "entity_id": string,                  // e.g. "eq_3"
+            "equation_content": string,
+            "page_index": number,
+            "box": {{ "page": number, "l": number, "t": number, "w": number, "h": number }}
+        }}
+
+        Matching tips: prefer sentence and paragraph content for precise spans; if the match is broad, return section_content
+        Equations live only in the top-level "equations" array.
+
+        ### Processed Paper JSON File Path ###
+        {papermage_result_path}
+        ### End Processed Paper JSON File Path ###
+
+        ## Output Format ##
+        Return just a JSON object. The first and last character of your output must be {{ and }}. No prose.
 
         Example:
         {{ 
-            "sections": [
+            "entities": [
                 {{
-                    "section_id": "entity_id as it appears in the context",
-                    "section_header": "Full section header",
-                    "description": "A description of the section", 
-                }}
-            ]
+                    "content_type": "section" | "paragraph" | "sentence" | "equation",
+                    "entity_id": "entity_id as it appears in the context",
+                    "content": "Full text content of the entity",
+                }},
+                ...
+            ],
         }}
 
-        IMPORTANT: Make sure that the section ids and headers in your output match the section names in the provided context EXACTLY.
-        Do not make up section names and do not add descriptive text to the section names. 
+        IMPORTANT: Make sure that the entity ids and content in your output match the entity ids and content in the provided context EXACTLY.
+        Do not make up entity ids and do not add descriptive text to the entity content. 
         """
 
 
 def build_map_key_sections_to_code_prompt(
-    key_sections: dict,
+    entities: dict,
     code_path: str | None,
 ) -> str:
     return f"""
-        Map the provided key sections of a research papers to the code in the corresponding repository (local path provided).
+        Map the provided entities of a research paper to the code in the corresponding repository (local path provided). 
+        The entities come from processed paper content from PaperMage, with sections, paragraphs, sentences and equations.
 
-        ### Key Sections ###
-        {key_sections}
-        ### End Key Sections ###
+        ### Entities ###
+        {entities}
+        ### End Entities ###
 
         ### Code ###
         {code_path}
         ### End Code ###
 
-        Provide the code snippets for each section, and the line numbers of the code snippets. 
+        Provide the code snippets for each entity, and the line numbers of the code snippets. 
         Focus on finding actual code snippets (.py, .ipynb, etc.) - try to avoid references to the README or 
-        If no high-quality code match is found for a content section - then return an empty list for the 'code_snippets' key 
-        of the section item. 
+        If no high-quality code match is found for a content entity - then return an empty list for the 'code_snippets' key 
+        of the entity item. 
 
-        Provide your response in a JSON object outlined below, no other text. 
-        First character must be {{ and last must be }}. No prose.
-
+        ### Output Format ###
+        Return just a JSON object. The first and last character of your output must be {{ and }}. No prose.
+        Maintain a flat structure for the code snippets, do not nest them under the entity item.
+        
         Example:
         {{
             "paper_title": ...
-            "sections": [
+            "matches": [
                 {{
-                    "section_id": "entity_id as it appears in the context",
-                    "section_header": "section header as it appears in the context",
-                    "description": "a brief description of what the snippets implement"
+                    "entity_id": "entity_id as it appears in the context",
+                    "content": "Full text content of the entity",
                     "code_snippets": [
                         {{
                             "content": "print('Hello, world!')",
@@ -75,8 +129,8 @@ def build_map_key_sections_to_code_prompt(
             ]
         }}
 
-        IMPORTANT: Make sure that the section headers and ids in your output match what is provided in the context. Do not make up section headers and do not add
-        descriptive text.
+        IMPORTANT: Make sure that the entity ids and content in your output match the entity ids and content in the provided context EXACTLY.
+        Do not make up entity ids and do not add descriptive text to the entity content. 
         """
 
 def build_single_content_to_code_mapping_prompt(
@@ -207,7 +261,7 @@ def build_code_to_content_mapping_prompt(
             "box": {{ "page": number, "l": number, "t": number, "w": number, "h": number }}
         }}
 
-        Search tips: prefer section_content for broad matches; drill into nested paragraphs/sentences for precise spans.
+        Search tips: prefer sentence and paragraph content for precise spans; if the match is broad, return section_content
         Equations live only in the top-level "equations" array.
 
         ## Paper Content JSON File Path##

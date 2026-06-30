@@ -160,12 +160,17 @@ def get_user_by_username(username: str) -> dict:
 def _paper_list_item(paper: PaperRecord) -> dict:
     """Lightweight row for the home page (full result available via GET /papers/{id})."""
     code_result = paper.analysis_result.code_result if paper.analysis_result else None
-    sections = code_result.sections if code_result else []
+    match_count = 0
+    if code_result is not None:
+        if code_result.matches:
+            match_count = len(code_result.matches)
+        elif code_result.sections:
+            match_count = len(code_result.sections)
     return {
         "paper_id": paper.id,
         "paper_title": paper.paper_title,
         "github_repo_url": paper.github_link,
-        "section_count": len(sections),
+        "section_count": match_count,
         "label": paper.paper_title,
     }
 
