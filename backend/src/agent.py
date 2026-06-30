@@ -149,6 +149,7 @@ class Agent:
             len(selected_entities) if isinstance(selected_entities, list) else None,
             _summarize_entities(selected_entities) if isinstance(selected_entities, list) else None,
         )
+        os.remove(papermage_result_path)
         return parsed_result
 
     async def map_key_sections_to_code(
@@ -358,6 +359,7 @@ class Agent:
         if isinstance(parsed_result, dict):
             from src.types import CodeToContentResult
             return CodeToContentResult.model_validate(parsed_result).model_dump()
+        os.remove(path)
         return parsed_result
 
 
