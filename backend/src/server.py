@@ -166,12 +166,14 @@ def _paper_list_item(paper: PaperRecord) -> dict:
             match_count = len(code_result.matches)
         elif code_result.sections:
             match_count = len(code_result.sections)
+    thumbnail_url = get_file_url(paper.id, bucket_name="thumbnails")
     return {
         "paper_id": paper.id,
         "paper_title": paper.paper_title,
         "github_repo_url": paper.github_link,
         "section_count": match_count,
         "label": paper.paper_title,
+        "thumbnail_url": thumbnail_url
     }
 
 

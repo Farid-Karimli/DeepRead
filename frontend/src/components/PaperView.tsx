@@ -22,6 +22,7 @@ import { captureSelectionHighlightsFromRange } from '../utils/selectionRangeToPa
 import { usePDFTextSelection } from '../hooks/useTextSelection.tsx';
 import { useCeleryTaskStatus } from '../hooks/useCeleryTaskStatus.ts';
 import { UserContext } from '../context/UserContext.tsx';
+import ThemeToggle from './ThemeToggle';
 
 interface PaperViewProps {
     analysisResult: codeMatchesResult;
@@ -476,6 +477,7 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
                                 </div>
                             )}
                         </div>
+                        <ThemeToggle className="theme-toggle theme-toggle--toolbar-end" />
                     </div>
 
                 {!hasRealFile ? (

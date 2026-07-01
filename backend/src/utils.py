@@ -4,10 +4,20 @@ import subprocess
 import shutil
 import requests
 import base64
+
+from io import BytesIO
 from urllib.parse import urlparse
 
 from claude_agent_sdk.types import StreamEvent
 from pprint import pprint
+
+from pdf2image import convert_from_path, convert_from_bytes
+from pdf2image.exceptions import (
+    PDFInfoNotInstalledError,
+    PDFPageCountError,
+    PDFSyntaxError
+)
+from PIL import Image
 
 async def print_event(event: StreamEvent, tool_state: dict) -> None:
     if isinstance(event, StreamEvent):
@@ -127,15 +137,25 @@ def delete_temp_dir(repo_dir: str) -> None:
     if os.path.exists(repo_dir):
         shutil.rmtree(repo_dir) 
 
+def get_pdf_thumbnail(file_content: bytes, size=(512, 512)):
+    images = convert_from_bytes(file_content, poppler_path="C:\\Users\\karim\\Downloads\\poppler\\poppler-26.02.0\\Library\\bin")
+
+    first_image = images[0]
+
+    width, height = first_image.size
+    first_image = first_image.crop((20, 20, width, height//2))
+
+    first_image.thumbnail(size)
+
+     # JPEG has no alpha channel
+    if first_image.mode != "RGB":
+        first_image = first_image.convert("RGB")
+
+    buffer = BytesIO()
+    first_image.save(buffer, format="JPEG", quality=85)
+    return buffer.getvalue() 
+
 
 if __name__=="__main__":
-    github_url = 'https://github.com/dojeon-ai/Atari-PB'
-
-    git_tree = get_repo_tree(github_url)
-
-    pprint(git_tree)
-
-    first_file = "https://api.github.com/repos/gnobitab/RectifiedFlow/git/blobs/4a5fd0eda4250faf218d6b65fd858de055956252"
-
-    content = get_file_content(first_file)
-    print(content)
+    with open("./papers/vjepa2.pdf", 'rb') as f:
+        get_pdf_thumbnail(f)

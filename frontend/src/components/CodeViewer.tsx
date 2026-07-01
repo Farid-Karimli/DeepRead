@@ -1,6 +1,7 @@
 import { forwardRef, useEffect, useRef, useState } from 'react';
 import { CiLink } from 'react-icons/ci';
 import ShikiHighlighter from 'react-shiki';
+import { useTheme } from '../context/ThemeContext';
 
 interface CodeViewerProps {
    code: string;
@@ -22,6 +23,7 @@ const CodeViewer = forwardRef<HTMLDivElement, CodeViewerProps>(function CodeView
     // actions live in the non-scrolling outer wrapper so they can never scroll away.
     const scrollRef = useRef<HTMLDivElement>(null);
     const [actionsPositions, setActionsPositions] = useState<RangeActionPosition[]>([]);
+    const { resolvedTheme } = useTheme();
 
     const setScrollRef = (node: HTMLDivElement | null) => {
         scrollRef.current = node;
@@ -131,7 +133,7 @@ const CodeViewer = forwardRef<HTMLDivElement, CodeViewerProps>(function CodeView
         <div className="code-viewer">
             <div ref={setScrollRef} className="code-viewer__scroll">
                 <ShikiHighlighter
-                    theme="github-dark"
+                    theme={resolvedTheme === 'dark' ? 'github-dark' : 'github-light'}
                     language="python"
                     showLineNumbers
                     decorations={decorations}

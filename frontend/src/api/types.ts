@@ -80,6 +80,7 @@ interface PaperMetadataSummary {
     github_repo_url?: string | null;
     section_count: number;
     label?: string | null;
+    thumbnail_url?: string | null;
 }
 
 interface PaperMetadata {
