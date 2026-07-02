@@ -138,7 +138,7 @@ def delete_temp_dir(repo_dir: str) -> None:
         shutil.rmtree(repo_dir) 
 
 def get_pdf_thumbnail(file_content: bytes, size=(512, 512)):
-    images = convert_from_bytes(file_content, poppler_path="C:\\Users\\karim\\Downloads\\poppler\\poppler-26.02.0\\Library\\bin")
+    images = convert_from_bytes(file_content)
 
     first_image = images[0]
 
