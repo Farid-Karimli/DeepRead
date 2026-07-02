@@ -25,7 +25,7 @@ from src.agent_utils import (
     _parse_json_result, 
     EventCallback
 )
-from src.papermage_compat import filter_sections_for_key_identification, normalize_papermage_result
+from src.papermage_compat import hydrate_entity_contents, prepare_papermage_result_for_llm
 
 from src.prompts import (
     build_identify_key_sections_prompt,
@@ -104,17 +104,16 @@ class Agent:
     ):
         started_at = time.perf_counter()
 
-        papermage = normalize_papermage_result(papermage_process_result)
-        filtered_papermage = filter_sections_for_key_identification(papermage)
+        papermage_llm = prepare_papermage_result_for_llm(papermage_process_result)
         logger.info(
             "identify_key_sections: prepared candidate sections count=%d",
-            len(filtered_papermage.get("sections", [])),
+            len(papermage_llm.get("sections", [])),
         )
 
         papermage_result_path = f"./tmp/{uuid4()}.papermage.json"
         os.makedirs("./tmp", exist_ok=True)
         with open(papermage_result_path, "w") as f:
-            json.dump(filtered_papermage, f, ensure_ascii=False, indent=2)
+            json.dump(papermage_llm, f, ensure_ascii=False, indent=2)
 
         prompt = build_identify_key_sections_prompt(
             papermage_result_path=papermage_result_path,
@@ -321,46 +320,47 @@ class Agent:
         if papermage_result is None:
             raise ValueError("paper_record has no papermage_result")
 
-        normalized = normalize_papermage_result(
-            papermage_result.model_dump() if hasattr(papermage_result, "model_dump") else papermage_result
-        )
+        papermage_llm = prepare_papermage_result_for_llm(papermage_result)
 
         os.makedirs("./tmp", exist_ok=True)
         path = f"./tmp/{paper_record.id}.papermage.json"
 
         with open(path, "w") as f:
-            json.dump(normalized, f, indent=4)
+            json.dump(papermage_llm, f, indent=4)
 
-        prompt = build_code_to_content_mapping_prompt(
-            code=code,
-            papermage_result_path=path,
-        )
+        try:
+            prompt = build_code_to_content_mapping_prompt(
+                code=code,
+                papermage_result_path=path,
+            )
 
-        options = ClaudeAgentOptions(
-            model=self.model, 
-            allowed_tools=["ReadFile", "Read"],
-            include_partial_messages=True,
-            cwd=".",
-            output_format={
-                "type": "json_schema",
-                "json_schema": single_code_map_schema
-            }
-        )
+            options = ClaudeAgentOptions(
+                model=self.model,
+                allowed_tools=["ReadFile", "Read"],
+                include_partial_messages=True,
+                cwd=".",
+                output_format={
+                    "type": "json_schema",
+                    "json_schema": single_code_map_schema
+                }
+            )
 
-        parsed_result = None
-        async for message in query(prompt=prompt, options=options):
-            if isinstance(message, ResultMessage):
-                parsed_result = _parse_json_result(message.result)
-                if parsed_result is None:
-                    cleaned = message.result.replace("```json", "").replace("```", "").strip()
-                    logger.warning("map_code_to_content: failed to parse JSON result raw=%s", cleaned)
-                    parsed_result = None
+            parsed_result = None
+            async for message in query(prompt=prompt, options=options):
+                if isinstance(message, ResultMessage):
+                    parsed_result = _parse_json_result(message.result)
+                    if parsed_result is None:
+                        cleaned = message.result.replace("```json", "").replace("```", "").strip()
+                        logger.warning("map_code_to_content: failed to parse JSON result raw=%s", cleaned)
+                        parsed_result = None
 
-        if isinstance(parsed_result, dict):
-            from src.types import CodeToContentResult
-            return CodeToContentResult.model_validate(parsed_result).model_dump()
-        os.remove(path)
-        return parsed_result
+            if isinstance(parsed_result, dict):
+                from src.types import CodeToContentResult
+                return CodeToContentResult.model_validate(parsed_result).model_dump()
+            return parsed_result
+        finally:
+            if os.path.exists(path):
+                os.remove(path)
 
 
     async def analyze_paper(
@@ -409,6 +409,8 @@ class Agent:
         logger.info("analyze_paper: key sections completed duration=%.2fs", time.perf_counter() - key_sections_started_at)
         logger.info("analyze_paper: selected key entities count=%d", len(entities))
 
+        hydrate_entity_contents(entities, papermage_result)
+
         try:
             github_candidates = extract_github_urls_from_pdf(paper_raw)
         except ValueError:
@@ -441,7 +443,7 @@ class Agent:
 
         code_mapping_started_at = time.perf_counter()
         
-        code_result = await self.map_key_sections_to_code(entities=entities, code_path=repo_local_dir, on_event=on_event, limit=20)
+        code_result = await self.map_key_sections_to_code(entities=entities, code_path=repo_local_dir, on_event=on_event, limit=100)
         if code_result is None:
             raise ValueError("No code result found.")
         

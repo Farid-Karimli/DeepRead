@@ -24,7 +24,7 @@ class CodeSnippet(BaseModel):
 
 
 class ContentEntity(BaseModel):
-    content_type: Literal["section", "paragraph", "sentence", "equation"]
+    content_type: Literal["section", "sentence", "equation"]
     entity_id: str
     content: str
     section_id: str | None = None
@@ -32,7 +32,7 @@ class ContentEntity(BaseModel):
 
 class CodeEntityMatch(BaseModel):
     entity_id: str
-    content_type: Literal["section", "paragraph", "sentence", "equation"] = "section"
+    content_type: Literal["section", "sentence", "equation"] = "section"
     content: str = ""
     section_id: str | None = None
     description: str | None = None
@@ -152,11 +152,10 @@ class PaperContentBox(BaseModel):
 
 
 class CodeToContentMatch(BaseModel):
-    entity_type: Literal["section", "paragraph", "sentence", "equation"] = "section"
+    entity_type: Literal["section", "sentence", "equation"] = "section"
     entity_id: str
     description: str
     section_id: str | None = None
-    paragraph_id: str | None = None
     sentence_id: str | None = None
 
     @model_validator(mode="before")

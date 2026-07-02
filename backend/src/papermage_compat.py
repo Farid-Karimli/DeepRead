@@ -1,4 +1,5 @@
 import copy
+import json
 import re
 from typing import Any
 
@@ -124,7 +125,11 @@ def normalize_papermage_result(raw: dict[str, Any]) -> dict[str, Any]:
 
 
 def filter_sections_for_key_identification(papermage: dict[str, Any]) -> dict[str, Any]:
-    """Return papermage copy with non-implementation sections removed from sections[]."""
+    """
+    Return papermage copy with LLM-needed fields removed from sections[]. 
+    Fields removed: box, paragraphs, section_content.
+    Sentences are modified to remove the section header from the sentence content.
+    """
     normalized = normalize_papermage_result(papermage)
     filtered = copy.deepcopy(normalized)
     kept = []
@@ -136,6 +141,122 @@ def filter_sections_for_key_identification(papermage: dict[str, Any]) -> dict[st
             continue
         if _EXCLUDE_HEADERS.match(header.strip()):
             continue
+
+        section.pop("box", None)
+        section.pop("section_content", None)
+
+        section.pop("paragraphs", None)
+        
+        for sentence in section.get("sentences", []):
+            sentence.pop("box", None)
+            sentence['sentence_content'] = sentence['sentence_content'].replace(header.strip(), "")
+
         kept.append(section)
+
     filtered["sections"] = kept
     return filtered
+
+
+def hydrate_entity_contents(
+    entities: list[dict],
+    canonical_papermage: dict[str, Any],
+) -> list[dict]:
+    """Attach canonical text to stage-1 entities that only carry ids."""
+    normalized = normalize_papermage_result(canonical_papermage)
+
+    for entity in entities:
+        if not isinstance(entity, dict):
+            continue
+
+        entity_type = entity.get("content_type")
+        entity_id = entity.get("entity_id")
+        if not isinstance(entity_type, str) or not isinstance(entity_id, str):
+            raise ValueError(f"Invalid entity: {entity}")
+
+        if entity_type == "equation":
+            canonical_equation = next(
+                (eq for eq in normalized.get("equations", []) if eq.get("entity_id") == entity_id),
+                None,
+            )
+            if canonical_equation is None:
+                raise ValueError(f"Could not find equation {entity_id} in canonical papermage.")
+            entity["content"] = canonical_equation.get("equation_content", "")
+            continue
+
+        section_id = entity.get("section_id")
+        canonical_section = None
+        if entity_type == "sentence":
+            canonical_section = next(
+                (
+                    sec
+                    for sec in normalized.get("sections", [])
+                    if sec.get("entity_id") == section_id
+                ),
+                None,
+            )
+        else:
+            canonical_section = next(
+                (
+                    sec
+                    for sec in normalized.get("sections", [])
+                    if sec.get("entity_id") == entity_id or sec.get("entity_id") == section_id
+                ),
+                None,
+            )
+        if canonical_section is None and entity_type != "sentence":
+            raise ValueError(f"Could not find section for {entity_id} in canonical papermage.")
+
+        if entity_type == "section":
+            entity["content"] = canonical_section.get("section_content", "")
+        elif entity_type == "sentence":
+            canonical_sentence = None
+            if canonical_section is not None:
+                canonical_sentence = next(
+                    (
+                        sent
+                        for sent in canonical_section.get("sentences", [])
+                        if sent.get("entity_id") == entity_id
+                    ),
+                    None,
+                )
+            if canonical_sentence is None:
+                for sec in normalized.get("sections", []):
+                    canonical_sentence = next(
+                        (
+                            sent
+                            for sent in sec.get("sentences", [])
+                            if sent.get("entity_id") == entity_id
+                        ),
+                        None,
+                    )
+                    if canonical_sentence is not None:
+                        canonical_section = sec
+                        break
+            if canonical_sentence is None:
+                raise ValueError(
+                    f"Could not find sentence {entity_id} in canonical papermage."
+                )
+            entity["content"] = canonical_sentence.get("sentence_content", "")
+            entity.setdefault("section_id", canonical_section.get("entity_id"))
+        else:
+            raise ValueError(f"Unsupported content_type: {entity_type}")
+
+    return entities
+
+
+def prepare_papermage_result_for_llm(canonical_papermage: dict[str, Any]) -> dict[str, Any]:
+    if isinstance(canonical_papermage, PaperMageResult):
+        canonical_papermage = canonical_papermage.model_dump()
+    normalized = normalize_papermage_result(canonical_papermage)
+    filtered = filter_sections_for_key_identification(normalized)
+    for equation in filtered.get("equations", []):
+        if isinstance(equation, dict):
+            equation.pop("box", None)
+    return filtered
+
+if __name__ == "__main__":
+    with open("pretraining-rl.papermage-full.json", "r") as f:
+        papermage = json.load(f)
+    filtered = prepare_papermage_result_for_llm(papermage)
+    with open("pretraining-rl.papermage-llm.json", "w") as f:
+        json.dump(filtered, f, ensure_ascii=False, indent=2)

@@ -44,17 +44,17 @@ key_section_schema = {
     "required": ["sections", "github_repo_url"]
 }
 
-_CONTENT_TYPE_ENUM = ["section", "paragraph", "sentence", "equation"]
+_CONTENT_TYPE_ENUM = ["section", "sentence", "equation"]
 
 _ENTITY_ITEM_SCHEMA = {
     "type": "object",
     "properties": {
         "content_type": {"type": "string", "enum": _CONTENT_TYPE_ENUM},
         "entity_id": {"type": "string"},
-        "content": {"type": "string"},
+        #"content": {"type": "string"},
         "section_id": {"type": "string"},
     },
-    "required": ["content_type", "entity_id", "content"],
+    "required": ["content_type", "entity_id"],
 }
 
 key_entities_schema = {
@@ -154,7 +154,6 @@ single_code_map_schema = {
                     "entity_id": {"type": "string"},
                     "description": {"type": "string"},
                     "section_id": {"type": "string"},
-                    "paragraph_id": {"type": "string"},
                     "sentence_id": {"type": "string"},
                 },
                 "required": ["entity_type", "entity_id", "description"],

@@ -104,7 +104,7 @@ def analyze_paper_task(
 
     unified_result = {
         "analysis": analysis_result,
-        "processed": papermage_result
+        "processed": papermage_result # Save the CANONICAL papermage result
     }
 
     upsert_paper(
@@ -112,7 +112,7 @@ def analyze_paper_task(
         paper_title=title if isinstance(title, str) else None,
         github_link=link if isinstance(link, str) else None,
         analysis_result=analysis_result,
-        papermage_result=papermage_result
+        papermage_result=papermage_result, # Save the CANONICAL papermage result
     )
 
     return unified_result
