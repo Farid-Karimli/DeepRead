@@ -279,8 +279,11 @@ function PdfPageList({
 
     return (
         <div className="reader__page-list" ref={scrollRef}>
+            {/* renderType must match DocumentWrapper's: with SINGLE_CANVAS the page
+                image is a CSS background, and the MULTI_CANVAS styles would make the
+                text layer transparent whenever that image is missing. */}
             {Array.from({ length: numPages > 0 ? numPages : 0 }).map((_, i) => (
-                <PageWrapper key={i} pageIndex={i} renderType={RENDER_TYPE.MULTI_CANVAS}>
+                <PageWrapper key={i} pageIndex={i} renderType={RENDER_TYPE.SINGLE_CANVAS}>
                     <Overlay>
                         <HighlightOverlayDemo pageIndex={i} boxes={hitBoxes} />
                     </Overlay>

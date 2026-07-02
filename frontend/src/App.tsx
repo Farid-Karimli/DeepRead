@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import './App.css'
 import Home from './components/Home';
 import PaperView from './components/PaperView.tsx';
@@ -115,6 +115,10 @@ function App() {
       return getPaperFile(paperQuery.data.file_url);
     },
     enabled: Boolean(paperQuery.data?.file_url),
+    // The PDF blob is immutable; refetching it (e.g. on window focus) creates a
+    // new Blob identity, which forces react-pdf to destroy and reload the
+    // document and leaves pages pointing at a dead pdf.js proxy.
+    staleTime: Infinity,
   });
 
   useEffect(()=> {
@@ -142,9 +146,16 @@ function App() {
   const githubRepoUrl = paperMetadata ? 
     extractGithubRepoUrl(paperMetadata.analysis_result) : null;
 
-  const paperFile = fileQuery.data && selectedPaperId
-    ? new File([fileQuery.data], selectedPaperId, { type: 'application/pdf' })
-    : undefined;
+  // Memoized so the File identity is stable across re-renders. A fresh File on
+  // every render makes react-pdf reload the document each time, destroying the
+  // pdf.js worker that already-rendered pages (text + image layers) depend on.
+  const paperFile = useMemo(
+    () =>
+      fileQuery.data && selectedPaperId
+        ? new File([fileQuery.data], selectedPaperId, { type: 'application/pdf' })
+        : undefined,
+    [fileQuery.data, selectedPaperId],
+  );
 
   
   const repoTreeQuery = useQuery({
