@@ -56,6 +56,7 @@ const CODE_TO_CONTENT_HIGHLIGHT_COLOR = "rgba(192, 132, 252, 1)";
 type MatchFilter = 'all' | 'hide' | 'ai' | 'my' | 'others' | 'not_implemented';
 
 const MATCH_FILTER_STORAGE_KEY = 'deepread.matchFilter';
+const SHOW_MATCHES_FROM_CODE_STORAGE_KEY = 'deepread.showMatchesFromCode';
 const DEFAULT_MATCH_FILTER: MatchFilter = 'all';
 
 const MATCH_FILTER_OPTIONS: { value: MatchFilter; label: string }[] = [
@@ -82,6 +83,14 @@ const readStoredMatchFilter = (): MatchFilter => {
     }
     return DEFAULT_MATCH_FILTER;
 };
+
+const readStoredShowMatchesFromCode = (): boolean => {
+    if (typeof window === 'undefined') return true;
+    const stored = window.localStorage.getItem(SHOW_MATCHES_FROM_CODE_STORAGE_KEY);
+    if (stored === 'false') return false;
+    return true;
+};
+
 /**
  * Must render *inside* ContextProvider + DocumentWrapper so DocumentContext
  * is the real provider (not the default). Otherwise numPages stays 0 and
@@ -174,6 +183,7 @@ function PdfPageList({
             // Match from user-selected code
             for (let j = 0; j < paperContentMatches.length; j++) {
                 const match = paperContentMatches[j];
+                console.log("from paperview", match);
                 const resolved = resolvePaperMageEntity(processResult, match);
                 if (!resolved) {
                     console.warn('No PaperMage entity for match', match);
@@ -291,6 +301,7 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
     const [contentToCodeMatches, setContentToCodeMatches] = useState<paperContentToCodeMatch[]>([]);
     const [isMatchFilterOpen, setIsMatchFilterOpen] = useState(false);
     const [matchFilter, setMatchFilter] = useState<MatchFilter>(readStoredMatchFilter);
+    const [showMatchesFromCode, setShowMatchesFromCode] = useState(readStoredShowMatchesFromCode);
     const matchFilterRef = useRef<HTMLDivElement>(null);
 
     const queryClient = useQueryClient();
@@ -316,6 +327,10 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
     useEffect(() => {
         window.localStorage.setItem(MATCH_FILTER_STORAGE_KEY, matchFilter);
     }, [matchFilter])
+
+    useEffect(() => {
+        window.localStorage.setItem(SHOW_MATCHES_FROM_CODE_STORAGE_KEY, String(showMatchesFromCode));
+    }, [showMatchesFromCode])
 
     useEffect(() => {
         if (!isMatchFilterOpen) return;
@@ -406,8 +421,8 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
         [showAiMatches, analysisResult],
     );
     const filteredPaperContentMatches = useMemo(
-        () => (showMyMatches ? paperContentMatches : []),
-        [showMyMatches, paperContentMatches],
+        () => (showMatchesFromCode ? paperContentMatches : []),
+        [showMatchesFromCode, paperContentMatches],
     );
     const filteredContentToCodeMatches = useMemo(
         () => contentToCodeMatches.filter((match) => {
@@ -474,6 +489,15 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
                                             {option.label}
                                         </button>
                                     ))}
+                                    <div className="match-filter__separator" role="separator" />
+                                    <label className="match-filter__checkbox">
+                                        <input
+                                            type="checkbox"
+                                            checked={showMatchesFromCode}
+                                            onChange={(event) => setShowMatchesFromCode(event.target.checked)}
+                                        />
+                                        Show matches from code
+                                    </label>
                                 </div>
                             )}
                         </div>

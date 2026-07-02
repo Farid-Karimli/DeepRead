@@ -987,6 +987,33 @@
   outline-offset: -2px;
 }
 
+.match-filter__separator {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--border);
+}
+
+.match-filter__checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.875rem;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--text);
+}
+
+.match-filter__checkbox:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-h);
+}
+
+.match-filter__checkbox input {
+  margin: 0;
+  cursor: pointer;
+}
+
 .paper-view-layout__pdf-scroll {
   flex: 1;
   min-height: 0;
