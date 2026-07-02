@@ -29,7 +29,6 @@ def build_identify_key_sections_prompt(
             "section_header": string,             // heading text (sections are header-only spans; body is separate)
             "section_content": string,            // full body text from this header until the next section
             "page_index": number,               // zero-based page of the section header
-            "box": {{ "page": number, "l": number, "t": number, "w": number, "h": number }},  // layout; ignore for mapping
             "paragraphs": [ParagraphEntity, ...], // paragraphs whose spans fall within this section's body
             "sentences": [SentenceEntity, ...]    // sentences whose spans fall within this section's body
         }}
@@ -39,7 +38,6 @@ def build_identify_key_sections_prompt(
             "entity_id": string,                  // e.g. "prg_42"
             "paragraph_content": string,
             "page_index": number,
-            "box": {{ "page": number, "l": number, "t": number, "w": number, "h": number }}
         }}
 
         SentenceEntity:
@@ -47,7 +45,6 @@ def build_identify_key_sections_prompt(
             "entity_id": string,                  // e.g. "sen_105"
             "sentence_content": string,
             "page_index": number,
-            "box": {{ "page": number, "l": number, "t": number, "w": number, "h": number }}
         }}
 
         EquationEntity:
@@ -55,7 +52,6 @@ def build_identify_key_sections_prompt(
             "entity_id": string,                  // e.g. "eq_3"
             "equation_content": string,
             "page_index": number,
-            "box": {{ "page": number, "l": number, "t": number, "w": number, "h": number }}
         }}
 
         Matching tips: prefer sentence and paragraph content for precise spans; if the match is broad, return section_content
@@ -74,7 +70,6 @@ def build_identify_key_sections_prompt(
                 {{
                     "content_type": "section" | "paragraph" | "sentence" | "equation",
                     "entity_id": "entity_id as it appears in the context",
-                    "content": "Full text content of the entity",
                 }},
                 ...
             ],
