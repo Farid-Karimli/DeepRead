@@ -12,8 +12,10 @@ from src.agent_utils import (
 from src.papermage_compat import (
     filter_noise_spans_from_papermage,
     filter_sections_for_key_identification,
+    hydrate_entity_contents,
     is_noise_span_text,
     normalize_papermage_result,
+    prepare_papermage_result_for_llm,
 )
 
 FIXTURE_SPARSE = Path(__file__).resolve().parents[2] / "tmp" / (
@@ -229,3 +231,123 @@ def test_merge_entities_into_matches():
     assert row["description"] == "Architecture choice"
     assert row["section_id"] == "sec_2"
     assert len(row["code_snippets"]) == 1
+
+
+def test_hydrate_entity_contents():
+    papermage = {
+        "paper_title": "T",
+        "n_pages": 1,
+        "equations": [
+            {
+                "entity_id": "eq_0",
+                "equation_content": "L = x + y",
+                "page_index": 1,
+                "box": {"page": 1, "l": 0, "t": 0, "w": 1, "h": 1},
+            }
+        ],
+        "sections": [
+            {
+                "entity_id": "sec_1",
+                "section_header": "Method",
+                "section_content": "We train a model. It uses ResNet.",
+                "page_index": 0,
+                "box": {"page": 0, "l": 0, "t": 0, "w": 1, "h": 1},
+                "paragraphs": [],
+                "sentences": [
+                    {
+                        "entity_id": "sen_1",
+                        "sentence_content": "We train a model.",
+                        "page_index": 0,
+                        "box": {"page": 0, "l": 0, "t": 0, "w": 1, "h": 1},
+                    },
+                    {
+                        "entity_id": "sen_2",
+                        "sentence_content": "It uses ResNet.",
+                        "page_index": 0,
+                        "box": {"page": 0, "l": 0, "t": 0, "w": 1, "h": 1},
+                    },
+                ],
+            }
+        ],
+    }
+    entities = [
+        {"content_type": "section", "entity_id": "sec_1"},
+        {"content_type": "sentence", "entity_id": "sen_2", "section_id": "sec_1"},
+        {"content_type": "equation", "entity_id": "eq_0"},
+    ]
+    hydrate_entity_contents(entities, papermage)
+    assert entities[0]["content"] == "We train a model. It uses ResNet."
+    assert entities[1]["content"] == "It uses ResNet."
+    assert entities[1]["section_id"] == "sec_1"
+    assert entities[2]["content"] == "L = x + y"
+
+
+def test_hydrate_entity_contents_sentence_without_section_id():
+    papermage = {
+        "paper_title": "T",
+        "n_pages": 1,
+        "equations": [],
+        "sections": [
+            {
+                "entity_id": "sec_1",
+                "section_header": "Method",
+                "section_content": "It uses ResNet.",
+                "page_index": 0,
+                "box": {"page": 0, "l": 0, "t": 0, "w": 1, "h": 1},
+                "paragraphs": [],
+                "sentences": [
+                    {
+                        "entity_id": "sen_2",
+                        "sentence_content": "It uses ResNet.",
+                        "page_index": 0,
+                        "box": {"page": 0, "l": 0, "t": 0, "w": 1, "h": 1},
+                    }
+                ],
+            }
+        ],
+    }
+    entities = [{"content_type": "sentence", "entity_id": "sen_2"}]
+    hydrate_entity_contents(entities, papermage)
+    assert entities[0]["content"] == "It uses ResNet."
+    assert entities[0]["section_id"] == "sec_1"
+
+
+def test_prepare_papermage_result_for_llm_strips_boxes_and_parent_text():
+    papermage = {
+        "paper_title": "T",
+        "n_pages": 1,
+        "equations": [
+            {
+                "entity_id": "eq_0",
+                "equation_content": "L = x",
+                "page_index": 1,
+                "box": {"page": 1, "l": 0, "t": 0, "w": 1, "h": 1},
+            }
+        ],
+        "sections": [
+            {
+                "entity_id": "sec_1",
+                "section_header": "Method",
+                "section_content": "body",
+                "page_index": 0,
+                "box": {"page": 0, "l": 0, "t": 0, "w": 1, "h": 1},
+                "paragraphs": [{"entity_id": "prg_0", "paragraph_content": "p", "page_index": 0,
+                                "box": {"page": 0, "l": 0, "t": 0, "w": 1, "h": 1}}],
+                "sentences": [
+                    {
+                        "entity_id": "sen_1",
+                        "sentence_content": "Method We train.",
+                        "page_index": 0,
+                        "box": {"page": 0, "l": 0, "t": 0, "w": 1, "h": 1},
+                    }
+                ],
+            }
+        ],
+    }
+    llm_view = prepare_papermage_result_for_llm(papermage)
+    section = llm_view["sections"][0]
+    assert "section_content" not in section
+    assert "paragraphs" not in section
+    assert "box" not in section
+    assert "box" not in section["sentences"][0]
+    assert "box" not in llm_view["equations"][0]
