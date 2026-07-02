@@ -1,16 +1,20 @@
 from datetime import datetime
 from typing import List, Literal
-from pydantic import BaseModel
+
+from pydantic import BaseModel, Field, model_validator
+
 
 class UserRecord(BaseModel):
     id: int
     username: str
     created_at: datetime | None = None
 
+
 #############################
 # Key Section Analysis and PaperMage Result
 # These are 1:1 with the paper
 #############################
+
 
 class CodeSnippet(BaseModel):
     content: str
@@ -18,23 +22,78 @@ class CodeSnippet(BaseModel):
     start_line: int
     end_line: int
 
+
+class ContentEntity(BaseModel):
+    content_type: Literal["section", "sentence", "equation"]
+    entity_id: str
+    content: str
+    section_id: str | None = None
+
+
+class CodeEntityMatch(BaseModel):
+    entity_id: str
+    content_type: Literal["section", "sentence", "equation"] = "section"
+    content: str = ""
+    section_id: str | None = None
+    description: str | None = None
+    code_snippets: list[CodeSnippet] = Field(default_factory=list)
+
+
 class KeySectionsMappedSection(BaseModel):
+    """Legacy section-centric match row (migrated to CodeEntityMatch)."""
     section_id: str
     section_header: str
     code_snippets: list[CodeSnippet]
 
+
 class KeySectionsCodeResult(BaseModel):
-    paper_title: str
-    sections: list[KeySectionsMappedSection]
+    paper_title: str | None = None
+    matches: list[CodeEntityMatch] = Field(default_factory=list)
+    sections: list[KeySectionsMappedSection] = Field(default_factory=list)
+
+    @model_validator(mode="before")
+    @classmethod
+    def migrate_legacy_sections(cls, data):
+        if not isinstance(data, dict):
+            return data
+        data = dict(data)
+        if data.get("matches"):
+            return data
+        legacy = data.get("sections")
+        if not isinstance(legacy, list):
+            return data
+        matches = []
+        for item in legacy:
+            if not isinstance(item, dict):
+                continue
+            section_id = item.get("section_id") or item.get("entity_id")
+            if not isinstance(section_id, str):
+                continue
+            matches.append({
+                "entity_id": section_id,
+                "content_type": "section",
+                "content": item.get("content")
+                or item.get("section_content")
+                or item.get("section_description")
+                or "",
+                "section_id": section_id,
+                "description": item.get("section_description") or item.get("description"),
+                "code_snippets": item.get("code_snippets") or [],
+            })
+        data["matches"] = matches
+        return data
+
 
 class KeySectionsResult(BaseModel):
     """
-        Result of the initial paper analysis. 
-        (1) Identify key sections, (2) Map key sections to code.
+    Result of the initial paper analysis.
+    (1) Identify key sections, (2) Map key sections to code.
     """
+
     paper_title: str
     github_repo_url: str
     code_result: KeySectionsCodeResult
+
 
 # Same as papermage.magelib.box.Box
 class BoxModel(BaseModel):
@@ -44,24 +103,46 @@ class BoxModel(BaseModel):
     w: float
     h: float
 
+class ParagraphEntity(BaseModel):
+    entity_id: str
+    paragraph_content: str
+    page_index: int
+    box: BoxModel
+
+class EquationEntity(BaseModel):
+    entity_id: str
+    equation_content: str
+    page_index: int
+    box: BoxModel
+
+class SentenceEntity(BaseModel):
+    entity_id: str
+    sentence_content: str
+    page_index: int
+    box: BoxModel
+
 class SectionEntity(BaseModel):
     entity_id: str
     section_header: str
-    section_content: str
+    section_content: str # Full section content
+    paragraphs: List[ParagraphEntity] = Field(default_factory=list)
+    sentences: List[SentenceEntity] = Field(default_factory=list)
     page_index: int
     box: BoxModel
 
 class PaperMageResult(BaseModel):
     paper_title: str
     n_pages: int
-    sections: List[SectionEntity] # list of list of sections for each page
+    equations: List[EquationEntity] = Field(default_factory=list)
+    sections: List[SectionEntity]  # list of list of sections for each page
 
 
 ######################
 # Ad-hoc User Selection Results
 # (content->code and code->content)
-# These get their own table as they can grow big for a paper and have 2 types. 
+# These get their own table as they can grow big for a paper and have 2 types.
 ######################
+
 
 class PaperContentBox(BaseModel):
     l: float
@@ -69,34 +150,75 @@ class PaperContentBox(BaseModel):
     w: float
     h: float
 
-class CodeToContentSection(BaseModel):
-    section_id: str
+
+class CodeToContentMatch(BaseModel):
+    entity_type: Literal["section", "sentence", "equation"] = "section"
+    entity_id: str
     description: str
+    section_id: str | None = None
+    sentence_id: str | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_legacy_fields(cls, data):
+        if not isinstance(data, dict):
+            return data
+        data = dict(data)
+        if "entity_id" not in data and "section_id" in data:
+            data["entity_id"] = data["section_id"]
+        data.setdefault("entity_type", "section")
+        if data.get("section_id") == data.get("entity_id") and data.get("entity_type") == "section":
+            data.setdefault("section_id", data.get("entity_id"))
+        return data
+
+
+class CodeToContentResult(BaseModel):
+    verdict: str
+    reasoning: str
+    matches: list[CodeToContentMatch] = Field(default_factory=list)
+
+    @model_validator(mode="before")
+    @classmethod
+    def migrate_legacy_sections(cls, data):
+        if not isinstance(data, dict):
+            return data
+        data = dict(data)
+        if not data.get("matches") and data.get("sections"):
+            data["matches"] = [
+                {
+                    "entity_type": "section",
+                    "entity_id": item["section_id"],
+                    "description": item["description"],
+                }
+                for item in data["sections"]
+                if isinstance(item, dict) and "section_id" in item
+            ]
+        data.setdefault("matches", [])
+        return data
 
 
 class ContentToCodeResult(BaseModel):
     reasoning: str
     verdict: str
-    code_snippet: CodeSnippet | None # matches what we return today after rerank or if nothing was found
-
-class CodeToContentResult(BaseModel):
-    verdict: str
-    reasoning: str
-    sections: list[CodeToContentSection]  # section_id + description
+    code_snippet: (
+        CodeSnippet | None
+    )  # matches what we return today after rerank or if nothing was found
 
 
 class ContentToCodeInputs(BaseModel):
-    content: str            # paper content selected by the user
+    content: str  # paper content selected by the user
     repo_url: str
-    context: str            # surrounding context of the user's selection (auto-selected)
+    context: str  # surrounding context of the user's selection (auto-selected)
     box: PaperContentBox
     page_number: int | None = None  # zero-based page index of the selection
 
+
 class CodeToContentInputs(BaseModel):
-    code: str                 # code snippet selected by the user
+    code: str  # code snippet selected by the user
     start: int
     end: int
     filepath: str
+
 
 class PaperMappingRecord(BaseModel):
     paper_id: str
@@ -104,7 +226,7 @@ class PaperMappingRecord(BaseModel):
     cache_key: str
     inputs: ContentToCodeInputs | CodeToContentInputs
     outputs: ContentToCodeResult | CodeToContentResult
-    created_by: int | None = None # foreign key to UserRecord.id
+    created_by: int | None = None  # foreign key to UserRecord.id
 
 
 class PaperRecord(BaseModel):
@@ -114,4 +236,3 @@ class PaperRecord(BaseModel):
     created_at: datetime
     papermage_result: PaperMageResult | None = None
     analysis_result: KeySectionsResult | None = None
-   

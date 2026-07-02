@@ -1,7 +1,6 @@
 import asyncio
 import json
 import os
-import re
 import time
 from uuid import uuid4
 
@@ -16,15 +15,17 @@ from src.utils import clone_repo_to_temp_dir, delete_temp_dir, normalize_github_
 from src.agent_utils import (
     extract_github_urls_from_pdf, 
     extract_paper_info, 
-    key_section_schema, 
-    key_section_schema_v2, 
-    code_section_schema, 
+    key_entities_schema, 
+    code_matches_schema, 
     single_content_map_schema,
     single_code_map_schema,
-    _merge_key_sections_into_code_result, 
+    normalize_identify_result,
+    normalize_code_mapping_result,
+    _merge_entities_into_matches, 
     _parse_json_result, 
     EventCallback
 )
+from src.papermage_compat import hydrate_entity_contents, prepare_papermage_result_for_llm
 
 from src.prompts import (
     build_identify_key_sections_prompt,
@@ -47,17 +48,17 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-def _summarize_sections(sections: list[dict], max_items: int = 8) -> list[dict]:
+def _summarize_entities(entities: list[dict], max_items: int = 8) -> list[dict]:
     summary = [
         {
-            "section_id": section.get("section_id") or section.get("entity_id"),
-            "section_header": section.get("section_header"),
+            "entity_id": entity.get("entity_id") or entity.get("section_id"),
+            "content_type": entity.get("content_type"),
         }
-        for section in sections[:max_items]
-        if isinstance(section, dict)
+        for entity in entities[:max_items]
+        if isinstance(entity, dict)
     ]
-    if len(sections) > max_items:
-        summary.append({"remaining_sections": len(sections) - max_items})
+    if len(entities) > max_items:
+        summary.append({"remaining_entities": len(entities) - max_items})
     return summary
 class Agent:
     """
@@ -102,20 +103,20 @@ class Agent:
         on_event: EventCallback = None
     ):
         started_at = time.perf_counter()
-       
-        exclude_headers = re.compile(r"^(Introduction|Discussion|Acknowledgements?|References?|Conclusion|Related Work)s?$", re.IGNORECASE)
-        relevant_sections = [
-            sec for sec in papermage_process_result['sections']
-            if sec.get('section_header') and not exclude_headers.match(sec['section_header'].strip())
-        ]
+
+        papermage_llm = prepare_papermage_result_for_llm(papermage_process_result)
         logger.info(
-            "identify_key_sections: prepared candidate sections count=%d sample=%s",
-            len(relevant_sections),
-            _summarize_sections(relevant_sections),
+            "identify_key_sections: prepared candidate sections count=%d",
+            len(papermage_llm.get("sections", [])),
         )
-        sections_json = json.dumps(relevant_sections, ensure_ascii=False, indent=2)
+
+        papermage_result_path = f"./tmp/{uuid4()}.papermage.json"
+        os.makedirs("./tmp", exist_ok=True)
+        with open(papermage_result_path, "w") as f:
+            json.dump(papermage_llm, f, ensure_ascii=False, indent=2)
+
         prompt = build_identify_key_sections_prompt(
-            relevant_sections=sections_json,
+            papermage_result_path=papermage_result_path,
         )
 
         agent_options = ClaudeAgentOptions(
@@ -125,7 +126,7 @@ class Agent:
             cwd=".",
             output_format={
                 "type": "json_schema",
-                "json_schema": key_section_schema_v2
+                "json_schema": key_entities_schema
                 },
             )
 
@@ -139,18 +140,20 @@ class Agent:
                     logger.warning("identify_key_sections: failed to parse JSON result raw=%s", cleaned)
                     parsed_result = None
 
-        selected_sections = parsed_result.get("sections") if isinstance(parsed_result, dict) else None
+        parsed_result = normalize_identify_result(parsed_result)
+        selected_entities = parsed_result.get("entities") if isinstance(parsed_result, dict) else None
         logger.info(
-            "identify_key_sections: completed duration=%.2fs selected_count=%s selected_sample=%s",
+            "identify_key_sections: completed duration=%.2fs selected_entities_count=%s selected_entities_sample=%s",
             time.perf_counter() - started_at,
-            len(selected_sections) if isinstance(selected_sections, list) else None,
-            _summarize_sections(selected_sections) if isinstance(selected_sections, list) else None,
+            len(selected_entities) if isinstance(selected_entities, list) else None,
+            _summarize_entities(selected_entities) if isinstance(selected_entities, list) else None,
         )
+        os.remove(papermage_result_path)
         return parsed_result
 
     async def map_key_sections_to_code(
         self,
-        key_sections: dict,
+        entities: list | dict,
         code_path: str = None,
         on_event: EventCallback = None,
         limit: int = None
@@ -159,19 +162,28 @@ class Agent:
         if code_path is None:
             raise ValueError("code_path must be provided.")
 
-        sections = key_sections.get("sections") if isinstance(key_sections, dict) else key_sections
+        if isinstance(entities, dict):
+            entity_list = entities.get("entities")
+            if not isinstance(entity_list, list):
+                entity_list = entities.get("sections")
+        else:
+            entity_list = entities
+
+        if not isinstance(entity_list, list):
+            entity_list = []
+
         if limit is not None:
-            sections = sections[:limit]
-        section_count = len(sections) if isinstance(sections, list) else None
+            entity_list = entity_list[:limit]
+        entity_count = len(entity_list)
         logger.info(
-            "map_key_sections_to_code: starting repo=%s section_count=%s sections=%s",
+            "map_key_sections_to_code: starting repo=%s entity_count=%s entities=%s",
             code_path,
-            section_count,
-            _summarize_sections(sections) if isinstance(sections, list) else None,
+            entity_count,
+            _summarize_entities(entity_list),
         )
 
         prompt = build_map_key_sections_to_code_prompt(
-            key_sections=key_sections,
+            entities=entity_list,
             code_path=code_path,
         )
         logger.info(
@@ -193,7 +205,7 @@ class Agent:
             cwd=code_path,
             output_format={
                 "type": "json_schema",
-                "json_schema": code_section_schema
+                "json_schema": code_matches_schema
             }
         )
 
@@ -202,20 +214,18 @@ class Agent:
             if on_event is not None and self.stream_events:
                 await on_event(message, tool_state)
             if isinstance(message, ResultMessage):
-                # Again, avoid returning from inside the loop so the generator
-                # can shut down cleanly.
                 parsed_result = _parse_json_result(message.result)
                 if parsed_result is None:
                     cleaned = message.result.replace("```json", "").replace("```", "").strip()
                     logger.warning("map_key_sections_to_code: failed to parse JSON result raw=%s", cleaned)
                     parsed_result = None
-                    # Do not return here – keep consuming the generator so SDK cleans up correctly.
 
-        mapped_sections = parsed_result.get("sections") if isinstance(parsed_result, dict) else None
+        parsed_result = normalize_code_mapping_result(parsed_result)
+        matching_results = parsed_result.get("matches") if isinstance(parsed_result, dict) else None
         logger.info(
-            "map_key_sections_to_code: completed duration=%.2fs mapped_count=%s",
+            "map_key_sections_to_code: completed duration=%.2fs matching_results_count=%s",
             time.perf_counter() - started_at,
-            len(mapped_sections) if isinstance(mapped_sections, list) else None,
+            len(matching_results) if isinstance(matching_results, list) else None,
         )
         return parsed_result
 
@@ -307,32 +317,50 @@ class Agent:
         paper_record: PaperRecord = None,
     ):
         papermage_result = paper_record.papermage_result
+        if papermage_result is None:
+            raise ValueError("paper_record has no papermage_result")
 
-        prompt = build_code_to_content_mapping_prompt(
-            code=code,
-            paper_content=papermage_result,
-        )
+        papermage_llm = prepare_papermage_result_for_llm(papermage_result)
 
-        options = ClaudeAgentOptions(
-            model=self.model, 
-            allowed_tools=["ReadFile", "Read"],
-            include_partial_messages=True,
-            cwd=".",
-            output_format={
-                "type": "json_schema",
-                "json_schema": single_code_map_schema
-            }
-        )
-        
-        parsed_result = None
-        async for message in query(prompt=prompt, options=options):
-            if isinstance(message, ResultMessage):
-                parsed_result = _parse_json_result(message.result)
-                if parsed_result is None:
-                    cleaned = message.result.replace("```json", "").replace("```", "").strip()
-                    logger.warning("map_code_to_content: failed to parse JSON result raw=%s", cleaned)
-                    parsed_result = None
-        return parsed_result
+        os.makedirs("./tmp", exist_ok=True)
+        path = f"./tmp/{paper_record.id}.papermage.json"
+
+        with open(path, "w") as f:
+            json.dump(papermage_llm, f, indent=4)
+
+        try:
+            prompt = build_code_to_content_mapping_prompt(
+                code=code,
+                papermage_result_path=path,
+            )
+
+            options = ClaudeAgentOptions(
+                model=self.model,
+                allowed_tools=["ReadFile", "Read"],
+                include_partial_messages=True,
+                cwd=".",
+                output_format={
+                    "type": "json_schema",
+                    "json_schema": single_code_map_schema
+                }
+            )
+
+            parsed_result = None
+            async for message in query(prompt=prompt, options=options):
+                if isinstance(message, ResultMessage):
+                    parsed_result = _parse_json_result(message.result)
+                    if parsed_result is None:
+                        cleaned = message.result.replace("```json", "").replace("```", "").strip()
+                        logger.warning("map_code_to_content: failed to parse JSON result raw=%s", cleaned)
+                        parsed_result = None
+
+            if isinstance(parsed_result, dict):
+                from src.types import CodeToContentResult
+                return CodeToContentResult.model_validate(parsed_result).model_dump()
+            return parsed_result
+        finally:
+            if os.path.exists(path):
+                os.remove(path)
 
 
     async def analyze_paper(
@@ -370,12 +398,18 @@ class Agent:
             papermage_result = papermage_process_result
 
         key_sections_started_at = time.perf_counter()
-        key_sections = await self.identify_key_sections(papermage_process_result=papermage_result)
-        if key_sections is None:
+        entities_result = await self.identify_key_sections(papermage_process_result=papermage_result)
+        if entities_result is None:
             raise ValueError("No key sections found.")
+
+        entities = entities_result.get("entities") if isinstance(entities_result, dict) else None
+        if not isinstance(entities, list) or len(entities) == 0:
+            raise ValueError("No key entities found.")
         
         logger.info("analyze_paper: key sections completed duration=%.2fs", time.perf_counter() - key_sections_started_at)
-        logger.info("analyze_paper: selected key sections count=%d", len(key_sections['sections']))
+        logger.info("analyze_paper: selected key entities count=%d", len(entities))
+
+        hydrate_entity_contents(entities, papermage_result)
 
         try:
             github_candidates = extract_github_urls_from_pdf(paper_raw)
@@ -395,7 +429,7 @@ class Agent:
             logger.info("analyze_paper: using github URL (brave fallback)=%s", github_repo_url)
 
         if github_repo_url:
-            key_sections["github_repo_url"] = github_repo_url
+            entities_result["github_repo_url"] = github_repo_url
         else:
             raise ValueError("No GitHub repository URL found.")
 
@@ -409,7 +443,7 @@ class Agent:
 
         code_mapping_started_at = time.perf_counter()
         
-        code_result = await self.map_key_sections_to_code(key_sections=key_sections['sections'], code_path=repo_local_dir, on_event=on_event, limit=20)
+        code_result = await self.map_key_sections_to_code(entities=entities, code_path=repo_local_dir, on_event=on_event, limit=100)
         if code_result is None:
             raise ValueError("No code result found.")
         
@@ -419,7 +453,7 @@ class Agent:
         delete_temp_dir(repo_local_dir)
         logger.info("analyze_paper: repo cleanup completed duration=%.2fs", time.perf_counter() - cleanup_started_at)
 
-        merged = _merge_key_sections_into_code_result(key_sections, code_result)
+        merged = _merge_entities_into_matches(entities_result, code_result)
         paper_title = ""
         if isinstance(merged, dict):
             pt = merged.get("paper_title")
@@ -433,7 +467,7 @@ class Agent:
         )
         return {
             "paper_title": paper_title,
-            "github_repo_url": key_sections.get("github_repo_url"),
+            "github_repo_url": entities_result.get("github_repo_url"),
             "code_result": merged,
         }
 

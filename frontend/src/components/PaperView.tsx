@@ -14,16 +14,18 @@ import { Group, Panel, Separator } from "react-resizable-panels";
 import { useQuery, useMutation, useQueryClient} from '@tanstack/react-query';
 
 import { mapContentToCode, getContentToCodeMatches } from '../api/main.ts';
-import type { codeSectionsResult, githubRepoTreeResponse, processPDFResult, paperContentToCodeMatch, paperContentBox } from '../api/types.ts';
+import type { codeMatchesResult, githubRepoTreeResponse, processPDFResult, paperContentToCodeMatch, paperContentBox, PaperContentMatch } from '../api/types.ts';
+import { resolvePaperMageEntity } from '../utils/resolvePaperMageEntity.ts';
 import { HighlightOverlayDemo, type BoundingBoxWithTooltip } from './CodeOverlay.tsx';
 import RepoView from './RepoView.tsx';
 import { captureSelectionHighlightsFromRange } from '../utils/selectionRangeToPageBox.ts';
 import { usePDFTextSelection } from '../hooks/useTextSelection.tsx';
 import { useCeleryTaskStatus } from '../hooks/useCeleryTaskStatus.ts';
-import { UserContext } from '../context/userContext.tsx';
+import { UserContext } from '../context/UserContext.tsx';
+import ThemeToggle from './ThemeToggle';
 
 interface PaperViewProps {
-    analysisResult: codeSectionsResult;
+    analysisResult: codeMatchesResult;
     processResult: processPDFResult;
     clearEnvironment: () => void;
     paperFile: File | undefined;
@@ -31,11 +33,6 @@ interface PaperViewProps {
     githubRepoUrl: string;
     paperId: string;
 }
-
-type PaperHighlight = {
-    section_id: string;
-    description: string;
-};
 
 type ContentToCodeInput = {
     content: string | Blob;
@@ -59,6 +56,7 @@ const CODE_TO_CONTENT_HIGHLIGHT_COLOR = "rgba(192, 132, 252, 1)";
 type MatchFilter = 'all' | 'hide' | 'ai' | 'my' | 'others' | 'not_implemented';
 
 const MATCH_FILTER_STORAGE_KEY = 'deepread.matchFilter';
+const SHOW_MATCHES_FROM_CODE_STORAGE_KEY = 'deepread.showMatchesFromCode';
 const DEFAULT_MATCH_FILTER: MatchFilter = 'all';
 
 const MATCH_FILTER_OPTIONS: { value: MatchFilter; label: string }[] = [
@@ -85,6 +83,14 @@ const readStoredMatchFilter = (): MatchFilter => {
     }
     return DEFAULT_MATCH_FILTER;
 };
+
+const readStoredShowMatchesFromCode = (): boolean => {
+    if (typeof window === 'undefined') return true;
+    const stored = window.localStorage.getItem(SHOW_MATCHES_FROM_CODE_STORAGE_KEY);
+    if (stored === 'false') return false;
+    return true;
+};
+
 /**
  * Must render *inside* ContextProvider + DocumentWrapper so DocumentContext
  * is the real provider (not the default). Otherwise numPages stays 0 and
@@ -93,13 +99,13 @@ const readStoredMatchFilter = (): MatchFilter => {
 function PdfPageList({
     analysisResult,
     processResult,
-    paperHighlightSections,
+    paperContentMatches,
     scrollRef,
     codeMatches,
 }: {
-    analysisResult: codeSectionsResult;
+    analysisResult: codeMatchesResult;
     processResult: processPDFResult;
-    paperHighlightSections: PaperHighlight[];
+    paperContentMatches: PaperContentMatch[];
     scrollRef: React.RefObject<HTMLDivElement | null>;
     codeMatches: paperContentToCodeMatch[];
 }) {
@@ -134,23 +140,23 @@ function PdfPageList({
         let boxes: BoundingBoxWithTooltip[] = [];
 
         const contentToBBoxPaperMage = async () => {
+            const aiMatches = analysisResult.matches ?? [];
             // AI-discovered matches
-            for (let i = 0; i < analysisResult.sections.length; i++) {
-                const analyzedSection = analysisResult.sections[i];
+            for (let i = 0; i < aiMatches.length; i++) {
+                const analyzedMatch = aiMatches[i];
 
-                if (analyzedSection.code_snippets.length === 0) {
-                    console.warn("No code snippets listed for section", analyzedSection);
+                if (analyzedMatch.code_snippets.length === 0) {
+                    console.warn("No code snippets listed for match", analyzedMatch);
                     continue;
                 }
 
-                const paperMageSection = processResult.sections.filter((section)=>section.entity_id === analyzedSection.section_id)[0];
-
-                if (!paperMageSection) {
-                    console.warn('No PaperMage section for analyzed section', analyzedSection);
+                const resolved = resolvePaperMageEntity(processResult, analyzedMatch);
+                if (!resolved) {
+                    console.warn('No PaperMage entity for analyzed match', analyzedMatch);
                     continue;
                 }
-    
-                const box = paperMageSection.box;
+
+                const box = resolved.box;
                 if (cancelled) return;
                 const page = await pdfDocProxy.getPage(box.page + 1);
                 if (cancelled) return;
@@ -166,25 +172,25 @@ function PdfPageList({
                     width:  box.w   * viewport.width * scaleX,
                     height: box.h   * viewport.height * scaleY,
                     hitKey: `p${box.page}-h${i}`,
-                    file_infos: analyzedSection.code_snippets.map((snippet) => `${snippet.filepath}:${snippet.start_line}-${snippet.end_line}`),
-                    code_snippets: analyzedSection.code_snippets,
-                    description: analyzedSection.section_description,
+                    file_infos: analyzedMatch.code_snippets.map((snippet) => `${snippet.filepath}:${snippet.start_line}-${snippet.end_line}`),
+                    code_snippets: analyzedMatch.code_snippets,
+                    description: analyzedMatch.description || analyzedMatch.content,
+                    content_type: analyzedMatch.content_type,
                     color: CODE_MATCH_VERDICT_TO_COLOR.ai,
                 })
             }
 
             // Match from user-selected code
-            for (let j = 0; j < paperHighlightSections.length; j++) {
-                const highlight = paperHighlightSections[j];
-                const paperMageSection = processResult.sections.find(
-                    (section) => section.entity_id === highlight.section_id,
-                );
-                if (!paperMageSection) {
-                    console.warn('No PaperMage section for mapped highlight', highlight);
+            for (let j = 0; j < paperContentMatches.length; j++) {
+                const match = paperContentMatches[j];
+                console.log("from paperview", match);
+                const resolved = resolvePaperMageEntity(processResult, match);
+                if (!resolved) {
+                    console.warn('No PaperMage entity for match', match);
                     continue;
                 }
 
-                const box = paperMageSection.box;
+                const box = resolved.box;
                 if (cancelled) return;
                 const page = await pdfDocProxy.getPage(box.page + 1);
                 if (cancelled) return;
@@ -199,10 +205,10 @@ function PdfPageList({
                     left: box.l * viewport.width * scaleX,
                     width: box.w * viewport.width * scaleX,
                     height: box.h * viewport.height * scaleY,
-                    hitKey: `map-${highlight.section_id}-${j}`,
+                    hitKey: `map-${match.entity_id}-${j}`,
                     file_infos: [],
                     code_snippets: [],
-                    description: highlight.description,
+                    description: match.description,
                     variant: 'underline',
                     color: CODE_TO_CONTENT_HIGHLIGHT_COLOR,
                 });
@@ -246,11 +252,9 @@ function PdfPageList({
             if (cancelled) return;
             setHitBoxes(boxes);
 
-            if (paperHighlightSections.length > 0) {
-                const firstSection = processResult.sections.find(
-                    (s) => s.entity_id === paperHighlightSections[0].section_id,
-                );
-                const pageIndex = firstSection?.box.page;
+            if (paperContentMatches.length > 0) {
+                const firstResolved = resolvePaperMageEntity(processResult, paperContentMatches[0]);
+                const pageIndex = firstResolved?.box.page;
                 requestAnimationFrame(() => {
                     if (pageIndex != null) {
                         scrollRef.current?.children[pageIndex]?.scrollIntoView({
@@ -271,7 +275,7 @@ function PdfPageList({
         return () => {
             cancelled = true;
         };
-    }, [pdfDocProxy, numPages, rotation, pageDimensions, analysisResult, processResult, paperHighlightSections, scrollRef, codeMatches]);
+    }, [pdfDocProxy, numPages, rotation, pageDimensions, analysisResult, processResult, paperContentMatches, scrollRef, codeMatches]);
 
     return (
         <div className="reader__page-list" ref={scrollRef}>
@@ -293,10 +297,11 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
     const {currentUser} = useContext(UserContext);
 
     const [matchingTaskId, setMatchingTaskId] = useState<string | null>(null);
-    const [paperHighlightSections, setPaperHighlightSections] = useState<PaperHighlight[]>([]);
+    const [paperContentMatches, setPaperContentMatches] = useState<PaperContentMatch[]>([]);
     const [contentToCodeMatches, setContentToCodeMatches] = useState<paperContentToCodeMatch[]>([]);
     const [isMatchFilterOpen, setIsMatchFilterOpen] = useState(false);
     const [matchFilter, setMatchFilter] = useState<MatchFilter>(readStoredMatchFilter);
+    const [showMatchesFromCode, setShowMatchesFromCode] = useState(readStoredShowMatchesFromCode);
     const matchFilterRef = useRef<HTMLDivElement>(null);
 
     const queryClient = useQueryClient();
@@ -322,6 +327,10 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
     useEffect(() => {
         window.localStorage.setItem(MATCH_FILTER_STORAGE_KEY, matchFilter);
     }, [matchFilter])
+
+    useEffect(() => {
+        window.localStorage.setItem(SHOW_MATCHES_FROM_CODE_STORAGE_KEY, String(showMatchesFromCode));
+    }, [showMatchesFromCode])
 
     useEffect(() => {
         if (!isMatchFilterOpen) return;
@@ -408,12 +417,12 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
     const showFailedMatches = matchFilter === 'all' || matchFilter === 'not_implemented';
 
     const filteredAnalysisResult = useMemo(
-        () => (showAiMatches ? analysisResult : { ...analysisResult, sections: [] }),
+        () => (showAiMatches ? analysisResult : { ...analysisResult, matches: [] }),
         [showAiMatches, analysisResult],
     );
-    const filteredPaperHighlightSections = useMemo(
-        () => (showMyMatches ? paperHighlightSections : []),
-        [showMyMatches, paperHighlightSections],
+    const filteredPaperContentMatches = useMemo(
+        () => (showMatchesFromCode ? paperContentMatches : []),
+        [showMatchesFromCode, paperContentMatches],
     );
     const filteredContentToCodeMatches = useMemo(
         () => contentToCodeMatches.filter((match) => {
@@ -443,11 +452,11 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
                         >
                             Clear Environment
                         </button>
-                        {paperHighlightSections.length > 0 && <button
+                        {paperContentMatches.length > 0 && <button
                             type="button"
                             className="outline-action-btn temp-action-btn"
                             onClick={() => {
-                                setPaperHighlightSections([]);
+                                setPaperContentMatches([]);
                             }}
                         >
                             Clear Paper Highlights
@@ -480,9 +489,19 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
                                             {option.label}
                                         </button>
                                     ))}
+                                    <div className="match-filter__separator" role="separator" />
+                                    <label className="match-filter__checkbox">
+                                        <input
+                                            type="checkbox"
+                                            checked={showMatchesFromCode}
+                                            onChange={(event) => setShowMatchesFromCode(event.target.checked)}
+                                        />
+                                        Show matches from code
+                                    </label>
                                 </div>
                             )}
                         </div>
+                        <ThemeToggle className="theme-toggle theme-toggle--toolbar-end" />
                     </div>
 
                 {!hasRealFile ? (
@@ -503,7 +522,7 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
                                     <PdfPageList
                                         analysisResult={filteredAnalysisResult}
                                         processResult={processResult}
-                                        paperHighlightSections={filteredPaperHighlightSections}
+                                        paperContentMatches={filteredPaperContentMatches}
                                         scrollRef={pdfScrollableRef}
                                         codeMatches={filteredContentToCodeMatches}
                                     />
@@ -524,7 +543,7 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
                         </button> */}
                     </div>
                     <div className="paper-view-layout__code-scroll">
-                        {<RepoView tree={tree} paperId={paperId} setPaperHighlightSections={setPaperHighlightSections} />}
+                        {<RepoView tree={tree} paperId={paperId} setPaperContentMatches={setPaperContentMatches} />}
                     </div>
                 </aside>
             )}

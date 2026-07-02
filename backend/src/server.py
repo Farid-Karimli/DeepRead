@@ -160,13 +160,20 @@ def get_user_by_username(username: str) -> dict:
 def _paper_list_item(paper: PaperRecord) -> dict:
     """Lightweight row for the home page (full result available via GET /papers/{id})."""
     code_result = paper.analysis_result.code_result if paper.analysis_result else None
-    sections = code_result.sections if code_result else []
+    match_count = 0
+    if code_result is not None:
+        if code_result.matches:
+            match_count = len(code_result.matches)
+        elif code_result.sections:
+            match_count = len(code_result.sections)
+    thumbnail_url = get_file_url(paper.id, bucket_name="thumbnails")
     return {
         "paper_id": paper.id,
         "paper_title": paper.paper_title,
         "github_repo_url": paper.github_link,
-        "section_count": len(sections),
+        "section_count": match_count,
         "label": paper.paper_title,
+        "thumbnail_url": thumbnail_url
     }
 
 
@@ -309,7 +316,7 @@ def map_code_to_content(
 
     if db_record:
         logger.info(f"MAP CODE TO CONTENT: Mapping already exists for cache key {cache_key}, returning...")
-        return {"status": "SUCCESS", "result": db_record.outputs.sections}
+        return {"status": "SUCCESS", "result": db_record.outputs}
 
     task = map_code_to_content_task.delay(
         code=code,

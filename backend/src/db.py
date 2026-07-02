@@ -11,6 +11,7 @@ from src.types import PaperMappingRecord, PaperRecord, UserRecord
 from supabase import Client, create_client
 
 from src.config import SUPABASE_URL, SUPABASE_KEY
+from src.utils import get_pdf_thumbnail
 
 logger = logging.getLogger(__name__)
 
@@ -85,7 +86,7 @@ def upload_paper_to_storage(
         return
     try:
         supabase = get_supabase_client()
-        supabase.storage.from_("papers").upload(
+        response = supabase.storage.from_("papers").upload(
             file=paper_content,
             path=paper_id,
             file_options={
@@ -93,7 +94,18 @@ def upload_paper_to_storage(
                 "upsert": "true",
             },
         )
-        logger.info("Supabase uploaded paper to storage paper_name=%s paper_id=%s", paper_name, paper_id)
+
+        thumbnail = get_pdf_thumbnail(file_content=paper_content)
+        thumbnail_response = supabase.storage.from_("thumbnails").upload(
+            file=thumbnail, 
+            path=paper_id,
+            file_options={
+                "content-type": "image/jpeg",
+                "upsert": "true",
+            },
+        )
+
+        logger.info("Supabase uploaded paper and its thumbnail to storage paper_name=%s paper_id=%s", paper_name, paper_id)
     except Exception as e:
         logger.exception("Supabase upload_paper_to_storage failed paper_name=%s paper_id=%s", paper_name, paper_id)
         print(f"Supabase upload_paper_to_storage failed paper_name={paper_name} paper_id={paper_id}")
@@ -110,13 +122,25 @@ def get_paper_from_storage(paper_id: str) -> bytes | None:
         logger.exception("Supabase get_paper_from_storage failed paper_id=%s", paper_id)
         return None
 
-def get_file_url(paper_id: str) -> str | None:
+def get_paper_thumbnail_from_storage(paper_id: str) -> bytes | None:
+    if not is_configured():
+        logger.warning("Supabase not configured (SUPABASE_URL/SUPABASE_KEY missing); skip get_paper_from_storage paper_id=%s", paper_id)
+        return None
+    try:
+        supabase = get_supabase_client()
+        return supabase.storage.from_("thumbnails").download(path=paper_id)
+    except Exception as e:
+        logger.exception("Supabase get_paper_thumbnail_from_storage failed paper_id=%s; error=%s", paper_id, e)
+        return None
+
+def get_file_url(paper_id: str, bucket_name="papers") -> str | None:
     if not is_configured():
         logger.warning("Supabase not configured (SUPABASE_URL/SUPABASE_KEY missing); skip get_file_url paper_id=%s", paper_id)
         return None
     try:
         supabase = get_supabase_client()
-        return supabase.storage.from_("papers").get_public_url(path=paper_id)
+        response = supabase.storage.from_(bucket_name).get_public_url(path=paper_id)
+        return response
     except Exception:
         logger.exception("Supabase get_file_url failed paper_id=%s", paper_id)
 
@@ -180,6 +204,7 @@ def get_code_to_content_matches_by_paper_id_and_filepath(paper_id: str, current_
         return [PaperMappingRecord.model_validate(row) for row in response.data]
     except Exception:
         logger.exception("Supabase get_code_to_content_matches failed paper_id=%s current_path=%s", paper_id, current_path)
+        return []
 
 def create_user_db(username: str) -> UserRecord | None:
     if not is_configured():
@@ -195,18 +220,26 @@ def create_user_db(username: str) -> UserRecord | None:
         return None
 
 if __name__ == "__main__":
-    filepath = "/Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/papers/controlnext.pdf"
+    filepath = "./papers/pretraining.pdf"
     with open(filepath, "rb") as f:
         paper_content = f.read()
-    paper_id = hashlib.sha256(paper_content).hexdigest()
-    upload_paper_to_storage("ControlNext", paper_id, paper_content)
+    paper_id = "d6d8b95f1981e7d714921baec9ae080cf7dc14f3e1f249b80a7129ba5cf4076d"
+    upload_paper_to_storage("Pretraining", paper_id, paper_content)
 
     paper_content = get_paper_from_storage(paper_id)
     if paper_content is not None:
         try:
             import pypdf
             reader = pypdf.PdfReader(io.BytesIO(paper_content))
-            print(reader.pages[0].extract_text())
         except Exception as e:
             print(e)
             print("No paper content found")
+
+
+    thumbnail_content = get_paper_thumbnail_from_storage(paper_id)
+    from PIL import Image
+    try:
+        thumbnail = Image.open(thumbnail_content)
+        print(thumbnail.size)
+    except Exception as e:
+        print("error:", e)

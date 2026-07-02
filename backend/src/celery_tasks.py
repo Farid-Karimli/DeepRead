@@ -104,7 +104,7 @@ def analyze_paper_task(
 
     unified_result = {
         "analysis": analysis_result,
-        "processed": papermage_result
+        "processed": papermage_result # Save the CANONICAL papermage result
     }
 
     upsert_paper(
@@ -112,7 +112,7 @@ def analyze_paper_task(
         paper_title=title if isinstance(title, str) else None,
         github_link=link if isinstance(link, str) else None,
         analysis_result=analysis_result,
-        papermage_result=papermage_result
+        papermage_result=papermage_result, # Save the CANONICAL papermage result
     )
 
     return unified_result
@@ -176,17 +176,17 @@ def map_code_to_content_task(
         paper_record=paper_record
     ))
 
-    sections = result.get("sections", []) if isinstance(result, dict) else []
+    outputs = CodeToContentResult.model_validate(result) if isinstance(result, dict) else CodeToContentResult(
+        verdict="Verdict not found",
+        reasoning="Reasoning not found",
+        matches=[],
+    )
     record = PaperMappingRecord(
         mapping_type="code_to_content",
         cache_key=cache_key,
         paper_id=paper_id, 
         inputs=CodeToContentInputs(code=code, start=start, end=end, filepath=filepath),
-        outputs=CodeToContentResult(
-            verdict=result.get("verdict", "Verdict not found"),
-            reasoning=result.get("reasoning", "Reasoning not found"),
-            sections=sections
-            ),
+        outputs=outputs,
         created_by=user_id,
     )
     upsert_mapping_result(record)

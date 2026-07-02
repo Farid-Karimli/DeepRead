@@ -44,81 +44,73 @@ key_section_schema = {
     "required": ["sections", "github_repo_url"]
 }
 
-key_section_schema_v2 = {
+_CONTENT_TYPE_ENUM = ["section", "sentence", "equation"]
+
+_ENTITY_ITEM_SCHEMA = {
     "type": "object",
     "properties": {
-        "sections": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "section_id": {
-                        "type": "string",
-                    },
-                    "section_header": {
-                        "type": "string",
-                    },
-                    "description": {
-                        "type": "string",
-                    }
-                },
-                "required": ["section_id", "section_header", "description"]
-            }
-        },
+        "content_type": {"type": "string", "enum": _CONTENT_TYPE_ENUM},
+        "entity_id": {"type": "string"},
+        #"content": {"type": "string"},
+        "section_id": {"type": "string"},
     },
-    "required": ["sections"]
+    "required": ["content_type", "entity_id"],
 }
 
-code_section_schema = {
+key_entities_schema = {
     "type": "object",
     "properties": {
-        "paper_title": {
-            "type": "string",
-        },
-        "sections": {
+        "entities": {
             "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "section_id": {
-                        "type": "string",
-                    },
-                    "section_name": {
-                        "type": "string",
-                    },
-                    "section_header": {
-                        "type": "string",
-                    },
-                    "code_snippets": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "content": {
-                                    "type": "string",
-                                },
-                                "filepath": {
-                                    "type": "string",
-                                },
-                                "start_line": {
-                                    "type": "integer",
-                                },
-                                "end_line": {
-                                    "type": "integer",
-                                },
-                            },
-                            "required": ["content", "filepath", "start_line", "end_line"],
-                        },
-                    },
-                   
-                },
-                "required": ["section_id", "section_header", "code_snippets"]
-            }
+            "items": _ENTITY_ITEM_SCHEMA,
         },
-        
     },
-    "required": ["sections"]
+    "required": ["entities"],
 }
+
+# Backward-compatible alias
+key_section_schema_v2 = key_entities_schema
+
+_CODE_SNIPPET_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "content": {"type": "string"},
+        "filepath": {"type": "string"},
+        "start_line": {"type": "integer"},
+        "end_line": {"type": "integer"},
+    },
+    "required": ["content", "filepath", "start_line", "end_line"],
+}
+
+_MATCH_ITEM_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "entity_id": {"type": "string"},
+        "content_type": {"type": "string", "enum": _CONTENT_TYPE_ENUM},
+        "content": {"type": "string"},
+        "section_id": {"type": "string"},
+        "code_snippets": {
+            "type": "array",
+            "items": _CODE_SNIPPET_SCHEMA,
+        },
+    },
+    "required": ["entity_id", "content_type", "content", "code_snippets"],
+}
+
+code_matches_schema = {
+    "type": "object",
+    "properties": {
+        "paper_title": {"type": "string"},
+        "matches": {
+            "type": "array",
+            "items": _MATCH_ITEM_SCHEMA,
+        },
+    },
+    "required": ["matches"],
+}
+
+# Backward-compatible alias
+code_section_schema = code_matches_schema
 
 single_content_map_schema = {
     "type": "object",
@@ -151,23 +143,24 @@ single_content_map_schema = {
 single_code_map_schema = {
     "type": "object",
     "properties": {
-        "sections": {
+        "reasoning": {"type": "string"},
+        "verdict": {"type": "string"},
+        "matches": {
             "type": "array",
             "items": {
                 "type": "object",
                 "properties": {
-                    "section_id": {
-                        "type": "string",
-                    },
-                    "description": {
-                        "type": "string",
-                    },
+                    "entity_type": {"type": "string", "enum": _CONTENT_TYPE_ENUM},
+                    "entity_id": {"type": "string"},
+                    "description": {"type": "string"},
+                    "section_id": {"type": "string"},
+                    "sentence_id": {"type": "string"},
                 },
-                "required": ["section_id", "description"],
-            }
+                "required": ["entity_type", "entity_id", "description"],
+            },
         },
     },
-    "required": ["sections"]
+    "required": ["reasoning", "verdict", "matches"],
 }
 
 
@@ -293,79 +286,181 @@ def _normalize_section_to_code_shape(section: dict) -> dict:
     return out
 
 
-def _merge_key_sections_into_code_result(
-    key_sections: dict | None, code_result: dict | None
+def normalize_identify_result(raw: dict | None) -> dict | None:
+    """Canonical shape: { entities: [{ content_type, entity_id, content, section_id? }] }."""
+    if raw is None or not isinstance(raw, dict):
+        return None
+    if isinstance(raw.get("entities"), list):
+        return raw
+    legacy_sections = raw.get("sections")
+    if not isinstance(legacy_sections, list):
+        return raw
+    entities = []
+    for item in legacy_sections:
+        if not isinstance(item, dict):
+            continue
+        entity_id = item.get("entity_id") or item.get("section_id")
+        if not isinstance(entity_id, str):
+            continue
+        content = item.get("content")
+        if not isinstance(content, str):
+            content = item.get("section_content") or item.get("description") or ""
+        entities.append({
+            "content_type": item.get("content_type") or "section",
+            "entity_id": entity_id,
+            "content": content,
+            "section_id": item.get("section_id") if item.get("section_id") != entity_id else None,
+        })
+    return {"entities": entities}
+
+
+def normalize_code_mapping_result(raw: dict | None) -> dict | None:
+    """Canonical shape: { paper_title?, matches: [...] }."""
+    if raw is None or not isinstance(raw, dict):
+        return None
+    if isinstance(raw.get("matches"), list):
+        matches = []
+        for item in raw["matches"]:
+            if not isinstance(item, dict):
+                continue
+            out = _normalize_match_to_code_shape(item)
+            matches.append(out)
+        paper_title = raw.get("paper_title")
+        result = {"matches": matches}
+        if isinstance(paper_title, str):
+            result["paper_title"] = paper_title
+        return result
+
+    legacy_sections = raw.get("sections")
+    if not isinstance(legacy_sections, list):
+        return raw
+
+    matches = []
+    for item in legacy_sections:
+        if not isinstance(item, dict):
+            continue
+        entity_id = item.get("entity_id") or item.get("section_id")
+        if not isinstance(entity_id, str):
+            continue
+        normalized = _normalize_section_to_code_shape(item)
+        matches.append({
+            "entity_id": entity_id,
+            "content_type": item.get("content_type") or "section",
+            "content": item.get("content") or item.get("section_content") or "",
+            "section_id": item.get("section_id") if item.get("section_id") != entity_id else entity_id,
+            "code_snippets": normalized.get("code_snippets") or [],
+        })
+    paper_title = raw.get("paper_title")
+    result = {"matches": matches}
+    if isinstance(paper_title, str):
+        result["paper_title"] = paper_title
+    return result
+
+
+def _normalize_match_to_code_shape(item: dict) -> dict:
+    entity_id = item.get("entity_id") or item.get("section_id")
+    content_type = item.get("content_type") or item.get("entity_type") or "section"
+    content = item.get("content")
+    if not isinstance(content, str):
+        content = item.get("section_content") or ""
+    section_id = item.get("section_id")
+    if section_id == entity_id:
+        section_id = entity_id if content_type == "section" else section_id
+
+    raw_snippets = item.get("code_snippets")
+    snippets: list[dict] = []
+    if isinstance(raw_snippets, list):
+        for snip in raw_snippets:
+            if isinstance(snip, dict):
+                row = _normalize_snippet_dict(snip)
+                if row is not None:
+                    snippets.append(row)
+    else:
+        row = _normalize_snippet_dict(item)
+        if row is not None:
+            snippets.append(row)
+
+    out: dict = {
+        "entity_id": entity_id,
+        "content_type": content_type,
+        "content": content,
+        "code_snippets": snippets,
+    }
+    if isinstance(section_id, str) and section_id:
+        out["section_id"] = section_id
+    return out
+
+
+def normalize_code_result_for_frontend(raw: dict | None) -> dict | None:
+    """Prefer matches[]; migrate legacy sections[] for API/frontend consumers."""
+    return normalize_code_mapping_result(raw)
+
+
+def _merge_entities_into_matches(
+    entities_result: dict | None, code_result: dict | None
 ) -> dict | None:
     """
-    Normalize each section to code_snippets[] shape, then copy paper-side fields
-    from identify_key_sections onto each section row.
-    Matches by stable section_id first, then by normalized section_header/name, then
-    by index when both lists have the same length.
+    Join stage-1 entities with stage-2 matches on entity_id.
+    Copies description from stage-1 onto each match row.
     """
-    if code_result is None:
+    normalized_code = normalize_code_mapping_result(code_result)
+    if normalized_code is None:
         return None
-    raw_sections = code_result.get("sections")
-    if not isinstance(raw_sections, list):
-        return code_result
 
-    ks_list: list[dict] = []
-    if isinstance(key_sections, dict):
-        ks_raw = key_sections.get("sections")
-        if isinstance(ks_raw, list):
-            ks_list = [x for x in ks_raw if isinstance(x, dict)]
+    matches = normalized_code.get("matches")
+    if not isinstance(matches, list):
+        return normalized_code
+
+    entities_result = normalize_identify_result(entities_result)
+    entity_list: list[dict] = []
+    if isinstance(entities_result, dict):
+        raw_entities = entities_result.get("entities")
+        if isinstance(raw_entities, list):
+            entity_list = [x for x in raw_entities if isinstance(x, dict)]
 
     by_id: dict[str, dict] = {}
-    by_norm: dict[str, dict] = {}
-    for row in ks_list:
-        sid = row.get("section_id")
-        if isinstance(sid, str) and sid and sid not in by_id:
-            by_id[sid] = row
-
-        for title_key in ("section_header", "section_name"):
-            title = row.get(title_key)
-            if isinstance(title, str):
-                norm = _normalize_section_title(title)
-                if norm and norm not in by_norm:
-                    by_norm[norm] = row
+    for row in entity_list:
+        eid = row.get("entity_id")
+        if isinstance(eid, str) and eid and eid not in by_id:
+            by_id[eid] = row
 
     merged: list[dict] = []
-    for i, item in enumerate(raw_sections):
+    for i, item in enumerate(matches):
         if not isinstance(item, dict):
             merged.append(item)
             continue
-        out = _normalize_section_to_code_shape(item)
-        matched: dict | None = None
-        sid = out.get("section_id")
-        if isinstance(sid, str):
-            matched = by_id.get(sid)
-        if matched is None:
-            for title_key in ("section_header", "section_name"):
-                title = out.get(title_key)
-                if isinstance(title, str):
-                    matched = by_norm.get(_normalize_section_title(title))
-                    if matched is not None:
-                        break
-        if matched is None and len(ks_list) == len(raw_sections) and i < len(ks_list):
-            matched = ks_list[i]
+        out = _normalize_match_to_code_shape(item)
+        eid = out.get("entity_id")
+        matched = by_id.get(eid) if isinstance(eid, str) else None
+        if matched is None and i < len(entity_list):
+            matched = entity_list[i]
         if isinstance(matched, dict):
             desc = matched.get("description")
             if isinstance(desc, str):
-                out["section_description"] = desc
-            matched_id = matched.get("section_id")
-            if isinstance(matched_id, str):
-                out["section_id"] = matched_id
-            matched_header = matched.get("section_header")
-            if isinstance(matched_header, str):
-                out["section_header"] = matched_header
-            sl = matched.get("start_line")
-            el = matched.get("end_line")
-            if isinstance(sl, int):
-                out["paper_start_line"] = sl
-            if isinstance(el, int):
-                out["paper_end_line"] = el
+                out["description"] = desc
+            parent = matched.get("section_id")
+            if isinstance(parent, str) and parent and not out.get("section_id"):
+                out["section_id"] = parent
+            ctype = matched.get("content_type")
+            if isinstance(ctype, str):
+                out["content_type"] = ctype
+            content = matched.get("content")
+            if isinstance(content, str) and content:
+                out["content"] = content
         merged.append(out)
 
-    return {**code_result, "sections": merged}
+    paper_title = normalized_code.get("paper_title")
+    result: dict = {"matches": merged}
+    if isinstance(paper_title, str):
+        result["paper_title"] = paper_title
+    return result
+
+
+def _merge_key_sections_into_code_result(
+    key_sections: dict | None, code_result: dict | None
+) -> dict | None:
+    """Backward-compatible wrapper around _merge_entities_into_matches."""
+    return _merge_entities_into_matches(key_sections, code_result)
 
 
 def _combine_section_mapping_results(

@@ -67,7 +67,7 @@ up:
 		echo "starting celery worker..."; \
 		rm -f "$(CELERY_PID)"; \
 		( cd "$(BACKEND_DIR)" && \
-		  { nohup uv run python -m celery -A src.server.celery worker --loglevel=info \
+		  { nohup uv run python -m celery -A src.server.celery worker --loglevel=info --pool=solo --concurrency=1 \
 		    >> "$(CELERY_LOG)" 2>&1 & echo $$! > "$(CELERY_PID)"; } ); \
 		sleep 0.6; \
 		if [ -f "$(CELERY_PID)" ] && kill -0 "$$(cat "$(CELERY_PID)")" 2>/dev/null; then \

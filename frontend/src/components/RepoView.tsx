@@ -1,5 +1,5 @@
 import { useContext, useEffect, useMemo, useRef, useState } from 'react';
-import type { codeToContentMatch, githubRepoTreeResponse } from '../api/types.ts';
+import type { codeToContentMatch, githubRepoTreeResponse, PaperContentMatch } from '../api/types.ts';
 import { getGithubFileFromBlobUrl, mapCodeToContent, getCodeToContentMatches } from '../api/main';
 import { dedupeRanges } from '../utils/dedupeRanges.ts';
 import { VscFolder, VscFile } from 'react-icons/vsc';
@@ -11,18 +11,14 @@ import { usePDFTextSelection } from '../hooks/useTextSelection.tsx';
 import { useCeleryTaskStatus } from '../hooks/useCeleryTaskStatus.ts';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
-import { UserContext } from '../context/userContext.tsx';
+import { UserContext } from '../context/UserContext.tsx';
 
-type PaperHighlight = {
-    section_id: string;
-    description: string;
-};
 interface RepoViewProps {
     tree: githubRepoTreeResponse;
     paperId: string;
     code?: string,
     filepath?: string,
-    setPaperHighlightSections: (paperHighlightSections: PaperHighlight[]) => void
+    setPaperContentMatches: (matches: PaperContentMatch[]) => void
 }
 
 const CONTENT_MATCH_VERDICT_TO_COLOR: Record<string, string> = {
@@ -63,7 +59,7 @@ const readStoredCodeMatchFilter = (): CodeMatchFilter => {
     return DEFAULT_CODE_MATCH_FILTER;
 };
 
-const RepoView = ({ tree, paperId, setPaperHighlightSections }: RepoViewProps) => {
+const RepoView = ({ tree, paperId, setPaperContentMatches }: RepoViewProps) => {
     const {currentUser} = useContext(UserContext);
     const [currentPath, setCurrentPath] = useState(() => "");
     const [currentFileContent, setCurrentFileContent] = useState<string | null>(null);
@@ -100,9 +96,7 @@ const RepoView = ({ tree, paperId, setPaperHighlightSections }: RepoViewProps) =
         mutationFn: ({code, paperId, start, end, filepath, user_id}: CodeToContentInput) => mapCodeToContent(code, paperId, start, end, filepath, user_id),
         onSuccess: (response) => {
             if (response.status === "SUCCESS") {
-                if (response.result) {
-                    setPaperHighlightSections(response.result);
-                }
+                setPaperContentMatches(response.result?.matches ?? []);
                 queryClient.invalidateQueries({queryKey: ["codeToContentMatches", paperId, currentPath]})
             } else if (response.task_id) {
                 setCodeMatchingTaskId(response.task_id);
@@ -151,7 +145,8 @@ const RepoView = ({ tree, paperId, setPaperHighlightSections }: RepoViewProps) =
             .map((match: codeToContentMatch) => ({
                 start: match.inputs.start,
                 end: match.inputs.end,
-                color: CONTENT_MATCH_VERDICT_TO_COLOR[match.outputs.verdict]
+                color: CONTENT_MATCH_VERDICT_TO_COLOR[match.outputs.verdict] 
+                // TODO: Add attribute for displaying the verdict and reasoning.
             }));
         // Matches from the user pick
         const fromUser = codeInfo?.filePath === currentPath ? codeInfo.codeRanges.map((r) => ({ 
@@ -169,8 +164,8 @@ const RepoView = ({ tree, paperId, setPaperHighlightSections }: RepoViewProps) =
         const match = (codeToContentMatchesQuery.data ?? []).find(
             (m: codeToContentMatch) => m.inputs.start === range.start && m.inputs.end === range.end,
         );
-        if (match?.outputs.sections) {
-            setPaperHighlightSections(match.outputs.sections);
+        if (match?.outputs.matches) {
+            setPaperContentMatches(match.outputs.matches);
         }
     };
 
@@ -180,8 +175,9 @@ const RepoView = ({ tree, paperId, setPaperHighlightSections }: RepoViewProps) =
 
     useEffect(() => {
         if (codeMatchingTaskQuery.data?.status === 'SUCCESS' && codeMatchingTaskQuery.data.result) {
-            const sections = codeMatchingTaskQuery.data.result as unknown as PaperHighlight[];
-            setPaperHighlightSections(sections);
+            const raw = codeMatchingTaskQuery.data.result as { matches?: PaperContentMatch[] };
+            const matches = Array.isArray(raw?.matches) ? raw.matches : [];
+            setPaperContentMatches(matches);
             setCodeMatchingTaskId(null);
             setPendingCodeSelection(null);
             queryClient.invalidateQueries({ queryKey: ["codeToContentMatches", paperId, currentPath] });
@@ -194,7 +190,7 @@ const RepoView = ({ tree, paperId, setPaperHighlightSections }: RepoViewProps) =
             setCodeMatchingTaskId(null);
             setPendingCodeSelection(null);
         }
-    }, [codeMatchingTaskQuery.data, setPaperHighlightSections, queryClient, paperId, currentPath]);
+    }, [codeMatchingTaskQuery.data, setPaperContentMatches, queryClient, paperId, currentPath]);
 
     useEffect(() => {
         if (codeInfo) {
