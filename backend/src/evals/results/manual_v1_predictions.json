@@ -1,0 +1,219 @@
+[
+  {
+    "paper_id": "investigating_pre_training_objectives_for_generalization_in_vision_based_reinforcement_learning",
+    "annotation_id": "61fc660b",
+    "claim_text": "CURL: Contrastive Unsupervised Reinforcement Learning\n(Laskin et al., 2020b) learns the spatial feature of images\nusing augmentation functions and InfoNCE loss.",
+    "section_ref": "4.2. Learning from Image",
+    "ground_truth_verdict": "implemented",
+    "ground_truth_locations": [
+      {
+        "filepath": "src/trainers/curl.py",
+        "line_range": [
+          13,
+          25
+        ]
+      },
+      {
+        "filepath": "src/trainers/curl.py",
+        "line_range": [
+          89,
+          97
+        ]
+      },
+      {
+        "filepath": "src/trainers/curl.py",
+        "line_range": [
+          59,
+          65
+        ]
+      }
+    ],
+    "prediction": {
+      "reasoning": "The content describes CURL (Contrastive Unsupervised Reinforcement Learning) which learns spatial features using augmentation functions and InfoNCE loss. I searched the repository and found a complete implementation: 1) src/trainers/curl.py contains the main CURLTrainer class (lines 13-153) that implements the method with augmentation functions (lines 62-63 create two augmented views x_q and x_k) and computes a contrastive loss. 2) Lines 90-96 in curl.py implement the InfoNCE loss: it computes similarity between query and key representations (line 90), applies temperature scaling (line 91), and uses cross-entropy loss with diagonal labels (lines 94-96), which is the standard InfoNCE formulation. 3) src/common/augmentation.py (lines 92-136) provides the augmentation module with various augmentation types. 4) src/common/losses.py contains a CURLLoss class (lines 49-79) which is an alternative implementation of the contrastive loss. The repository contains a genuine implementation of CURL as described in the paper.",
+      "verdict": "implemented",
+      "code_snippet": {
+        "content": "class CURLLoss(nn.Module):\n    def __init__(self, temperature, reduction='mean'):\n        super().__init__()\n        self.temperature = temperature\n        self.reduction = reduction\n        \n    def forward(self, p, z):\n        \"\"\"\n        [params] p: torch.Tensor (n, d)\n        [params] z: torch.Tensor (n, d)\n        \"\"\"\n        # cosine_sim: identical to matmul in l2-normalized space\n        logits = F.cosine_similarity(p.unsqueeze(1), z.unsqueeze(0), dim=-1)\n        logits = logits / self.temperature\n        \n        # compute log-likelihood \n        exp_logits = torch.exp(logits)\n        log_probs = logits - torch.log(torch.sum(exp_logits, 1, keepdim=True))\n        \n        # get log-likelihood of an augmented view\n        aug_idx = torch.eye(p.shape[0], device=p.device)\n        log_probs = aug_idx * log_probs\n        \n        # compute loss\n        mean_log_prob = torch.sum(log_probs, 1) / torch.sum(aug_idx,1)\n        loss = -mean_log_prob\n        \n        if self.reduction == 'mean':\n            return torch.mean(loss)\n        else:\n            return loss",
+        "filepath": "src/common/losses.py",
+        "start_line": 49,
+        "end_line": 79
+      }
+    },
+    "error": null,
+    "duration_seconds": 222.2283719160041
+  },
+  {
+    "paper_id": "investigating_pre_training_objectives_for_generalization_in_vision_based_reinforcement_learning",
+    "annotation_id": "5d48d1f7",
+    "claim_text": "MAE: Masked Autoencoder (He et al., 2022) learns the\nspatial structure of images by reconstructing masked images\nwith transformer encoder-decoder architecture.",
+    "section_ref": "4.2. Learning from Image",
+    "ground_truth_verdict": "implemented",
+    "ground_truth_locations": [
+      {
+        "filepath": "src/trainers/mae.py",
+        "line_range": [
+          13,
+          14
+        ]
+      },
+      {
+        "filepath": "src/trainers/mae.py",
+        "line_range": [
+          53,
+          57
+        ]
+      },
+      {
+        "filepath": "src/models/necks/mae_neck.py",
+        "line_range": [
+          44,
+          45
+        ]
+      },
+      {
+        "filepath": "src/models/necks/mae_neck.py",
+        "line_range": [
+          46,
+          50
+        ]
+      },
+      {
+        "filepath": "src/models/heads/mae_head.py",
+        "line_range": [
+          52,
+          54
+        ]
+      }
+    ],
+    "prediction": {
+      "reasoning": "The content describes MAE (Masked Autoencoder) by He et al., 2022, which learns spatial structure by reconstructing masked images using a transformer encoder-decoder architecture. I searched the repository for MAE-related implementations and found comprehensive code in multiple files: 1) src/trainers/mae.py contains the MAETrainer class that implements the training loop with image masking and reconstruction loss (MSE), 2) src/models/necks/mae_neck.py contains the MAENeck class implementing the transformer encoder portion with random token masking (mask_token method), positional embeddings, and CLS token handling, 3) src/models/heads/mae_head.py contains the MAEHead class implementing the transformer decoder that reconstructs the original images from masked representations, and 4) src/models/layers.py contains the Transformer class and supporting components like Attention, FeedForward, and get_2d_sincos_pos_embed for positional embeddings. These files collectively implement the complete MAE architecture as described in the paper: masking random patches, encoding with transformers, and reconstructing the original image.",
+      "verdict": "implemented",
+      "code_snippet": {
+        "content": "class MAETrainer(BaseTrainer):\n    name = 'mae'\n    def __init__(self,\n                 cfg,\n                 device,\n                 train_loader,\n                 train_sampler,\n                 eval_loader,\n                 eval_sampler,\n                 eval_env,\n                 logger, \n                 aug_func,\n                 model):\n        \n        super().__init__(cfg, \n                         device, \n                         train_loader, \n                         train_sampler,\n                         eval_loader, \n                         eval_sampler, \n                         eval_env,\n                         logger, \n                         aug_func, \n                         model)  \n\n        if self.cfg.resume:\n            self.start_epoch, self.start_step = self.load_checkpoint()        \n\n    def compute_loss(self, batch):\n\n        x_origin = batch['obs']\n        game_id = batch['game_id']\n        n, t, f, c, h, w = x_origin.shape\n\n        # Augmentation\n        x = copy.deepcopy(x_origin)\n        x = rearrange(x, 'n t f c h w -> n (t f c) h w')\n        x = self.aug_func(x)\n        x = rearrange(x, 'n (t f c) h w -> n t f c h w', t=t, f=f, c=c)\n\n        # Forward\n        x, _ = self.model.backbone(x)\n        x, mask_info = self.model.neck(x, game_id) # game-wise spatial embedding\n        x_recon, _ = self.model.head(x, game_id, mask_info) # game-wise prediction head\n        \n        # MSE loss\n        loss = torch.mean((x_recon - x_origin) ** 2)\n\n        # logs        \n        log_data = {'loss': loss.item(),\n                    'x': wandb.Image(x_origin[0,0,0]),\n                    'x_recon': wandb.Image(x_recon[0,0,0])}\n        \n        return loss, log_data",
+        "filepath": "src/trainers/mae.py",
+        "start_line": 13,
+        "end_line": 66
+      }
+    },
+    "error": null,
+    "duration_seconds": 97.88624770799652
+  },
+  {
+    "paper_id": "investigating_pre_training_objectives_for_generalization_in_vision_based_reinforcement_learning",
+    "annotation_id": "89b38c78",
+    "claim_text": "ATC: Augmented Temporal Contrast (Stooke et al., 2021)\nlearns the temporal dynamics of videos using InfoNCE loss.",
+    "section_ref": "4.3. Learning from Video",
+    "ground_truth_verdict": "implemented",
+    "ground_truth_locations": [
+      {
+        "filepath": "src/trainers/atc.py",
+        "line_range": [
+          13,
+          15
+        ]
+      },
+      {
+        "filepath": "src/trainers/atc.py",
+        "line_range": [
+          97,
+          109
+        ]
+      }
+    ],
+    "prediction": {
+      "reasoning": "The content describes ATC (Augmented Temporal Contrast) from Stooke et al., 2021, which learns temporal dynamics using InfoNCE loss. I searched the repository and found a dedicated implementation in src/trainers/atc.py. The ATCTrainer class implements the method with: (1) A momentum encoder architecture using target backbone and neck networks (lines 28-29), (2) Temporal contrast between current and next observations (lines 55-79), (3) InfoNCE-style contrastive loss computed via cross-entropy over cosine similarity matrix (lines 97-106), with temperature scaling (line 99). The implementation follows the paper's description by learning temporal dynamics through contrastive learning between temporally adjacent states, using the standard InfoNCE loss formulation (implemented as cross-entropy in PyTorch). The method also includes exponential moving average (EMA) updates for the target networks (lines 118-122).",
+      "verdict": "implemented",
+      "code_snippet": {
+        "content": "class ATCTrainer(BaseTrainer):\n    name = 'atc'\n    def __init__(self,\n                 cfg,\n                 device,\n                 train_loader,\n                 train_sampler,\n                 eval_loader,\n                 eval_sampler,\n                 eval_env,\n                 logger, \n                 aug_func,\n                 model):\n        \n        # Remember to deepcopy PRIOR to compile/DDP, DDP seems to hate copying from already compiled models\n        self.target_backbone = copy.deepcopy(model.backbone).to(device)\n        self.target_neck = copy.deepcopy(model.neck).to(device)",
+        "filepath": "src/trainers/atc.py",
+        "start_line": 13,
+        "end_line": 29
+      }
+    },
+    "error": null,
+    "duration_seconds": 191.6967502080006
+  },
+  {
+    "paper_id": "investigating_pre_training_objectives_for_generalization_in_vision_based_reinforcement_learning",
+    "annotation_id": "efa2457a",
+    "claim_text": "Siamese Masked Autoencoder (Gupta et al.,\n2023) is an extension of MAE to videos. This variant uses a\nSiamese architecture and an asymmetric masking strategy\nfor temporal information extractio",
+    "section_ref": "4.3. Learning from Video",
+    "ground_truth_verdict": "implemented",
+    "ground_truth_locations": [
+      {
+        "filepath": "src/trainers/siammae.py",
+        "line_range": [
+          12,
+          14
+        ]
+      },
+      {
+        "filepath": "src/trainers/siammae.py",
+        "line_range": [
+          59,
+          66
+        ]
+      },
+      {
+        "filepath": "src/models/necks/siammae_neck.py",
+        "line_range": [
+          91,
+          100
+        ]
+      }
+    ],
+    "prediction": {
+      "reasoning": "The content describes Siamese Masked Autoencoder (SiamMAE) as an extension of MAE to videos using a Siamese architecture and asymmetric masking strategy for temporal information extraction. I searched the repository and found comprehensive implementation:\n\n1. **Siamese Architecture**: In src/trainers/siammae.py (lines 60-62), the code concatenates input frames (x) and target frames (target_x), processes them together through the backbone in a single forward pass, then splits them. This is the core Siamese architecture pattern where two inputs share weights.\n\n2. **Asymmetric Masking Strategy**: In src/models/necks/siammae_neck.py (lines 69-95), the forward method takes an 'is_target' parameter. When is_target=False (for input x), no masking is applied. When is_target=True (for target_x), masking is applied via mask_token() method (lines 46-67). This asymmetric masking is explicitly implemented in the trainer (lines 63-64).\n\n3. **Temporal Information Extraction**: The dataloader loads temporal sequences (t_step parameter in src/dataloaders/default.py), and the model processes observations and next_observations to learn temporal dynamics. The architecture processes frame sequences to extract temporal features.\n\n4. **Video Extension**: The implementation handles video data with temporal dimensions (n, t, f, c, h, w) where t is time steps and f is frames, as seen throughout the trainer and model files.\n\nAll key aspects mentioned in the content are genuinely implemented in the repository.",
+      "verdict": "implemented",
+      "code_snippet": {
+        "content": "        # Forward\n        xtx = torch.cat((x,target_x))\n        xtx, _ = self.model.backbone(xtx)\n        x, target_x = xtx.chunk(2)\n        x, _ = self.model.neck(x, game_id, is_target=False)\n        target_x, mask_info = self.model.neck(target_x, game_id, is_target=True)\n        recon_x, _ = self.model.head(x, target_x, game_id, mask_info)",
+        "filepath": "src/trainers/siammae.py",
+        "start_line": 59,
+        "end_line": 65
+      }
+    },
+    "error": null,
+    "duration_seconds": 63.4808431249985
+  },
+  {
+    "paper_id": "investigating_pre_training_objectives_for_generalization_in_vision_based_reinforcement_learning",
+    "annotation_id": "0a45a8c4",
+    "claim_text": "Self-Predictive Representations (Schwarzer et al.,\n2020b) learn the dynamics of environments by recursively\npredicting future observations in a latent space. We em-\nploy a recurrent neural network for future prediction and a\nmomentum network for encoding target observations.",
+    "section_ref": "4.4. Learning from Demonstration",
+    "ground_truth_verdict": "implemented",
+    "ground_truth_locations": [
+      {
+        "filepath": "src/trainers/spr.py",
+        "line_range": [
+          12,
+          15
+        ]
+      },
+      {
+        "filepath": "src/trainers/spr.py",
+        "line_range": [
+          74,
+          82
+        ]
+      },
+      {
+        "filepath": "src/models/heads/spr_head.py",
+        "line_range": [
+          23,
+          30
+        ]
+      }
+    ],
+    "prediction": {
+      "reasoning": "The content describes Self-Predictive Representations (SPR) by Schwarzer et al. 2020, which learns dynamics by recursively predicting future observations in latent space using a recurrent neural network and a momentum network. I searched the repository for SPR-related implementations and found: (1) src/trainers/spr.py - implements the SPR trainer with momentum encoder (target_backbone and target_neck) that encodes target observations (lines 27-28, 78-81), and exponential moving average updates (lines 124-128); (2) src/models/heads/spr_head.py - implements the recurrent neural network for future prediction using nn.RNN (line 25) that performs transitions in latent space (lines 57-58). The implementation matches the description: it uses a momentum network (target encoder) for encoding target observations, an RNN-based transition model for recursive future prediction, and operates in latent space (after backbone encoding). This is a genuine implementation of the SPR method described in the paper.",
+      "verdict": "implemented",
+      "code_snippet": {
+        "content": "        # momentum encoder\n        with torch.no_grad():\n            target_x, _ = self.target_backbone(target_x)\n            target_x, _ = self.target_neck(target_x, game_id[:,1:])",
+        "filepath": "src/trainers/spr.py",
+        "start_line": 78,
+        "end_line": 81
+      }
+    },
+    "error": null,
+    "duration_seconds": 42.63411591700424
+  }
+]

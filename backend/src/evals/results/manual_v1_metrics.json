@@ -1,0 +1,162 @@
+{
+  "summary": {
+    "total_annotations": 5,
+    "num_errored": 0,
+    "num_with_prediction": 5,
+    "num_filepath_correct": 4,
+    "filepath_accuracy": 0.8,
+    "mean_iou_given_correct_filepath": 0.3971269063180828,
+    "num_annotations_with_iou": 4,
+    "class_accuracy_given_applicable": 1.0,
+    "num_class_correct": 4,
+    "num_class_applicable": 4,
+    "method_accuracy_given_applicable": 0.6666666666666666,
+    "num_method_correct": 2,
+    "num_method_applicable": 3,
+    "mean_duration_seconds": 123.58526577480079,
+    "by_paper": {
+      "investigating_pre_training_objectives_for_generalization_in_vision_based_reinforcement_learning": {
+        "total_annotations": 5,
+        "filepath_accuracy": 0.8,
+        "mean_iou_given_correct_filepath": 0.3971269063180828,
+        "class_accuracy_given_applicable": 1.0,
+        "num_class_applicable": 4,
+        "method_accuracy_given_applicable": 0.6666666666666666,
+        "num_method_applicable": 3
+      }
+    }
+  },
+  "annotations": [
+    {
+      "paper_id": "investigating_pre_training_objectives_for_generalization_in_vision_based_reinforcement_learning",
+      "annotation_id": "61fc660b",
+      "duration_seconds": 222.2283719160041,
+      "had_error": false,
+      "predicted_filepath": "src/common/losses.py",
+      "predicted_line_range": [
+        49,
+        79
+      ],
+      "ground_truth_filepaths": [
+        "src/trainers/curl.py"
+      ],
+      "filepath_correct": false,
+      "best_iou": null,
+      "matched_ground_truth_range": null,
+      "correct_class": null,
+      "correct_method": null,
+      "predicted_class": null,
+      "predicted_method": null,
+      "ground_truth_class": null,
+      "ground_truth_method": null
+    },
+    {
+      "paper_id": "investigating_pre_training_objectives_for_generalization_in_vision_based_reinforcement_learning",
+      "annotation_id": "5d48d1f7",
+      "duration_seconds": 97.88624770799652,
+      "had_error": false,
+      "predicted_filepath": "src/trainers/mae.py",
+      "predicted_line_range": [
+        13,
+        66
+      ],
+      "ground_truth_filepaths": [
+        "src/models/heads/mae_head.py",
+        "src/models/necks/mae_neck.py",
+        "src/trainers/mae.py"
+      ],
+      "filepath_correct": true,
+      "best_iou": 0.09259259259259259,
+      "matched_ground_truth_range": [
+        53,
+        57
+      ],
+      "correct_class": true,
+      "correct_method": false,
+      "predicted_class": "MAETrainer",
+      "predicted_method": null,
+      "ground_truth_class": "MAETrainer",
+      "ground_truth_method": "MAETrainer.compute_loss"
+    },
+    {
+      "paper_id": "investigating_pre_training_objectives_for_generalization_in_vision_based_reinforcement_learning",
+      "annotation_id": "89b38c78",
+      "duration_seconds": 191.6967502080006,
+      "had_error": false,
+      "predicted_filepath": "src/trainers/atc.py",
+      "predicted_line_range": [
+        13,
+        29
+      ],
+      "ground_truth_filepaths": [
+        "src/trainers/atc.py"
+      ],
+      "filepath_correct": true,
+      "best_iou": 0.17647058823529413,
+      "matched_ground_truth_range": [
+        13,
+        15
+      ],
+      "correct_class": true,
+      "correct_method": "not_applicable",
+      "predicted_class": "ATCTrainer",
+      "predicted_method": null,
+      "ground_truth_class": "ATCTrainer",
+      "ground_truth_method": null
+    },
+    {
+      "paper_id": "investigating_pre_training_objectives_for_generalization_in_vision_based_reinforcement_learning",
+      "annotation_id": "efa2457a",
+      "duration_seconds": 63.4808431249985,
+      "had_error": false,
+      "predicted_filepath": "src/trainers/siammae.py",
+      "predicted_line_range": [
+        59,
+        65
+      ],
+      "ground_truth_filepaths": [
+        "src/models/necks/siammae_neck.py",
+        "src/trainers/siammae.py"
+      ],
+      "filepath_correct": true,
+      "best_iou": 0.875,
+      "matched_ground_truth_range": [
+        59,
+        66
+      ],
+      "correct_class": true,
+      "correct_method": true,
+      "predicted_class": "SiamMAETrainer",
+      "predicted_method": "SiamMAETrainer.compute_loss",
+      "ground_truth_class": "SiamMAETrainer",
+      "ground_truth_method": "SiamMAETrainer.compute_loss"
+    },
+    {
+      "paper_id": "investigating_pre_training_objectives_for_generalization_in_vision_based_reinforcement_learning",
+      "annotation_id": "0a45a8c4",
+      "duration_seconds": 42.63411591700424,
+      "had_error": false,
+      "predicted_filepath": "src/trainers/spr.py",
+      "predicted_line_range": [
+        78,
+        81
+      ],
+      "ground_truth_filepaths": [
+        "src/models/heads/spr_head.py",
+        "src/trainers/spr.py"
+      ],
+      "filepath_correct": true,
+      "best_iou": 0.4444444444444444,
+      "matched_ground_truth_range": [
+        74,
+        82
+      ],
+      "correct_class": true,
+      "correct_method": true,
+      "predicted_class": "SPRTrainer",
+      "predicted_method": "SPRTrainer.compute_loss",
+      "ground_truth_class": "SPRTrainer",
+      "ground_truth_method": "SPRTrainer.compute_loss"
+    }
+  ]
+}
