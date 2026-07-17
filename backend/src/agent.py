@@ -234,7 +234,8 @@ class Agent:
         self,
         content: str | bytes,
         repo_url: str,
-        context: str
+        context: str,
+        top_k: int = 5
     ) -> ContentToCodeResult:
         """
             Maps a small piece of content to relevant code snippets. 
@@ -244,6 +245,7 @@ class Agent:
                 content: A piece of text from the paper, or an image of content like formulas. 
                 repo_path: Path to the repository of the code. 
                 context: Optional context about the content - surrounding text, paper abstract, caption (for figures).
+                top_k: Maximum number of reranked code snippets to return.
         """
 
         if isinstance(content, str):
@@ -288,7 +290,7 @@ class Agent:
         final = ContentToCodeResult(
             reasoning=parsed_result.get("reasoning"),
             verdict=parsed_result.get("verdict"),
-            code_snippet=None
+            code_snippets=[]
         )
 
         logger.info(
@@ -306,9 +308,14 @@ class Agent:
                 len(reranked_results),
             )
 
-            top_rank_index = max(reranked_results, key=lambda x: x.get("relevance_score")).get("index")
-            final.code_snippet = code_snippets[top_rank_index]
-            
+            ranked_indices = [
+                result.get("index")
+                for result in sorted(
+                    reranked_results, key=lambda x: x.get("relevance_score"), reverse=True
+                )
+            ]
+            final.code_snippets = [code_snippets[index] for index in ranked_indices[:top_k]]
+
         return final.model_dump()
 
     async def map_code_to_content(
