@@ -22,6 +22,7 @@ import { captureSelectionHighlightsFromRange } from '../utils/selectionRangeToPa
 import { usePDFTextSelection } from '../hooks/useTextSelection.tsx';
 import { useCeleryTaskStatus } from '../hooks/useCeleryTaskStatus.ts';
 import { UserContext } from '../context/UserContext.tsx';
+import { useSidePanel } from '../context/SidePanelContext.tsx';
 import ThemeToggle from './ThemeToggle';
 
 interface PaperViewProps {
@@ -230,7 +231,7 @@ function PdfPageList({
                 const scaleX = pageDimensions.width / viewport.width;
                 const scaleY = pageDimensions.height / viewport.height;
 
-                const codeSnippet = codeMatch.outputs.code_snippet;
+                const codeSnippets = codeMatch.outputs.code_snippets ?? [];
 
                 boxes.push({
                     page: pageIndex,
@@ -239,10 +240,10 @@ function PdfPageList({
                     width: box.w * viewport.width * scaleX,
                     height: box.h * viewport.height * scaleY * 1.5,
                     hitKey: `map-${codeMatch.cache_key ?? k}-${k}`,
-                    file_infos: codeSnippet
-                        ? [`${codeSnippet.filepath}:${codeSnippet.start_line}-${codeSnippet.end_line}`]
-                        : [],
-                    code_snippets: codeSnippet ? [codeSnippet] : [],
+                    file_infos: codeSnippets.map(
+                        (snippet) => `${snippet.filepath}:${snippet.start_line}-${snippet.end_line}`,
+                    ),
+                    code_snippets: codeSnippets,
                     description: codeMatch.outputs.reasoning,
                     variant: 'overlay',
                     color: CODE_MATCH_VERDICT_TO_COLOR[codeMatch.outputs.verdict] ?? CODE_MATCH_VERDICT_TO_COLOR.not_implemented,
@@ -289,6 +290,43 @@ function PdfPageList({
                     </Overlay>
                     </PageWrapper>
             ))}
+        </div>
+    );
+}
+
+/**
+ * Flat segmented pill list for jumping directly between all snippet candidates of the
+ * currently open match. Adjacent pills sharing a filepath are visually grouped. Renders
+ * nothing when there's nothing to switch between.
+ */
+function CandidateSnippetPills() {
+    const { codeInfo, selectCandidate } = useSidePanel();
+    const candidates = codeInfo?.candidates ?? [];
+
+    if (candidates.length < 2) {
+        return null;
+    }
+
+    return (
+        <div className="candidate-pill-list" role="tablist" aria-label="Matched code snippets">
+            {candidates.map((candidate, index) => {
+                const basename = candidate.filePath.split('/').pop() ?? candidate.filePath;
+                const isActive = index === codeInfo?.activeCandidateIndex;
+                const sameFileAsPrev = index > 0 && candidates[index - 1].filePath === candidate.filePath;
+                return (
+                    <button
+                        key={`${candidate.filePath}-${candidate.startLine}-${candidate.endLine}-${index}`}
+                        type="button"
+                        role="tab"
+                        aria-selected={isActive}
+                        title={candidate.filePath}
+                        className={`candidate-pill-list__pill${isActive ? ' candidate-pill-list__pill--active' : ''}${sameFileAsPrev ? ' candidate-pill-list__pill--grouped' : ''}`}
+                        onClick={() => selectCandidate(index)}
+                    >
+                        {basename}:{candidate.startLine}-{candidate.endLine}
+                    </button>
+                );
+            })}
         </div>
     );
 }
@@ -544,6 +582,7 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
                         {/* <button type="button" className="outline-action-btn" onClick={hideCode}>
                             Close
                         </button> */}
+                        <CandidateSnippetPills />
                     </div>
                     <div className="paper-view-layout__code-scroll">
                         {<RepoView tree={tree} paperId={paperId} setPaperContentMatches={setPaperContentMatches} />}

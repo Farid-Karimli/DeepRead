@@ -181,7 +181,7 @@ interface paperContentToCodeMatch {
     outputs: {
         verdict: string,
         reasoning: string,
-        code_snippet: codeSnippet | null,
+        code_snippets: codeSnippet[],
     }
 }
 
@@ -206,13 +206,13 @@ interface codeToContentMatch {
 interface mapContentTaskResponse {
     status: string;
     task_id: string | null;
-    result: codeSnippet | null
+    result: codeSnippet[] | null
 }
 
 
 interface mapContentResponse {
     status: string;
-    result: codeSnippet | null;
+    result: codeSnippet[] | null;
 }
 
 interface codeToContentMappingResult {
