@@ -382,6 +382,7 @@ const RepoView = ({ tree, paperId, setPaperContentMatches }: RepoViewProps) => {
                 scrollFocusStart={scrollFocusRange?.start}
                 scrollFocusEnd={scrollFocusRange?.end}
                 onShowInPaper={handleShowInPaper}
+                filepath={currentPath}
             /> : <div className="repo-tree__list">
                 {getCurrentFiles().map((file, index) => (
                     <div key={index} className="repo-tree__row">

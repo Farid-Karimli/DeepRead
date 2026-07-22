@@ -8,11 +8,21 @@ import {
   TransformContext,
 } from '@allenai/pdf-components';
 import { SlArrowLeft, SlArrowRight } from "react-icons/sl";
-
+import ShikiHighlighter from 'react-shiki';
 
 import * as React from 'react';
 import { createPortal } from 'react-dom';
 import { useSidePanel } from '../context/SidePanelContext.tsx';
+import { useTheme } from '../context/ThemeContext';
+import { getShikiLanguage } from '../utils/codeLanguage';
+
+/** First N lines of a snippet shown in the tooltip preview, to keep it glanceable. */
+const TOOLTIP_PREVIEW_LINE_COUNT = 6;
+
+function previewExcerpt(content: string | undefined): string {
+  if (!content) return '';
+  return content.split('\n').slice(0, TOOLTIP_PREVIEW_LINE_COUNT).join('\n');
+}
 
 /** Geometry matches `BoundingBox`; `tooltip` is shown on hover (native + optional floating). */
 export type BoundingBoxWithTooltip = BoundingBoxType & {
@@ -55,6 +65,7 @@ function PdfBoundingHitTarget({
   const leaveTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { showCode } = useSidePanel();
+  const { resolvedTheme } = useTheme();
 
   const [codeIndex, setCodeIndex] = React.useState(0);
 
@@ -72,6 +83,12 @@ function PdfBoundingHitTarget({
       codeRanges: forFile.map((t) => ({ startLine: t.start_line, endLine: t.end_line })),
       scrollToRange: { startLine: s.start_line, endLine: s.end_line },
       description: box.description || '',
+      candidates: codeSnippets.map((snippet) => ({
+        filePath: snippet.filepath,
+        startLine: snippet.start_line,
+        endLine: snippet.end_line,
+      })),
+      activeCandidateIndex: index,
     });
   };
   const { top, left, width, height } = computeBoundingBoxStyle(
@@ -126,12 +143,23 @@ function PdfBoundingHitTarget({
           setFloating(null);
         }}
       >
-        <div className="pdf-hit-tooltip__description">
+        {/* <div className="pdf-hit-tooltip__description">
           {box.content_type ? `[${box.content_type}] ` : ''}
           {box.description}
-        </div>
+        </div> */}
         {box.code_snippets.length > 0 && (
           <div className="pdf-hit-tooltip__path">{box.file_infos[codeIndex]}</div>
+        )}
+        {box.code_snippets.length > 0 && (
+          <div className="pdf-hit-tooltip__preview">
+            <ShikiHighlighter
+              theme={resolvedTheme === 'dark' ? 'github-dark' : 'github-light'}
+              language={getShikiLanguage(box.code_snippets[codeIndex]?.filepath)}
+              showLineNumbers={false}
+            >
+              {previewExcerpt(box.code_snippets[codeIndex]?.content)}
+            </ShikiHighlighter>
+          </div>
         )}
         {box.code_snippets.length > 0 && (
         <div className="pdf-hit-tooltip__actions">
@@ -169,6 +197,11 @@ function PdfBoundingHitTarget({
             <span className="pdf-hit-tooltip__icon-spacer" aria-hidden />
           )}
         </div>
+        )}
+        {box.code_snippets.length > 1 && (
+          <div className="pdf-hit-tooltip__counter">
+            {codeIndex + 1} / {box.code_snippets.length}
+          </div>
         )}
       </div>,
       document.body,

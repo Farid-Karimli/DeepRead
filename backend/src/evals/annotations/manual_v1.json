@@ -1,0 +1,1444 @@
+{
+  "papers": [
+    {
+      "paper_id": "investigating_pre_training_objectives_for_generalization_in_vision_based_reinforcement_learning",
+      "title": "Investigating Pre-Training Objectives for Generalization in Vision-Based Reinforcement Learning",
+      "abstract": "Recently, various pre-training methods have been\nintroduced in vision-based Reinforcement Learn-\ning (RL). However, their generalization ability\nremains unclear due to evaluations being limited\nto in-distribution environments and non-unified\nexperimental setups. To address this, we intro-\nduce the Atari Pre-training Benchmark (Atari-\nPB), which pre-trains a ResNet-50 model on\n10 million transitions from 50 Atari games and\nevaluates it across diverse environment distribu-\ntions. Our experiments show that pre-training\nobjectives focused on learning task-agnostic fea-\ntures (e.g., identifying objects and understand-\ning temporal dynamics) enhance generalization\nacross different environments. In contrast, ob-\njectives focused on learning task-specific knowl-\nedge (e.g., identifying agents and fitting reward\nfunctions) improve performance in environments\nsimilar to the pre-training dataset but not in\nvaried ones. We publicize our codes, datasets,\nand model checkpoints at https://github.\ncom/dojeon-ai/Atari-PB.",
+      "repo_path": "https://github.com/dojeon-ai/Atari-PB.",
+      "annotations": [
+        {
+          "annotation_id": "61fc660b",
+          "claim_text": "CURL: Contrastive Unsupervised Reinforcement Learning\n(Laskin et al., 2020b) learns the spatial feature of images\nusing augmentation functions and InfoNCE loss.",
+          "section_ref": "4.2. Learning from Image",
+          "verdict": "implemented",
+          "locations": [
+            {
+              "filepath": "src/trainers/curl.py",
+              "line_range": [
+                13,
+                25
+              ]
+            },
+            {
+              "filepath": "src/trainers/curl.py",
+              "line_range": [
+                89,
+                97
+              ]
+            },
+            {
+              "filepath": "src/trainers/curl.py",
+              "line_range": [
+                59,
+                65
+              ]
+            }
+          ],
+          "notes": "(1) Point to CURL trainer (2) CURL's loss calculation (3) CURL's augmentations",
+          "created_at": "2026-07-06T16:22:21.547791"
+        },
+        {
+          "annotation_id": "5d48d1f7",
+          "claim_text": "MAE: Masked Autoencoder (He et al., 2022) learns the\nspatial structure of images by reconstructing masked images\nwith transformer encoder-decoder architecture.",
+          "section_ref": "4.2. Learning from Image",
+          "verdict": "implemented",
+          "locations": [
+            {
+              "filepath": "src/trainers/mae.py",
+              "line_range": [
+                13,
+                14
+              ]
+            },
+            {
+              "filepath": "src/trainers/mae.py",
+              "line_range": [
+                53,
+                57
+              ]
+            },
+            {
+              "filepath": "src/models/necks/mae_neck.py",
+              "line_range": [
+                44,
+                45
+              ]
+            },
+            {
+              "filepath": "src/models/necks/mae_neck.py",
+              "line_range": [
+                46,
+                50
+              ]
+            },
+            {
+              "filepath": "src/models/heads/mae_head.py",
+              "line_range": [
+                52,
+                54
+              ]
+            }
+          ],
+          "notes": "(1)  Point to MAE trainer (2) Reconstruction of masked images in the forward method (3) transformer encoder in MAE neck (4) image masking method in MAE neck (5) transformer decoder in MAE head",
+          "created_at": "2026-07-06T16:33:49.244332"
+        },
+        {
+          "annotation_id": "89b38c78",
+          "claim_text": "ATC: Augmented Temporal Contrast (Stooke et al., 2021)\nlearns the temporal dynamics of videos using InfoNCE loss.",
+          "section_ref": "4.3. Learning from Video",
+          "verdict": "implemented",
+          "locations": [
+            {
+              "filepath": "src/trainers/atc.py",
+              "line_range": [
+                13,
+                15
+              ]
+            },
+            {
+              "filepath": "src/trainers/atc.py",
+              "line_range": [
+                97,
+                109
+              ]
+            }
+          ],
+          "notes": "(1) Point to ATC trainer (2) InfoNCE computation in ATC trainer",
+          "created_at": "2026-07-06T16:48:37.625711"
+        },
+        {
+          "annotation_id": "efa2457a",
+          "claim_text": "Siamese Masked Autoencoder (Gupta et al.,\n2023) is an extension of MAE to videos. This variant uses a\nSiamese architecture and an asymmetric masking strategy\nfor temporal information extractio",
+          "section_ref": "4.3. Learning from Video",
+          "verdict": "implemented",
+          "locations": [
+            {
+              "filepath": "src/trainers/siammae.py",
+              "line_range": [
+                12,
+                14
+              ]
+            },
+            {
+              "filepath": "src/trainers/siammae.py",
+              "line_range": [
+                59,
+                66
+              ]
+            },
+            {
+              "filepath": "src/models/necks/siammae_neck.py",
+              "line_range": [
+                91,
+                100
+              ]
+            }
+          ],
+          "notes": "(1) SIAMMAE trainer (2) Masked reconstr. compute loss of SIAMMAE (3)  Reconstruction of masked video region in forward of SIAMMAE neck",
+          "created_at": "2026-07-06T16:53:38.355468"
+        },
+        {
+          "annotation_id": "0a45a8c4",
+          "claim_text": "Self-Predictive Representations (Schwarzer et al.,\n2020b) learn the dynamics of environments by recursively\npredicting future observations in a latent space. We em-\nploy a recurrent neural network for future prediction and a\nmomentum network for encoding target observations.",
+          "section_ref": "4.4. Learning from Demonstration",
+          "verdict": "implemented",
+          "locations": [
+            {
+              "filepath": "src/trainers/spr.py",
+              "line_range": [
+                12,
+                15
+              ]
+            },
+            {
+              "filepath": "src/trainers/spr.py",
+              "line_range": [
+                74,
+                82
+              ]
+            },
+            {
+              "filepath": "src/models/heads/spr_head.py",
+              "line_range": [
+                23,
+                30
+              ]
+            }
+          ],
+          "notes": "(1) SPR trainer (2) prediction and momentum encoder (3) RNN instantiation in SPR head",
+          "created_at": "2026-07-06T17:01:42.055765"
+        },
+        {
+          "annotation_id": "5475f170",
+          "claim_text": "IDM: Inverse Dynamics Modeling (Christiano et al., 2016)\nlearns to predict the action between consecutive observa-\ntions. Similar to BC, IDM focuses on learning task-relevant\ninformation as it seeks to understand the cause-and-effect\ndynamics within the environments (Islam et al., 2022)",
+          "section_ref": "4.4. Learning from Demonstration",
+          "verdict": "implemented",
+          "locations": [
+            {
+              "filepath": "src/trainers/idm.py",
+              "line_range": [
+                11,
+                13
+              ]
+            },
+            {
+              "filepath": "src/trainers/idm.py",
+              "line_range": [
+                56,
+                62
+              ]
+            }
+          ],
+          "notes": "(1) IDM Trainer (2) Predicting actions between current and future frames  (3)",
+          "created_at": "2026-07-06T17:16:56.723898"
+        },
+        {
+          "annotation_id": "e7c20af5",
+          "claim_text": "Conservative Q-Learning (Kumar et al., 2020) inte-\ngrates temporal difference loss with conservative Q-learning\nloss. Its main objective is to accurately approximate the Bell-\nman target while minimizing the overestimation of actions\nthat are absent in the offline data.",
+          "section_ref": "4.5. Learning from Trajectory",
+          "verdict": "implemented",
+          "locations": [
+            {
+              "filepath": "src/trainers/cql.py",
+              "line_range": [
+                10,
+                12
+              ]
+            },
+            {
+              "filepath": "src/trainers/cql.py",
+              "line_range": [
+                128,
+                140
+              ]
+            }
+          ],
+          "notes": "(1) point to SQL  trainer (2) Temporal different loss + Q learning loss calculation (3)",
+          "created_at": "2026-07-06T17:30:58.182989"
+        },
+        {
+          "annotation_id": "d8974e2c",
+          "claim_text": "Decision Transformer (Chen et al., 2021) redefines RL\nas a sequence modeling problem. The network is trained to\npredict actions based on given states and desired cumulative\nrewards. During inference, the agent predicts the optimal\nactions needed to achieve a specified cumulative rewar",
+          "section_ref": "4.5. Learning from Trajectory",
+          "verdict": "implemented",
+          "locations": [
+            {
+              "filepath": "src/trainers/dt.py",
+              "line_range": [
+                13,
+                15
+              ]
+            },
+            {
+              "filepath": "src/trainers/dt.py",
+              "line_range": [
+                73,
+                84
+              ]
+            },
+            {
+              "filepath": "src/models/necks/dt_neck.py",
+              "line_range": [
+                45,
+                54
+              ]
+            },
+            {
+              "filepath": "src/models/necks/dt_neck.py",
+              "line_range": [
+                93,
+                102
+              ]
+            }
+          ],
+          "notes": "(1) DT trainer (2) Prediction and CE loss in sequential modeling manner. (3) Defining transformer encoder in DT neck (4) Building sequence of inputs for prediction DT neck's forward pass",
+          "created_at": "2026-07-06T17:40:00.788862"
+        },
+        {
+          "annotation_id": "893e1818",
+          "claim_text": "Our backbone utilizes a modified version of the ResNet-50 architecture (He et al., 2016). It is designed to process input images $o \\in \\mathbb{R}^{C \\times H \\times W}$ and encode them into spatial feature maps $z = f(o)$, where $z \\in \\mathbb{R}^{D_z \\times H_z \\times W_z}$.",
+          "section_ref": "5.2. Model",
+          "verdict": "implemented",
+          "locations": [
+            {
+              "filepath": "src/models/backbones/resnet.py",
+              "line_range": [
+                81,
+                83
+              ]
+            },
+            {
+              "filepath": "src/models/backbones/resnet.py",
+              "line_range": [
+                137,
+                146
+              ]
+            }
+          ],
+          "notes": "",
+          "created_at": "2026-07-06T17:43:58.630781"
+        },
+        {
+          "annotation_id": "ff93a88d",
+          "claim_text": "The dataset for Atari-PB is derived from the DQN-Replay-\nDataset (Agarwal et al., 2020).",
+          "section_ref": "5.1. Dataset",
+          "verdict": "implemented",
+          "locations": [
+            {
+              "filepath": "src/common/dataset_utils.py",
+              "line_range": [
+                134,
+                145
+              ]
+            },
+            {
+              "filepath": "src/dataloaders/__init__.py",
+              "line_range": [
+                23,
+                43
+              ]
+            }
+          ],
+          "notes": "(1) dataset util for loading DQN replay (2) preparing DQN replay for Atari PB",
+          "created_at": "2026-07-06T17:54:03.028863"
+        },
+        {
+          "annotation_id": "d0cf1fff",
+          "claim_text": "Offline BC: In this scenario, the model undergoes fine-\ntuning through behavior cloning using 50,000 frames\nfrom expert demonstration",
+          "section_ref": "5.4. Fine-tuning",
+          "verdict": "implemented",
+          "locations": [
+            {
+              "filepath": "run_offline_bc.py",
+              "line_range": null
+            }
+          ],
+          "notes": "",
+          "created_at": "2026-07-06T17:56:36.161971"
+        },
+        {
+          "annotation_id": "c58f2e9b",
+          "claim_text": "Online RL: In this scenario, the model is fine-tuned\nusing the Rainbow algorithm (Hessel et al., 2018), with\n50,000 interactions in each respective environment",
+          "section_ref": "5.4. Fine-tuning",
+          "verdict": "implemented",
+          "locations": [
+            {
+              "filepath": "run_online_rl.py",
+              "line_range": null
+            },
+            {
+              "filepath": "src/agents/rainbow.py",
+              "line_range": [
+                11,
+                13
+              ]
+            },
+            {
+              "filepath": "configs/online_rl.yaml",
+              "line_range": [
+                21,
+                23
+              ]
+            }
+          ],
+          "notes": "(1) Run Online RL script (2) Agent for online RL with Rainbow algorithm (3) mention of rainbow agent in online_rl yaml file",
+          "created_at": "2026-07-06T18:02:08.095526"
+        }
+      ]
+    },
+    {
+      "paper_id": "inference_time_intervention_eliciting_truthful_answers_from_a_language_mode",
+      "title": "Inference-Time Intervention: Eliciting Truthful Answers from a Language Mode",
+      "abstract": "We introduce Inference-Time Intervention (ITI), a technique designed to enhance\nthe \u201ctruthfulness\u201d of large language models (LLMs). ITI operates by shifting model\nactivations during inference, following a set of directions across a limited num-\nber of attention heads. This intervention significantly improves the performance\nof LLaMA models on the TruthfulQA benchmark. On an instruction-finetuned\nLLaMA called Alpaca, ITI improves its truthfulness from 32.5% to 65.1%. We\nidentify a trade-off between truthfulness and helpfulness and demonstrate how to\nbalance it by tuning the intervention strength. ITI is minimally invasive and compu-\ntationally inexpensive. Moreover, the technique is data efficient: while approaches\nlike RLHF require extensive annotations, ITI locates truthful directions using only\nfew hundred examples. Our findings suggest that LLMs may have an internal repre-\nsentation of the likelihood of something being true, even as they produce falsehoods\non the surface. Code: https://github.com/likenneth/honest_llama",
+      "repo_path": "https://github.com/likenneth/honest_llama",
+      "annotations": [
+        {
+          "annotation_id": "e057ec74",
+          "claim_text": "Dataset. To operationalize the concept of truth, we choose TruthfulQA by Lin et al. (2021), a\ndataset adversarially constructed that some humans would perform poorly due to false beliefs or\nmisconceptions",
+          "section_ref": "3.1 Setup",
+          "verdict": "implemented",
+          "locations": [
+            {
+              "filepath": "utils.py",
+              "line_range": [
+                748,
+                749
+              ]
+            },
+            {
+              "filepath": "finetune_gpt.ipynb",
+              "line_range": [
+                5,
+                11
+              ]
+            }
+          ],
+          "notes": "",
+          "created_at": "2026-07-06T20:26:24.777866"
+        },
+        {
+          "annotation_id": "069557e9",
+          "claim_text": "For each QA pair in TruthfulQA, we concatenate the question and answer together and take out head activations at the last token to collect a probing dataset $\\{(x^h_l, y)_i\\}_{i=1}^N$ for each head in each layer. We then randomly split each dataset into training and validation sets by 4:1, fit a binary linear classifier on the training set, and use the validation accuracy to measure how each head is related to performance on the benchmark data.",
+          "section_ref": "3.2 Probing for \u201cTruthfulness\u201d",
+          "verdict": "implemented",
+          "locations": [
+            {
+              "filepath": "utils.py",
+              "line_range": [
+                747,
+                765
+              ]
+            },
+            {
+              "filepath": "utils.py",
+              "line_range": [
+                687,
+                704
+              ]
+            }
+          ],
+          "notes": "(1) Separation of activations (2) Training binary probes on each activation",
+          "created_at": "2026-07-06T20:40:34.729359"
+        },
+        {
+          "annotation_id": "fee0c5e1",
+          "claim_text": "Following this observation, we only intervene on the results of the top K heads so as to be minimally\ninvasive.",
+          "section_ref": "3.3 Inference-Time Intervention",
+          "verdict": "implemented",
+          "locations": [
+            {
+              "filepath": "validation/validate_2fold.py",
+              "line_range": [
+                156,
+                157
+              ]
+            },
+            {
+              "filepath": "utils.py",
+              "line_range": [
+                707,
+                720
+              ]
+            }
+          ],
+          "notes": "(1) Get top heads in validation (2) calculate top heads after training probes",
+          "created_at": "2026-07-06T20:46:26.615469",
+          "updated_at": "2026-07-09T18:00:11.287277"
+        },
+        {
+          "annotation_id": "557a6a4b",
+          "claim_text": "A second subtlety lies in how we determine the vector used to shift activations in the output of a\ngiven head. As seen in Figure 2(B), the geometry of true versus false statements is complex. In\nselecting a direction for shifting activations, there are two natural choices: the vector orthogonal to\nthe separating hyperplane learned by the probe and the vector connecting the means of the true and\nfalse distributions. The latter connects to the whitening and coloring transformation commonly used\nin deep learning (Ioffe and Szegedy, 2015; Huang and Belongie, 2017). Comparison experiments and\nfurther discussion on different intervention directions can be found in Table 3 and Appendix B.",
+          "section_ref": "3.3 Inference-Time Intervention",
+          "verdict": "implemented",
+          "locations": [
+            {
+              "filepath": "validation/validate_2fold.py",
+              "line_range": [
+                167,
+                176
+              ]
+            },
+            {
+              "filepath": "validation/validate_2fold.py",
+              "line_range": [
+                153,
+                154
+              ]
+            },
+            {
+              "filepath": "utils.py",
+              "line_range": [
+                772,
+                781
+              ]
+            }
+          ],
+          "notes": "(1) Passing direction into Intervener during validation (2) Calculating intervention directions",
+          "created_at": "2026-07-06T20:52:06.159352"
+        },
+        {
+          "annotation_id": "00f83386",
+          "claim_text": "$x_{l+1} = x_l + \\sum_{h=1}^{H} Q^h_l \\left(\\mathrm{Att}^h_l(P^h_l x_l) + \\alpha \\sigma^h_l \\theta^h_l\\right).$",
+          "section_ref": "Equation 2",
+          "verdict": "implemented",
+          "locations": [
+            {
+              "filepath": "interveners.py",
+              "line_range": [
+                41,
+                45
+              ]
+            },
+            {
+              "filepath": "validation/validate_2fold.py",
+              "line_range": [
+                167,
+                177
+              ]
+            }
+          ],
+          "notes": "",
+          "created_at": "2026-07-09T17:14:29.253845"
+        },
+        {
+          "annotation_id": "edb3e102",
+          "claim_text": "Our method contains two key parameters: $K \\in \\mathbb{N}^+$, the number of heads where the intervention takes place, and $\\alpha \\in \\mathbb{R}^+$, the \u201cstrength\u201d of the intervention.",
+          "section_ref": "3.4 Inference-Time Intervention",
+          "verdict": "implemented",
+          "locations": [
+            {
+              "filepath": "validation/validate_2fold.py",
+              "line_range": [
+                60,
+                62
+              ]
+            }
+          ],
+          "notes": "Parser arguments",
+          "created_at": "2026-07-09T17:19:27.496905"
+        },
+        {
+          "annotation_id": "6654d21e",
+          "claim_text": "Our probe takes the form $p_\\theta(x^h_l) = \\mathrm{sigmoid}(\\langle \\theta, x^h_l \\rangle)$, where $\\theta \\in \\mathbb{R}^D$. There is one probe per attention head per layer: the vector $x^h_l$ represents the value that the h-th attention head in layer l will contribute to the residual stream.",
+          "section_ref": "3.2 Probing for \u201cTruthfulness\u201d",
+          "verdict": "implemented",
+          "locations": [
+            {
+              "filepath": "utils.py",
+              "line_range": [
+                697,
+                698
+              ]
+            }
+          ],
+          "notes": "LogisticRegression fitting",
+          "created_at": "2026-07-09T17:20:27.945914"
+        },
+        {
+          "annotation_id": "f96efd8d",
+          "claim_text": "Since human annotation is expensive, Lin et al. (2021) propose to use two finetuned GPT-3-13B models (GPT-judge) to classify each answer as true or false and informative or not. Evaluation using GPT-judge is standard practice on TruthfulQA (Nakano et al. (2021); Rae et al. (2021); Askell et al. (2021)).",
+          "section_ref": "4.1 Evaluation on TruthfulQA",
+          "verdict": "implemented",
+          "locations": [
+            {
+              "filepath": "finetune_gpt.ipynb",
+              "line_range": null
+            }
+          ],
+          "notes": "Finetuning to create twp GPTJudge models",
+          "created_at": "2026-07-09T17:38:02.715375"
+        },
+        {
+          "annotation_id": "21c33a81",
+          "claim_text": "To calibrate the strength of the intervention, we report two additional quantities that measure how\nfar LLaMA-7B deviates from its original generation distribution. Cross Entropy (CE) is a standard\nmetric for language model pretraining. The other is the Kullback\u2013Leibler divergence (KL) of the\nmodel\u2019s next-token prediction distribution post- versus pre-intervention.",
+          "section_ref": "",
+          "verdict": "implemented",
+          "locations": [
+            {
+              "filepath": "utils.py",
+              "line_range": [
+                426,
+                463
+              ]
+            },
+            {
+              "filepath": "utils.py",
+              "line_range": [
+                464,
+                519
+              ]
+            }
+          ],
+          "notes": "(1) CE loss (2) KL loss",
+          "created_at": "2026-07-09T17:51:11.558023"
+        },
+        {
+          "annotation_id": "83870c9c",
+          "claim_text": "Similar to principal component analysis (PCA), we train a second linear probe $p_{\\theta'}$ on the same training set but with a constraint of $\\theta' \\perp \\theta$ like Roger (2023). While being orthogonal to the first truthful direction, $\\theta'$ is the direction that best separates the two classes, maximizing the informativeness of the visualization.",
+          "section_ref": "",
+          "verdict": "not_implemented",
+          "locations": [],
+          "notes": "Can't find the second probe in the codebase",
+          "created_at": "2026-07-09T18:01:38.652539"
+        },
+        {
+          "annotation_id": "dbdd52d9",
+          "claim_text": "We evaluate ITI on the TruthfulQA benchmark, which has 817 questions spanning 38 subcategories.\nTruthfulQA comes with two tracks: multiple-choice and generation",
+          "section_ref": "",
+          "verdict": "implemented",
+          "locations": [
+            {
+              "filepath": "utils.py",
+              "line_range": [
+                499,
+                652
+              ]
+            }
+          ],
+          "notes": "(1) all_tqa_evaluate function",
+          "created_at": "2026-07-09T18:06:30.645316"
+        },
+        {
+          "annotation_id": "25766275",
+          "claim_text": "Finally, we compare three different directions for the ITI activation shift. Probe Weight Direction is\nthe direction found by linear probing in subsection 3.2. Intervening in this direction is equivalent to\ndoing one gradient descent step on the head activation to maximize its probability of being predicted\nas truthful. Mass Mean Shift works by first calculating the average of truthful and false activations\nand then using the vector pointing from the false mean to the truthful mean for intervention. As a\nbaseline, we also apply the Contrast-Consistent Search (CCS) technique, where the direction is\nfound while only knowing pairwise information of internal activations (Burns et al., 2022).",
+          "section_ref": "3.2 Probing for \u201cTruthfulness\u201d",
+          "verdict": "not_implemented",
+          "locations": [],
+          "notes": "There's not pre-defined \"list\" of directions anywhere to be found...",
+          "created_at": "2026-07-09T18:12:15.341115"
+        }
+      ]
+    },
+    {
+      "paper_id": "lora_low_rank_adaptation_of_large_lan_guage_models",
+      "title": "LORA: LOW-RANK ADAPTATION OF LARGE LAN-GUAGE MODELS",
+      "abstract": "An important paradigm of natural language processing consists of large-scale pretraining on general domain data and adaptation to particular tasks or domains. As\nwe pre-train larger models, full fine-tuning, which retrains all model parameters,\nbecomes less feasible. Using GPT-3 175B as an example \u2013 deploying independent instances of fine-tuned models, each with 175B parameters, is prohibitively\nexpensive. We propose Low-Rank Adaptation, or LoRA, which freezes the pretrained model weights and injects trainable rank decomposition matrices into each\nlayer of the Transformer architecture, greatly reducing the number of trainable parameters for downstream tasks. Compared to GPT-3 175B fine-tuned with Adam,\nLoRA can reduce the number of trainable parameters by 10,000 times and the\nGPU memory requirement by 3 times. LoRA performs on-par or better than finetuning in model quality on RoBERTa, DeBERTa, GPT-2, and GPT-3, despite having fewer trainable parameters, a higher training throughput, and, unlike adapters,no additional inference latency. We also provide an empirical investigation into\nrank-deficiency in language model adaptation, which sheds light on the efficacy of\nLoRA. We release a package that facilitates the integration of LoRA with PyTorch\nmodels and provide our implementations and model checkpoints for RoBERTa,\nDeBERTa, and GPT-2 at https://github.com/microsoft/LoRA.",
+      "repo_path": "https://github.com/microsoft/LoRA",
+      "annotations": [
+        {
+          "annotation_id": "0f43fdd3",
+          "claim_text": "For a pre-trained weight matrix $W_0 \\in \\mathbb{R}^{d \\times k}$, we constrain its update by representing the latter with a low-rank decomposition $W_0 + \\Delta W = W_0 + BA$, where $B \\in \\mathbb{R}^{d \\times r}$, $A \\in \\mathbb{R}^{r \\times k}$, and the rank $r \\ll \\min(d, k)$.",
+          "section_ref": "4.1 LOW-RANK-PARAMETRIZED UPDATE MATRICES",
+          "verdict": "implemented",
+          "locations": [
+            {
+              "filepath": "loralib/layers.py",
+              "line_range": [
+                48,
+                53
+              ]
+            },
+            {
+              "filepath": "loralib/layers.py",
+              "line_range": [
+                110,
+                115
+              ]
+            },
+            {
+              "filepath": "loralib/layers.py",
+              "line_range": [
+                178,
+                186
+              ]
+            },
+            {
+              "filepath": "loralib/layers.py",
+              "line_range": [
+                256,
+                265
+              ]
+            }
+          ],
+          "notes": "(1) LoRA in Embedding layer (2) LoRA in Linear layer (3) LoRA in merged Linear layer (4) LoRA in convolutional layer (5)",
+          "created_at": "2026-07-10T15:44:22.568769"
+        },
+        {
+          "annotation_id": "8129b6c5",
+          "claim_text": "$h = W_0 x + \\Delta W x = W_0 x + BAx$",
+          "section_ref": "Equation 3",
+          "verdict": "implemented",
+          "locations": [
+            {
+              "filepath": "loralib/layers.py",
+              "line_range": [
+                79,
+                85
+              ]
+            },
+            {
+              "filepath": "loralib/layers.py",
+              "line_range": [
+                147,
+                150
+              ]
+            },
+            {
+              "filepath": "loralib/layers.py",
+              "line_range": [
+                241,
+                244
+              ]
+            },
+            {
+              "filepath": "loralib/layers.py",
+              "line_range": [
+                291,
+                297
+              ]
+            }
+          ],
+          "notes": "(1) Forward pass of LoRA in Embedding (2) Forward pass of LoRA in Linear (3) Forward pass of LoRA in merged Linear (4) Forward pass in Convolution",
+          "created_at": "2026-07-10T15:56:30.954113"
+        },
+        {
+          "annotation_id": "bf8fadd6",
+          "claim_text": "We then scale $\\Delta W x$ by $\\alpha / r$, where $\\alpha$ is a constant in r.",
+          "section_ref": "",
+          "verdict": "implemented",
+          "locations": [
+            {
+              "filepath": "loralib/layers.py",
+              "line_range": [
+                50,
+                50
+              ]
+            },
+            {
+              "filepath": "loralib/layers.py",
+              "line_range": [
+                112,
+                112
+              ]
+            },
+            {
+              "filepath": "loralib/layers.py",
+              "line_range": [
+                183,
+                183
+              ]
+            },
+            {
+              "filepath": "loralib/layers.py",
+              "line_range": [
+                262,
+                262
+              ]
+            }
+          ],
+          "notes": "(1) Embedding (2) Linear (3) Merged Linear (4) Convolution",
+          "created_at": "2026-07-10T16:05:24.160529"
+        },
+        {
+          "annotation_id": "e27544c5",
+          "claim_text": "We use a random Gaussian initialization for A and zero for B, so $\\Delta W = BA$ is zero at the beginning of training.",
+          "section_ref": "4.1 LOW-RANK-PARAMETRIZED UPDATE MATRICES",
+          "verdict": "implemented",
+          "locations": [
+            {
+              "filepath": "loralib/layers.py",
+              "line_range": [
+                58,
+                61
+              ]
+            },
+            {
+              "filepath": "loralib/layers.py",
+              "line_range": [
+                122,
+                126
+              ]
+            },
+            {
+              "filepath": "loralib/layers.py",
+              "line_range": [
+                199,
+                202
+              ]
+            },
+            {
+              "filepath": "loralib/layers.py",
+              "line_range": [
+                271,
+                274
+              ]
+            }
+          ],
+          "notes": "",
+          "created_at": "2026-07-10T16:19:18.566520"
+        },
+        {
+          "annotation_id": "cc6b6e9d",
+          "claim_text": "We limit our study to only adapting the attention weights for downstream\ntasks and freeze the MLP modules (so they are not trained in downstream tasks) both for simplicity\nand parameter-efficiency.We further study the effect on adapting different types of attention weight\nmatrices in a Transformer in Section 7.1.",
+          "section_ref": "4.2 APPLYING LORA TO TRANSFORMER",
+          "verdict": "implemented",
+          "locations": [
+            {
+              "filepath": "examples/NLG/src/model.py",
+              "line_range": [
+                94,
+                103
+              ]
+            },
+            {
+              "filepath": "examples/NLG/src/model.py",
+              "line_range": [
+                143,
+                149
+              ]
+            }
+          ],
+          "notes": "(1) Q, K, V projection as a LoRA Merged Linear layer in GPT2 model (2) Using (1) in the forward pass to create q, k, v matrices",
+          "created_at": "2026-07-10T16:47:09.334963"
+        }
+      ]
+    },
+    {
+      "paper_id": "mistake_attribution_fine_grained_mistake_understanding_in_egocentric_videos",
+      "title": "Mistake Attribution: Fine-Grained Mistake Understanding in Egocentric Videos",
+      "abstract": "We introduce Mistake Attribution (MATT), a new task for\nfine-grained understanding of human mistakes in egocentric\nvideos. While prior work detects whether a mistake occurs,\nMATT attributes the mistake to what part of the instruction\nis violated (semantic role), when in the video the deviation\nbecomes irreversible (the Point-of-No-Return, PNR), andwhere the mistake appears in the PNR frame. We develop\nMisEngine, a data engine that automatically constructs mistake samples from existing datasets with attribution-rich annotations. Applied to large egocentric corpora, MisEngine\nyields EPIC-KITCHENS-M and Ego4D-M\u2014two datasets\nup to two orders of magnitude larger than prior mistake\ndatasets. We then present MisFormer, a unified attentionbased model for mistake attribution across semantic, temporal, and spatial dimensions, trained with MisEngine supervision. A human study demonstrates the ecological validity of\nour MisEngine-constructed mistake samples, confirming that\nEPIC-KITCHENS-M and Ego4D-M can serve as reliable\nbenchmarks for mistake understanding. Experiments on both\nour datasets and prior benchmarks show that MisFormer,\nas a single unified model, outperforms task-specific SOTA\nmethods by at least 6.66%, 21.81%, 18.7%, and 3.00% in\nvideo-language understanding, temporal localization, handobject interaction, and mistake detection, respectively.",
+      "repo_path": "https://github.com/yayuanli/MATT",
+      "annotations": [
+        {
+          "annotation_id": "ae92cf56",
+          "claim_text": "We apply Semantic Role Labeling (SRL) [10, 13] to parse each action description (instruction) text in $\\Lambda$.",
+          "section_ref": "3.1. MisEngine: Automated large-scale mistake dataset construction",
+          "verdict": "not_implemented",
+          "locations": [],
+          "notes": "The instructions imply that they inherit the semantic role labels of existing datasets, and the repo README recommends AllenNLP to do SRL on datasets without semantic roles.",
+          "created_at": "2026-07-13T16:53:19.318788"
+        },
+        {
+          "annotation_id": "2fb213e9",
+          "claim_text": "We split each dataset into\ntraining/validation/test sets in an 8:1:1 ratio.",
+          "section_ref": "4.1. Setup",
+          "verdict": "implemented",
+          "locations": [
+            {
+              "filepath": "misengine/ego4d/create_splits.py",
+              "line_range": [
+                6,
+                20
+              ]
+            }
+          ],
+          "notes": "",
+          "created_at": "2026-07-13T17:35:29.277510"
+        },
+        {
+          "annotation_id": "3560fbd7",
+          "claim_text": "Step 2: For each $G_i$, we compare with all other parsed action descriptions $G_j$ ($j \\ne i$) by checking with a function $J$ if the semantic groups $g^r_i$ and $g^r_j$ are the same (i.e., $J(g^r_i, g^r_j) = 1$) for each semantic role $r$. $J$ can be simple character-level matching or semantic-level matching, depending on granularity of the mistake one wants to capture. This results in $C = |R|^2$ misalignment categories for each and all parsed action descriptions $G_i$. Taking $R = \\{\\mathrm{predicate}, \\mathrm{object}\\}$ as an example, the total number of misalignment categories is $C = 4$: Predicate Mistake, Object Mistake, Both Mistakes, and No Mistake.",
+          "section_ref": "3.1. MisEngine: Automated large-scale mistake dataset construction",
+          "verdict": "implemented",
+          "locations": [
+            {
+              "filepath": "misengine/ego4d/augment.py",
+              "line_range": [
+                53,
+                80
+              ]
+            },
+            {
+              "filepath": "misengine/ego4d/augment.py",
+              "line_range": [
+                7,
+                19
+              ]
+            },
+            {
+              "filepath": "misengine/ego4d/augment.py",
+              "line_range": [
+                20,
+                32
+              ]
+            },
+            {
+              "filepath": "misengine/ego4d/augment.py",
+              "line_range": [
+                33,
+                45
+              ]
+            },
+            {
+              "filepath": "misengine/epickitchens/augment.py",
+              "line_range": [
+                57,
+                81
+              ]
+            },
+            {
+              "filepath": "misengine/epickitchens/augment.py",
+              "line_range": [
+                7,
+                19
+              ]
+            },
+            {
+              "filepath": "misengine/epickitchens/augment.py",
+              "line_range": [
+                20,
+                32
+              ]
+            },
+            {
+              "filepath": "misengine/epickitchens/augment.py",
+              "line_range": [
+                33,
+                45
+              ]
+            },
+            {
+              "filepath": "misengine/holoassist/augment.py",
+              "line_range": [
+                56,
+                79
+              ]
+            },
+            {
+              "filepath": "misengine/holoassist/augment.py",
+              "line_range": [
+                7,
+                19
+              ]
+            },
+            {
+              "filepath": "misengine/holoassist/augment.py",
+              "line_range": [
+                20,
+                31
+              ]
+            },
+            {
+              "filepath": "misengine/holoassist/augment.py",
+              "line_range": [
+                32,
+                43
+              ]
+            }
+          ],
+          "notes": "Grouping by labels and getting corresponding videos with misaligned verb only, noun only, and both - for (1-4) Ego4d (5-8) Epic Kitchens (9-12) Holoassist",
+          "created_at": "2026-07-13T17:50:20.105310",
+          "updated_at": "2026-07-13T17:58:55.496942"
+        },
+        {
+          "annotation_id": "27e49a9c",
+          "claim_text": "We sample $N^C_T$ action descriptions from each of $C$ misalignment categories. For each of these action descriptions, $N^c_V$ of the videos are sampled as attempt videos for $G_i$. For example, if $G_i = \\{g^{\\mathrm{Predicate}}_i = \u201cPick up\u201d, g^{\\mathrm{Object}}_i = \u201cthe sieve\u201d\\}$ and $G_j = \\{g^{\\mathrm{Predicate}}_j = \u201cPick up\u201d, g^{\\mathrm{Object}}_j = \u201cthe pan\u201d\\}$, then videos originally associated with the action description \u201cPick up the pan\u201d in $\\Lambda$ are randomly sampled (without replacement) as a subset of attempt videos for $G_i$.",
+          "section_ref": "3.1. MisEngine: Automated large-scale mistake dataset construction",
+          "verdict": "implemented",
+          "locations": [
+            {
+              "filepath": "misengine/ego4d/augment.py",
+              "line_range": [
+                95,
+                108
+              ]
+            },
+            {
+              "filepath": "misengine/epickitchens/augment.py",
+              "line_range": [
+                97,
+                107
+              ]
+            },
+            {
+              "filepath": "misengine/holoassist/augment.py",
+              "line_range": [
+                95,
+                105
+              ]
+            }
+          ],
+          "notes": "Random sampling of misaligned clips from aligned clips for full dataset constructions on (1) Ego4D (2) Epic Kitchens (3) Holoassist",
+          "created_at": "2026-07-13T17:52:17.047301",
+          "updated_at": "2026-07-13T17:55:35.405124"
+        },
+        {
+          "annotation_id": "9b011fb5",
+          "claim_text": "We demonstrate MisEngine on two popular action recognition datasets: Ego4D [15] and EPIC-KITCHENS [5], resulting in the Ego4D-M and EPIC-KITCHENS-M datasets.",
+          "section_ref": "3.1. MisEngine: Automated large-scale mistake dataset construction",
+          "verdict": "implemented",
+          "locations": [
+            {
+              "filepath": "misengine/ego4d/clips.py",
+              "line_range": null
+            },
+            {
+              "filepath": "misengine/epickitchens/augment.py",
+              "line_range": [
+                49,
+                50
+              ]
+            },
+            {
+              "filepath": "misengine/holoassist/df_fg.py",
+              "line_range": [
+                8,
+                9
+              ]
+            }
+          ],
+          "notes": "Proof of processing the datasets in the claim (1-3) & Use of these datasets in main training script (4)",
+          "created_at": "2026-07-13T18:02:58.026714",
+          "updated_at": "2026-07-14T15:34:54.778218"
+        },
+        {
+          "annotation_id": "532c1c8c",
+          "claim_text": "We propose a unified model structure, MisFormer (F), to\njointly address all three mistake attribution tasks: semantic,\ntemporal, and spatial localization.",
+          "section_ref": "3.2. MisFormer: A unified model for fine-grained mistake understanding",
+          "verdict": "implemented",
+          "locations": [
+            {
+              "filepath": "misformer/model/multimodal_transformer.py",
+              "line_range": [
+                13,
+                14
+              ]
+            },
+            {
+              "filepath": "misformer/training.py",
+              "line_range": [
+                624,
+                625
+              ]
+            }
+          ],
+          "notes": "",
+          "created_at": "2026-07-14T01:19:51.725807"
+        },
+        {
+          "annotation_id": "5d93421d",
+          "claim_text": "then processes them through three specialized attribution heads to produce the outputs for each subtask: semantic attribution labels $(y_r)_{r \\in R}$, Point-of-No-Return frame $t_{\\mathrm{PNR}}$, and mistake bounding box $B_t$.",
+          "section_ref": "3.2. MisFormer: A unified model for fine-grained mistake understanding",
+          "verdict": "not_implemented",
+          "locations": [],
+          "notes": "The multimodal transformer class only contains a classification head with default num_classes=2, most likely predicts the presence of a mistake.",
+          "created_at": "2026-07-14T15:38:17.576350"
+        },
+        {
+          "annotation_id": "172727b2",
+          "claim_text": "For each $S_r$, we extract text features $F^T_r$ using the text encoder from InternVideo2 [54], yielding $F^T_R = \\{F^T_r\\}_{r \\in R} \\in \\mathbb{R}^{|R| \\times d}$ where each semantic role is represented as a d-dimensional embedding. In parallel, we extract video features $F^V \\in \\mathbb{R}^{L \\times K \\times d}$ from the attempt video using InternVideo2\u2019s video encoder, where K is the number of spatial patches per frame.",
+          "section_ref": "3.2. MisFormer: A unified model for fine-grained mistake understanding",
+          "verdict": "implemented",
+          "locations": [
+            {
+              "filepath": "misformer/model/multimodal_transformer.py",
+              "line_range": [
+                78,
+                79
+              ]
+            },
+            {
+              "filepath": "misformer/model/multimodal_transformer.py",
+              "line_range": [
+                80,
+                101
+              ]
+            }
+          ],
+          "notes": "(1) The repository uses LaViLa for the video encoder - no record of InternVideo2 exists in the repo. (2) Extracting text features",
+          "created_at": "2026-07-14T15:46:25.534526"
+        },
+        {
+          "annotation_id": "a7fffb93",
+          "claim_text": "To further adapt these features for mistake\nunderstanding, we employ a projection block P consisting\nof 2 Transformer decoder layers without causal masking\nfor self-attention.",
+          "section_ref": "",
+          "verdict": "implemented",
+          "locations": [
+            {
+              "filepath": "misformer/model/multimodal_transformer.py",
+              "line_range": [
+                64,
+                70
+              ]
+            },
+            {
+              "filepath": "misformer/model/multimodal_transformer.py",
+              "line_range": [
+                117,
+                123
+              ]
+            }
+          ],
+          "notes": "(1) Defining the transformer decoder layers (2) Passing inputs through the decoder layers",
+          "created_at": "2026-07-14T15:48:13.356608"
+        },
+        {
+          "annotation_id": "45f894eb",
+          "claim_text": "The semantic attribution head determines which semantic roles in the instruction are executed incorrectly in the attempt. For each role $r \\in R$, we apply a feed-forward network (FFN) [51] followed by a sigmoid activation to the projected text features $F^{T'}_r$, producing a binary prediction $\\hat{y}_r \\in \\{0, 1\\}$ indicating whether the role is misaligned.",
+          "section_ref": "",
+          "verdict": "implemented",
+          "locations": [
+            {
+              "filepath": "misformer/model/multimodal_transformer.py",
+              "line_range": [
+                71,
+                74
+              ]
+            },
+            {
+              "filepath": "misformer/model/multimodal_transformer.py",
+              "line_range": [
+                124,
+                125
+              ]
+            },
+            {
+              "filepath": "misformer/training.py",
+              "line_range": [
+                141,
+                157
+              ]
+            }
+          ],
+          "notes": "(1) Defining the semantic attribution head with output dimension 2 - since there are 2 roles (2) Use of the classification head in model's forward method (3) Comparing model predictions per role to the actual labels",
+          "created_at": "2026-07-14T16:02:31.887488"
+        },
+        {
+          "annotation_id": "5a190209",
+          "claim_text": "We first apply a downsampling block consisting of 2 self-attention layers to aggregate spatial tokens within each frame of $F^V$, producing frame-level features $F^{V'} \\in \\mathbb{R}^{L \\times d}$. These frame features are then processed by a temporal localization block with 2 Transformer decoder layers (without causal masking), where cross-attention operates with $F^{V'}$ as queries and $F^{T'}_R$ as keys and values.",
+          "section_ref": "3.2. MisFormer: A unified model for fine-grained mistake understanding: Temporal Attribution",
+          "verdict": "not_implemented",
+          "locations": [],
+          "notes": "There is no record of another head in the repository.",
+          "created_at": "2026-07-14T16:03:36.835201"
+        },
+        {
+          "annotation_id": "b00b9283",
+          "claim_text": "lightweight CNN-based regression module that predicts the bounding box coordinates.",
+          "section_ref": "3.2. MisFormer: A unified model for fine-grained mistake understanding: Spatial Attribution",
+          "verdict": "not_implemented",
+          "locations": [],
+          "notes": "No record of heads in addition to the semantic attribution head in the repository",
+          "created_at": "2026-07-14T16:04:52.386739"
+        }
+      ]
+    },
+    {
+      "paper_id": "v_jepa_2_self_supervised_video_models_enable_understanding_prediction_and_planning",
+      "title": "V-JEPA 2: Self-Supervised Video Models Enable Understanding, Prediction and Planning",
+      "abstract": "A major challenge for modern AI is to learn to understand the world and learn to act largely by\nobservation (LeCun, 2022). This paper explores a self-supervised approach that combines internet-scale\nvideo data with a small amount of interaction data (robot trajectories), to develop models capable of\nunderstanding, predicting, and planning in the physical world. We first pre-train an action-free jointembedding-predictive architecture, V-JEPA 2, on a video and image dataset comprising over 1 million\nhours of internet video. V-JEPA 2 achieves strong performance on motion understanding (77.3 top-1\naccuracy on Something-Something v2) and state-of-the-art performance on human action anticipation\n(39.7 recall-at-5 on Epic-Kitchens-100) surpassing previous task-specific models. Additionally, after\naligning V-JEPA 2 with a large language model, we demonstrate state-of-the-art performance on\nmultiple video question-answering tasks at the 8 billion parameter scale (e.g., 84.0 on PerceptionTest,\n76.9 on TempCompass). Finally, we show how self-supervised learning can be applied to robotic\nplanning tasks by post-training a latent action-conditioned world model, V-JEPA 2-AC, using less\nthan 62 hours of unlabeled robot videos from the Droid dataset. We deploy V-JEPA 2-AC zero-shot on\nFranka arms in two different labs and enable picking and placing of objects using planning with image\ngoals. Notably, this is achieved without collecting any data from the robots in these environments,\nand without any task-specific training or reward. This work demonstrates how self-supervised learning\nfrom web-scale data and a small amount of robot interaction data can yield a world model capable of\nplanning in the physical world.",
+      "repo_path": "https://github.com/facebookresearch/vjepa2",
+      "annotations": [
+        {
+          "annotation_id": "b9e7a3c5",
+          "claim_text": "The task meta-architecture consists of an encoder, $E_\\theta(\\cdot)$, which extracts video representations, and a predictor, $P_\\phi(\\cdot)$, which predicts the representation of masked video parts.",
+          "section_ref": "2.1 Methodology: Mask-Denoising in Representation Space",
+          "verdict": "implemented",
+          "locations": [
+            {
+              "filepath": "app/vjepa_2_1/train.py",
+              "line_range": [
+                329,
+                362
+              ]
+            }
+          ],
+          "notes": "Initialiation of encoder, predictor and target encoder",
+          "created_at": "2026-07-14T20:27:04.910110"
+        },
+        {
+          "annotation_id": "a89ab20e",
+          "claim_text": "The encoder and predictor are trained simultaneously using the objective $\\min_{\\theta, \\phi, \\Delta y} \\|P_\\phi(\\Delta y, E_\\theta(x)) - \\mathrm{sg}(E_\\theta(y))\\|_1$.",
+          "section_ref": "Equation 4",
+          "verdict": "implemented",
+          "locations": [
+            {
+              "filepath": "app/vjepa_2_1/train.py",
+              "line_range": [
+                629,
+                676
+              ]
+            }
+          ],
+          "notes": "Loss function for pretraining",
+          "created_at": "2026-07-14T20:28:39.139680"
+        },
+        {
+          "annotation_id": "0a5d5b9a",
+          "claim_text": "The encoder, $E_\\theta(\\cdot)$, and predictor, $P_\\phi(\\cdot)$, are each parameterized as a vision transformer (Dosovitskiy et al., 2020) (or ViT).",
+          "section_ref": "2.1 Methodology",
+          "verdict": "implemented",
+          "locations": [
+            {
+              "filepath": "app/vjepa_2_1/utils.py",
+              "line_range": [
+                216,
+                266
+              ]
+            },
+            {
+              "filepath": "app/vjepa_2_1/models/vision_transformer.py",
+              "line_range": null
+            },
+            {
+              "filepath": "app/vjepa_2_1/models/vision_transformer.py",
+              "line_range": [
+                20,
+                22
+              ]
+            },
+            {
+              "filepath": "app/vjepa_2_1/models/predictor.py",
+              "line_range": [
+                19,
+                21
+              ]
+            }
+          ],
+          "notes": "(1) Initialization of the encoder and predictor models as a ViT (2) Definition of the vision transformer for the encoder (3) Definition of the ViT predictor",
+          "created_at": "2026-07-15T17:42:28.626425"
+        },
+        {
+          "annotation_id": "5a05ba6e",
+          "claim_text": "We construct a large-scale video dataset by combining publicly available data\nsources",
+          "section_ref": "2.3 Pretraining Dataset",
+          "verdict": "implemented",
+          "locations": [
+            {
+              "filepath": "configs/train_2_1/vitb16/pretrain-256px-16f.yaml",
+              "line_range": [
+                7,
+                13
+              ]
+            },
+            {
+              "filepath": "src/datasets/data_manager.py",
+              "line_range": [
+                62,
+                86
+              ]
+            },
+            {
+              "filepath": "src/datasets/video_dataset.py",
+              "line_range": [
+                121,
+                123
+              ]
+            },
+            {
+              "filepath": "src/datasets/video_dataset.py",
+              "line_range": [
+                55,
+                70
+              ]
+            }
+          ],
+          "notes": "(1) Mention of SSV2, Kinetics 700 and HowTo datasets in a pretraining config. (2) Entrypoint for creating a video dataset from data_manager (3-4) VideoDataset mentions in src/datasets/video_dataset.py",
+          "created_at": "2026-07-15T17:51:29.597799",
+          "updated_at": "2026-07-15T17:52:26.540352"
+        },
+        {
+          "annotation_id": "4bd04af7",
+          "claim_text": "We simplified the recipe from Bardes et al. (2024) by maintaining fixed\nteacher EMA",
+          "section_ref": "2.4 Pretraining Recipe",
+          "verdict": "implemented",
+          "locations": [
+            {
+              "filepath": "app/vjepa_2_1/train.py",
+              "line_range": [
+                736,
+                748
+              ]
+            },
+            {
+              "filepath": "app/vjepa_2_1/train.py",
+              "line_range": [
+                191,
+                191
+              ]
+            },
+            {
+              "filepath": "configs/train_2_1/vitl16/pretrain-256px-16f.yaml",
+              "line_range": [
+                137,
+                141
+              ]
+            }
+          ],
+          "notes": "(1) EMA update on the VIT used for pretraining stage (2) Getting EMA parameter from config (3) Definition of the EMA param in a pretraining config",
+          "created_at": "2026-07-15T18:04:41.474259",
+          "updated_at": "2026-07-15T18:05:09.718804"
+        },
+        {
+          "annotation_id": "b34f227f",
+          "claim_text": "The robot\u2019s end-effector state in each observation is denoted by the sequence $(s_k)_{k \\in [16]}$, where $s_k$ is a real-valued 7D vector defined relative to the base of the robot. The first three dimensions of $s_k$ encode the cartesian position of the end-effector, the next three dimensions encode its orientation in the form of extrinsic Euler angles, and the last dimension encodes the gripper state.",
+          "section_ref": "3.1 Action-Conditioned World Model Training: Model Inputs",
+          "verdict": "implemented",
+          "locations": [
+            {
+              "filepath": "app/vjepa_droid/droid.py",
+              "line_range": [
+                186,
+                200
+              ]
+            }
+          ],
+          "notes": "7 dimensions of the droid's state",
+          "created_at": "2026-07-15T18:35:34.474535"
+        },
+        {
+          "annotation_id": "2badd176",
+          "claim_text": "The model is trained\nusing approximately 62 hours of unlabeled video from the raw Droid dataset, which consists of short videos,\ntypically 3\u20134 seconds long, of a 7-DoF Franka Emika Panda arm equipped with a two-finger gripper.",
+          "section_ref": "3.1 Action-Conditioned World Model Training",
+          "verdict": "implemented",
+          "locations": [
+            {
+              "filepath": "app/vjepa_droid/droid.py",
+              "line_range": [
+                87,
+                89
+              ]
+            },
+            {
+              "filepath": "app/vjepa_droid/train.py",
+              "line_range": [
+                31,
+                31
+              ]
+            },
+            {
+              "filepath": "app/vjepa_droid/train.py",
+              "line_range": [
+                234,
+                251
+              ]
+            }
+          ],
+          "notes": "(1) Droid dataset class (2-3) Import into VJEPA DROID stage training code",
+          "created_at": "2026-07-15T18:38:51.077751"
+        },
+        {
+          "annotation_id": "47bd93c0",
+          "claim_text": "We construct a sequence of actions $(a_k)_{k \\in [15]}$ by computing the change in end-effector state between adjacent frames. Specifically, each action $a_k$ is a real-valued 7-dimensional vector representing the change in end-effector state between frames $k$ and $k + 1$.",
+          "section_ref": "",
+          "verdict": "implemented",
+          "locations": [
+            {
+              "filepath": "app/vjepa_droid/droid.py",
+              "line_range": [
+                222,
+                222
+              ]
+            },
+            {
+              "filepath": "app/vjepa_droid/droid.py",
+              "line_range": [
+                137,
+                148
+              ]
+            }
+          ],
+          "notes": "(1) actions = poses_to_diffs(...) (2) Calculating diffs to get action sequence",
+          "created_at": "2026-07-15T18:40:14.222674"
+        },
+        {
+          "annotation_id": "1e8633d1",
+          "claim_text": "The sequence of feature maps, end-effector states, and actions are temporally interleaved as $(a_k, s_k, z_k)_{k \\in [15]}$ and processed with the transformer predictor network $P_\\phi(\\cdot)$ to obtain a sequence of next state representation predictions $(\\hat{z}_{k+1})_{k \\in [15]}$.",
+          "section_ref": "",
+          "verdict": "implemented",
+          "locations": [
+            {
+              "filepath": "src/models/ac_predictor.py",
+              "line_range": [
+                145,
+                154
+              ]
+            },
+            {
+              "filepath": "src/models/ac_predictor.py",
+              "line_range": [
+                158,
+                189
+              ]
+            }
+          ],
+          "notes": "(1) Interleaving (2) Forward propagation of interleaved actions, states and feature maps",
+          "created_at": "2026-07-15T18:45:41.623746"
+        },
+        {
+          "annotation_id": "26f86805",
+          "claim_text": "We also compute a two-step rollout loss to improve the model\u2019s ability to perform autoregressive rollouts at inference time.",
+          "section_ref": "3.1 Action-Conditioned World Model Training: Loss Function",
+          "verdict": "implemented",
+          "locations": [
+            {
+              "filepath": "app/vjepa_droid/train.py",
+              "line_range": [
+                429,
+                437
+              ]
+            },
+            {
+              "filepath": "app/vjepa_droid/train.py",
+              "line_range": [
+                445,
+                449
+              ]
+            },
+            {
+              "filepath": "app/vjepa_droid/train.py",
+              "line_range": [
+                439,
+                442
+              ]
+            }
+          ],
+          "notes": "(1) Computing full auto-regressive rollouts of predictor (2) Getting encoder and predictor teacher forcing and rollout output, and calling loss function on them. (3) Loss function implementation",
+          "created_at": "2026-07-15T18:52:06.990211"
+        },
+        {
+          "annotation_id": "1edf868b",
+          "claim_text": "The sequence of feature maps, end-effector states, and actions are temporally interleaved as $(a_k, s_k, z_k)_{k \\in [15]}$ and processed with the transformer predictor network $P_\\phi(\\cdot)$ to obtain a sequence of next state representation predictions $(\\hat{z}_{k+1})_{k \\in [15]}$. The scalar-valued teacher-forcing loss function is finally computed as $L_{\\mathrm{teacher-forcing}}(\\phi) := \\frac{1}{T} \\sum_{k=1}^{T} \\|\\hat{z}_{k+1} - z_{k+1}\\|_1 = \\frac{1}{T} \\sum_{k=1}^{T} \\|P_\\phi((a_t, s_t, E(x_t))_{t \\le k}) - E(x_{k+1})\\|_1$.",
+          "section_ref": "3.1 Action-Conditioned World Model Training: Loss Function",
+          "verdict": "implemented",
+          "locations": [
+            {
+              "filepath": "app/vjepa_droid/train.py",
+              "line_range": [
+                425,
+                428
+              ]
+            },
+            {
+              "filepath": "app/vjepa_droid/train.py",
+              "line_range": [
+                445,
+                449
+              ]
+            },
+            {
+              "filepath": "app/vjepa_droid/train.py",
+              "line_range": [
+                439,
+                442
+              ]
+            }
+          ],
+          "notes": "(1) Computing rollout predictions (2) Getting predictor and encoder outputs and calling loss_fn (3) Loss function",
+          "created_at": "2026-07-15T18:53:39.920155"
+        },
+        {
+          "annotation_id": "ddbc1e91",
+          "claim_text": "The overall training objective is thus given by $L(\\phi) := L_{\\mathrm{teacher-forcing}}(\\phi) + L_{\\mathrm{rollout}}(\\phi)$.",
+          "section_ref": "3.1 Action-Conditioned World Model Training",
+          "verdict": "implemented",
+          "locations": [
+            {
+              "filepath": "app/vjepa_droid/train.py",
+              "line_range": [
+                447,
+                450
+              ]
+            }
+          ],
+          "notes": "",
+          "created_at": "2026-07-15T18:54:24.910411"
+        },
+        {
+          "annotation_id": "d8d0a317",
+          "claim_text": "The predictor network $P_\\phi(\\cdot)$ is a ~300M parameter transformer network with 24 layers, 16 heads, 1024 hidden dimensions, and GELU activations.",
+          "section_ref": "3.1 Action-Conditioned World Model Training: Architecture",
+          "verdict": "implemented",
+          "locations": [
+            {
+              "filepath": "src/models/ac_predictor.py",
+              "line_range": [
+                17,
+                19
+              ]
+            },
+            {
+              "filepath": "src/models/utils/modules.py",
+              "line_range": [
+                448,
+                448
+              ]
+            }
+          ],
+          "notes": "",
+          "created_at": "2026-07-15T18:56:53.080573"
+        }
+      ]
+    }
+  ]
+}

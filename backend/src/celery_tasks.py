@@ -146,7 +146,7 @@ def map_content_to_code_task(
             page_number=page_number,
         ),
         outputs=ContentToCodeResult(
-            code_snippet=result.get('code_snippet'), 
+            code_snippets=result.get('code_snippets') or [],
             reasoning=result.get("reasoning"), 
             verdict=result.get("verdict"),
         ),

@@ -200,9 +200,9 @@ class CodeToContentResult(BaseModel):
 class ContentToCodeResult(BaseModel):
     reasoning: str
     verdict: str
-    code_snippet: (
-        CodeSnippet | None
-    )  # matches what we return today after rerank or if nothing was found
+    code_snippets: list[CodeSnippet] = Field(
+        default_factory=list
+    )  # top-k snippets after rerank, ordered by relevance (empty if none found)
 
 
 class ContentToCodeInputs(BaseModel):

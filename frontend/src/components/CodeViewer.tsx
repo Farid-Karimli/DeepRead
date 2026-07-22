@@ -2,6 +2,7 @@ import { forwardRef, useEffect, useRef, useState } from 'react';
 import { CiLink } from 'react-icons/ci';
 import ShikiHighlighter from 'react-shiki';
 import { useTheme } from '../context/ThemeContext';
+import { getShikiLanguage } from '../utils/codeLanguage';
 
 interface CodeViewerProps {
    code: string;
@@ -11,12 +12,14 @@ interface CodeViewerProps {
    scrollFocusEnd?: number;
    /** Invoked with the highlighted code range when "Show in paper" is clicked. */
    onShowInPaper?: (range: { start: number; end: number }) => void;
+   /** File path of the code being shown; used to pick the syntax highlighting language. */
+   filepath?: string;
 }
 
 type RangeActionPosition = { index: number; top: number; left: number };
 
 const CodeViewer = forwardRef<HTMLDivElement, CodeViewerProps>(function CodeViewer(
-    { code, highlightRanges, scrollFocusStart, scrollFocusEnd, onShowInPaper },
+    { code, highlightRanges, scrollFocusStart, scrollFocusEnd, onShowInPaper, filepath },
     ref,
 ) {
     // The scroller holds the code (and the forwarded ref so text selection works);
@@ -134,7 +137,7 @@ const CodeViewer = forwardRef<HTMLDivElement, CodeViewerProps>(function CodeView
             <div ref={setScrollRef} className="code-viewer__scroll">
                 <ShikiHighlighter
                     theme={resolvedTheme === 'dark' ? 'github-dark' : 'github-light'}
-                    language="python"
+                    language={getShikiLanguage(filepath)}
                     showLineNumbers
                     decorations={decorations}
                 >
