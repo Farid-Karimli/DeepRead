@@ -9,6 +9,10 @@ granularity:
 
 - Filepath accuracy: does the predicted filepath match any ground-truth
   location's filepath for that annotation?
+- Filepath hit@5: does *any* of the (up to 5) predicted snippets' filepaths
+  match a ground-truth location's filepath? This is looser than filepath
+  accuracy above (which only looks at the top-ranked snippet) and captures
+  cases where the correct file was found but not ranked first.
 - Class / method accuracy (only when the filepath is correct): does the
   predicted line range sit inside the same class / method as the
   ground-truth range that best overlaps it? This catches cases where the
@@ -19,9 +23,15 @@ granularity:
   when the file can't be parsed (only Python files are currently
   supported).
 - Line-range IoU (only when the filepath is correct): the max IoU between
-  the predicted line range and every ground-truth location that shares the
-  predicted filepath (an annotation can have multiple locations in the
-  same file).
+  the top-ranked predicted line range and every ground-truth location that
+  shares the predicted filepath (an annotation can have multiple locations
+  in the same file).
+- Mean IoU across matching filepaths: unlike the top-1-only IoU above, this
+  considers every one of the (up to 5) predicted snippets whose filepath
+  matches a ground-truth location. For each such snippet, the max IoU
+  against the ground-truth locations sharing its filepath is computed, then
+  those per-snippet IoUs are averaged. `None` when none of the predicted
+  snippets share a filepath with any ground-truth location.
 
 Reading source files for the class/method check requires the paper's
 GitHub repo to be cloned locally (same as `run_manual_v1.py`); repos are
@@ -248,9 +258,14 @@ def evaluate_annotation(record: dict, source_cache: RepoSourceCache) -> dict:
             else None
         ),
         "ground_truth_filepaths": sorted({loc.get("filepath") for loc in ground_truth_locations if loc.get("filepath")}),
+        "num_predicted_snippets": len(predicted_snippets),
         "filepath_correct": False,
+        "filepath_hit_at_5": False,
+        "filepath_hit_rank": None,
         "best_iou": None,
         "matched_ground_truth_range": None,
+        "mean_iou_matching_filepaths": None,
+        "num_matching_filepath_snippets": 0,
         "correct_class": None,
         "correct_method": None,
         "predicted_class": None,
@@ -258,6 +273,39 @@ def evaluate_annotation(record: dict, source_cache: RepoSourceCache) -> dict:
         "ground_truth_class": None,
         "ground_truth_method": None,
     }
+
+    ground_truth_filepaths = set(result["ground_truth_filepaths"])
+    for rank, snippet in enumerate(predicted_snippets, start=1):
+        if snippet.get("filepath") in ground_truth_filepaths:
+            result["filepath_hit_at_5"] = True
+            result["filepath_hit_rank"] = rank
+            break
+
+    matching_filepath_ious: list[float] = []
+    for snippet in predicted_snippets:
+        snippet_filepath = snippet.get("filepath")
+        snippet_matching_locations = [
+            loc for loc in ground_truth_locations if loc.get("filepath") == snippet_filepath
+        ]
+        if not snippet_matching_locations:
+            continue
+
+        snippet_range = (snippet.get("start_line"), snippet.get("end_line"))
+        if snippet_range[0] is None or snippet_range[1] is None:
+            continue
+
+        best_snippet_iou = 0.0
+        for loc in snippet_matching_locations:
+            gt_range = loc.get("line_range") or [None, None]
+            if gt_range[0] is None or gt_range[1] is None:
+                continue
+            best_snippet_iou = max(best_snippet_iou, line_range_iou(snippet_range, tuple(gt_range)))
+        matching_filepath_ious.append(best_snippet_iou)
+
+    result["num_matching_filepath_snippets"] = len(matching_filepath_ious)
+    result["mean_iou_matching_filepaths"] = (
+        sum(matching_filepath_ious) / len(matching_filepath_ious) if matching_filepath_ious else None
+    )
 
     if top_prediction is None or not ground_truth_locations:
         return result
@@ -322,8 +370,12 @@ def summarize(per_annotation: list[dict]) -> dict:
     num_errored = sum(1 for r in per_annotation if r["had_error"])
     num_with_prediction = sum(1 for r in per_annotation if r["predicted_filepath"] is not None)
     num_filepath_correct = sum(1 for r in per_annotation if r["filepath_correct"])
+    num_filepath_hit_at_5 = sum(1 for r in per_annotation if r["filepath_hit_at_5"])
 
     ious = [r["best_iou"] for r in per_annotation if r["filepath_correct"] and r["best_iou"] is not None]
+    matching_filepath_ious = [
+        r["mean_iou_matching_filepaths"] for r in per_annotation if r["mean_iou_matching_filepaths"] is not None
+    ]
     durations = [r["duration_seconds"] for r in per_annotation if isinstance(r["duration_seconds"], (int, float))]
 
     class_accuracy, num_class_correct, num_class_applicable = _accuracy_over_applicable(
@@ -338,13 +390,25 @@ def summarize(per_annotation: list[dict]) -> dict:
         paper_id = r["paper_id"] or "unknown"
         bucket = by_paper.setdefault(
             paper_id,
-            {"total": 0, "filepath_correct": 0, "ious": [], "correct_class": [], "correct_method": []},
+            {
+                "total": 0,
+                "filepath_correct": 0,
+                "filepath_hit_at_5": 0,
+                "ious": [],
+                "matching_filepath_ious": [],
+                "correct_class": [],
+                "correct_method": [],
+            },
         )
         bucket["total"] += 1
         if r["filepath_correct"]:
             bucket["filepath_correct"] += 1
             if r["best_iou"] is not None:
                 bucket["ious"].append(r["best_iou"])
+        if r["filepath_hit_at_5"]:
+            bucket["filepath_hit_at_5"] += 1
+        if r["mean_iou_matching_filepaths"] is not None:
+            bucket["matching_filepath_ious"].append(r["mean_iou_matching_filepaths"])
         bucket["correct_class"].append(r["correct_class"])
         bucket["correct_method"].append(r["correct_method"])
 
@@ -355,9 +419,16 @@ def summarize(per_annotation: list[dict]) -> dict:
         by_paper_summary[paper_id] = {
             "total_annotations": bucket["total"],
             "filepath_accuracy": bucket["filepath_correct"] / bucket["total"] if bucket["total"] else None,
+            "filepath_hit_at_5_rate": bucket["filepath_hit_at_5"] / bucket["total"] if bucket["total"] else None,
             "mean_iou_given_correct_filepath": (
                 sum(bucket["ious"]) / len(bucket["ious"]) if bucket["ious"] else None
             ),
+            "mean_iou_matching_filepaths": (
+                sum(bucket["matching_filepath_ious"]) / len(bucket["matching_filepath_ious"])
+                if bucket["matching_filepath_ious"]
+                else None
+            ),
+            "num_annotations_with_matching_filepath_iou": len(bucket["matching_filepath_ious"]),
             "class_accuracy_given_applicable": paper_class_accuracy,
             "num_class_applicable": paper_class_applicable,
             "method_accuracy_given_applicable": paper_method_accuracy,
@@ -370,8 +441,14 @@ def summarize(per_annotation: list[dict]) -> dict:
         "num_with_prediction": num_with_prediction,
         "num_filepath_correct": num_filepath_correct,
         "filepath_accuracy": num_filepath_correct / total if total else None,
+        "num_filepath_hit_at_5": num_filepath_hit_at_5,
+        "filepath_hit_at_5_rate": num_filepath_hit_at_5 / total if total else None,
         "mean_iou_given_correct_filepath": sum(ious) / len(ious) if ious else None,
         "num_annotations_with_iou": len(ious),
+        "mean_iou_matching_filepaths": (
+            sum(matching_filepath_ious) / len(matching_filepath_ious) if matching_filepath_ious else None
+        ),
+        "num_annotations_with_matching_filepath_iou": len(matching_filepath_ious),
         "class_accuracy_given_applicable": class_accuracy,
         "num_class_correct": num_class_correct,
         "num_class_applicable": num_class_applicable,
