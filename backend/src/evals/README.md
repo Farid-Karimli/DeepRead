@@ -11,17 +11,18 @@
 
     ```{bash}
     cd backend
-    python -m src.evals.run_manual_v1                    # run all 54 annotations
-    python -m src.evals.run_manual_v1 --limit 5          # smoke test on first 5
-    python -m src.evals.run_manual_v1 --output out.json  # custom output path
+    python -m src.evals.run                    # run all 54 annotations
+    python -m src.evals.run --limit 5          # smoke test on first 5
+    python -m src.evals.run --output out.json  # custom output path
+    python -m src.evals.run --paper 2          # only run annotations for the 2nd paper (1-indexed)
     ```
 
 3. Evaluate agent performance:
 
     ```{bash}
     cd backend
-    python -m src.evals.evaluate_manual_v1              # uses default predictions/output paths
-    python -m src.evals.evaluate_manual_v1 --predictions X.json --output Y.json
+    python -m src.evals.evaluate              # uses default predictions/output paths
+    python -m src.evals.evaluate --predictions X.json --output Y.json
     ```
 
 Computes, per annotation (using the agent's top-ranked predicted snippet):

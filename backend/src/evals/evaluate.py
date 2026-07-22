@@ -1,5 +1,5 @@
 """
-Scores predictions produced by `run_manual_v1.py` against the ground-truth
+Scores predictions produced by `run.py` against the ground-truth
 locations in `annotations/manual_v1.json`.
 
 For each annotation, the agent's top-ranked predicted code snippet (the first
@@ -34,11 +34,11 @@ granularity:
   snippets share a filepath with any ground-truth location.
 
 Reading source files for the class/method check requires the paper's
-GitHub repo to be cloned locally (same as `run_manual_v1.py`); repos are
+GitHub repo to be cloned locally (same as `run.py`); repos are
 cloned on demand and cleaned up when the script finishes.
 
 Usage:
-    python -m src.evals.evaluate_manual_v1 [--predictions PATH] [--annotations PATH] [--output PATH]
+    python -m src.evals.evaluate [--predictions PATH] [--annotations PATH] [--output PATH]
 """
 
 import argparse
@@ -488,7 +488,7 @@ def evaluate(predictions_path: str, annotations_path: str, output_path: str) -> 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--predictions", default=DEFAULT_PREDICTIONS_PATH, help="Path to predictions JSON produced by run_manual_v1.py")
+    parser.add_argument("--predictions", default=DEFAULT_PREDICTIONS_PATH, help="Path to predictions JSON produced by run.py")
     parser.add_argument("--annotations", default=DEFAULT_ANNOTATIONS_PATH, help="Path to the annotations JSON file (used to resolve each paper's repo for the class/method check)")
     parser.add_argument("--output", default=DEFAULT_OUTPUT_PATH, help="Path to write evaluation metrics JSON to")
     args = parser.parse_args()

@@ -10,7 +10,7 @@ this script only collects the raw predictions (plus timing) for later
 evaluation.
 
 Usage:
-    python -m src.evals.run_manual_v1 [--limit N] [--output PATH]
+    python -m src.evals.run [--limit N] [--output PATH] [--paper INDEX]
 """
 
 import argparse
@@ -73,11 +73,24 @@ async def run_annotation(agent: Agent, paper: dict, annotation: dict, repo_url: 
     return record
 
 
-async def run(annotations_path: str, output_path: str, limit: int | None = None, model: str = "sonnet") -> None:
+async def run(
+    annotations_path: str,
+    output_path: str,
+    limit: int | None = None,
+    model: str = "sonnet",
+    paper_index: int | None = None,
+) -> None:
     with open(annotations_path, "r") as f:
         data = json.load(f)
 
     papers = data.get("papers", [])
+
+    if paper_index is not None:
+        if paper_index < 1 or paper_index > len(papers):
+            raise ValueError(
+                f"--paper {paper_index} is out of range; annotations file has {len(papers)} paper(s)"
+            )
+        papers = [papers[paper_index - 1]]
 
     tasks = []
     for paper in papers:
@@ -117,9 +130,15 @@ def main() -> None:
     parser.add_argument("--output", default=DEFAULT_OUTPUT_PATH, help="Path to write predictions JSON to")
     parser.add_argument("--limit", type=int, default=None, help="Limit the number of annotations processed (for smoke testing)")
     parser.add_argument("--model", type=str, default="sonnet", help="Model name (sonnet, opus, haiku, fable)")
+    parser.add_argument(
+        "--paper",
+        type=int,
+        default=None,
+        help="Only run annotations for the paper at this 1-indexed position in the annotations file's papers list",
+    )
     args = parser.parse_args()
 
-    asyncio.run(run(args.annotations, args.output, args.limit, args.model))
+    asyncio.run(run(args.annotations, args.output, args.limit, args.model, args.paper))
 
 
 if __name__ == "__main__":
