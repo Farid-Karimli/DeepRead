@@ -73,7 +73,7 @@ async def run_annotation(agent: Agent, paper: dict, annotation: dict, repo_url: 
     return record
 
 
-async def run(annotations_path: str, output_path: str, limit: int | None = None) -> None:
+async def run(annotations_path: str, output_path: str, limit: int | None = None, model: str = "sonnet") -> None:
     with open(annotations_path, "r") as f:
         data = json.load(f)
 
@@ -91,7 +91,7 @@ async def run(annotations_path: str, output_path: str, limit: int | None = None)
     if limit is not None:
         tasks = tasks[:limit]
 
-    agent = Agent()
+    agent = Agent(model=model)
     results = []
     processed_repo_urls = set()
 
@@ -116,9 +116,10 @@ def main() -> None:
     parser.add_argument("--annotations", default=DEFAULT_ANNOTATIONS_PATH, help="Path to the annotations JSON file")
     parser.add_argument("--output", default=DEFAULT_OUTPUT_PATH, help="Path to write predictions JSON to")
     parser.add_argument("--limit", type=int, default=None, help="Limit the number of annotations processed (for smoke testing)")
+    parser.add_argument("--model", type=str, default="sonnet", help="Model name (sonnet, opus, haiku, fable)")
     args = parser.parse_args()
 
-    asyncio.run(run(args.annotations, args.output, args.limit))
+    asyncio.run(run(args.annotations, args.output, args.limit, args.model))
 
 
 if __name__ == "__main__":
