@@ -27,14 +27,23 @@
 Computes, per annotation (using the agent's top-ranked predicted snippet):
 
 - `filepath_correct`: does the predicted filepath match a ground-truth location?
+- `filepath_hit_at_5`: does *any* of the (up to 5) predicted snippets' filepaths match
+  a ground-truth location, regardless of rank? Looser than `filepath_correct`, which
+  only looks at the top-ranked snippet; catches cases where the right file was found
+  but not ranked first (`filepath_hit_rank` records at what rank it was found).
 - `correct_class` / `correct_method` (only when the filepath is correct): does the
   predicted line range sit in the same class / method as the best-matching
   ground-truth range? Marked `"not_applicable"` when the ground-truth range
   isn't inside a class/method, or the file can't be parsed (Python files only).
   This surfaces cases where the agent points at, e.g., a class/function
   definition rather than the specific lines doing the described work.
-- `best_iou` (only when the filepath is correct): max IoU between the predicted
-  line range and the ground-truth locations in that file.
+- `best_iou` (only when the filepath is correct): max IoU between the top-ranked
+  predicted line range and the ground-truth locations in that file.
+- `mean_iou_matching_filepaths`: average IoU across *all* (up to 5) predicted
+  snippets whose filepath matches a ground-truth location, not just the top-ranked
+  one. For each matching snippet, the max IoU against ground-truth locations
+  sharing its filepath is taken, then those per-snippet values are averaged.
+  `null` when no predicted snippet shares a filepath with a ground-truth location.
 
 Since the class/method check reads real source files, it re-clones each
 paper's repo on demand (cleaned up automatically when the script finishes).
