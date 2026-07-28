@@ -140,6 +140,30 @@ single_content_map_schema = {
     "required": ['code_snippets']
 }
 
+# Agent 1 of the two-agent localization pipeline: file + anchor symbol only, no
+# line numbers. Spans come from the repo map's symbol table, not from the model.
+planner_schema = {
+    "type": "object",
+    "properties": {
+        "reasoning": {"type": "string"},
+        "verdict": {"type": "string"},
+        "candidates": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "filepath": {"type": "string"},
+                    "anchor_symbol": {"type": "string"},
+                    "confidence": {"type": "string"},
+                    "reason": {"type": "string"},
+                },
+                "required": ["filepath", "anchor_symbol"],
+            },
+        },
+    },
+    "required": ["reasoning", "verdict", "candidates"],
+}
+
 single_code_map_schema = {
     "type": "object",
     "properties": {

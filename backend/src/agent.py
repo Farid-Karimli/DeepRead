@@ -35,6 +35,12 @@ from src.prompts import (
 )
 
 from src.rerank import Reranker
+from src.observability import (
+    ToolTraceCollector,
+    init_weave,
+    log_summary,
+    op,
+)
 
 import logging
 import warnings
@@ -46,6 +52,8 @@ warnings.filterwarnings("ignore")
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
+
+init_weave()
 
 
 def _summarize_entities(entities: list[dict], max_items: int = 8) -> list[dict]:
@@ -86,6 +94,7 @@ class Agent:
                 result = message.result
         return result
 
+    @op
     async def find_github_repo(self,
         paper_input: str | bytes,
     ) -> str:
@@ -97,6 +106,7 @@ class Agent:
         logger.info(f"Finding GitHub repository for paper: {title} by {authors}")
         return brave_find_github_repo(paper_title=title, paper_authors=authors, deep_search=True)
 
+    @op
     async def identify_key_sections(
         self, 
         papermage_process_result: dict,
@@ -151,6 +161,7 @@ class Agent:
         os.remove(papermage_result_path)
         return parsed_result
 
+    @op
     async def map_key_sections_to_code(
         self,
         entities: list | dict,
@@ -197,6 +208,7 @@ class Agent:
             "current_tool": None,
             "tool_input": "",
         }
+        trace = ToolTraceCollector()
 
         options = ClaudeAgentOptions(
             model=self.model,
@@ -211,6 +223,7 @@ class Agent:
 
         parsed_result = None
         async for message in query(prompt=prompt, options=options):
+            trace.ingest(message)
             if on_event is not None and self.stream_events:
                 await on_event(message, tool_state)
             if isinstance(message, ResultMessage):
@@ -222,14 +235,19 @@ class Agent:
 
         parsed_result = normalize_code_mapping_result(parsed_result)
         matching_results = parsed_result.get("matches") if isinstance(parsed_result, dict) else None
+        process_metrics = trace.summarize()
+        log_summary("process_metrics", process_metrics)
+        log_summary("tool_trace", {"num_events": len(trace.events), "events": trace.to_list()})
         logger.info(
-            "map_key_sections_to_code: completed duration=%.2fs matching_results_count=%s",
+            "map_key_sections_to_code: completed duration=%.2fs matching_results_count=%s process=%s",
             time.perf_counter() - started_at,
             len(matching_results) if isinstance(matching_results, list) else None,
+            process_metrics,
         )
         return parsed_result
 
 
+    @op
     async def map_content_to_code(
         self,
         content: str | bytes,
@@ -258,7 +276,7 @@ class Agent:
         local_code_path = clone_repo_to_temp_dir(repo_url)
         prompt = build_single_content_to_code_mapping_prompt(content=content_input, repo_path=local_code_path, context=context)
         logger.info(
-            "map_key_sections_to_code: prompt prepared chars=%d cwd=%s tools=%s",
+            "map_content_to_code: prompt prepared chars=%d cwd=%s tools=%s",
             len(prompt),
             repo_url,
             ["Search", "ReadFile"],
@@ -277,31 +295,46 @@ class Agent:
 
         started_at = time.perf_counter()
         parsed_result = None
+        usage = None
+        cost_usd = None
+        trace = ToolTraceCollector()
         async for message in query(prompt=prompt, options=options):
+            trace.ingest(message)
             if isinstance(message, ResultMessage):
+                usage = message.usage if isinstance(message.usage, dict) else None
+                cost_usd = message.total_cost_usd
                 parsed_result = _parse_json_result(message.result)
                 if parsed_result is None:
                     cleaned = message.result.replace("```json", "").replace("```", "").strip()
                     logger.warning("map_content_to_code: failed to parse JSON result raw=%s", cleaned)
                     parsed_result = None
 
-        code_snippets = parsed_result.get("code_snippets") if isinstance(parsed_result, dict) else None
+        if not isinstance(parsed_result, dict):
+            parsed_result = {}
+        code_snippets = parsed_result.get("code_snippets")
 
         final = ContentToCodeResult(
-            reasoning=parsed_result.get("reasoning"),
-            verdict=parsed_result.get("verdict"),
+            reasoning=parsed_result.get("reasoning") or "",
+            verdict=parsed_result.get("verdict") or "",
             code_snippets=[]
         )
 
+        process_metrics = trace.summarize()
+        # Recorded so token load is comparable with the two-agent planner.
+        process_metrics["usage"] = usage
+        process_metrics["total_cost_usd"] = cost_usd
         logger.info(
-            "map_content_to_code: completed duration=%.2fs mapped_count=%s",
+            "map_content_to_code: completed duration=%.2fs mapped_count=%s process=%s",
             time.perf_counter() - started_at,
             len(code_snippets) if isinstance(code_snippets, list) else None,
+            process_metrics,
         )
 
-        if len(code_snippets) > 0:
+        if isinstance(code_snippets, list) and len(code_snippets) > 0:
             code_contents = [snippet.get("content") for snippet in code_snippets]
-            reranked_results = self.reranker.rerank(query=prompt, documents=code_contents)
+            # Rerank against the selected paper content (+ context), not the full prompt.
+            reranking_query = f"{content}\n\n{context}" if context else f"{content}"
+            reranked_results = self.reranker.rerank(query=reranking_query, documents=code_contents)
 
             logger.info(
                 "map_content_to_code: reranked results count=%d",
@@ -316,8 +349,25 @@ class Agent:
             ]
             final.code_snippets = [code_snippets[index] for index in ranked_indices[:top_k]]
 
-        return final.model_dump()
+        result = final.model_dump()
+        result["tool_trace"] = trace.to_list()
+        result["process_metrics"] = process_metrics
+        log_summary("process_metrics", process_metrics)
+        log_summary(
+            "prediction_summary",
+            {
+                "verdict": result.get("verdict"),
+                "num_snippets": len(result.get("code_snippets") or []),
+                "top_filepath": (
+                    (result.get("code_snippets") or [{}])[0].get("filepath")
+                    if result.get("code_snippets")
+                    else None
+                ),
+            },
+        )
+        return result
 
+    @op
     async def map_code_to_content(
         self, 
         code: str,
@@ -370,6 +420,7 @@ class Agent:
                 os.remove(path)
 
 
+    @op
     async def analyze_paper(
         self,
         file_input: bytes | str | Path | BufferedIOBase,

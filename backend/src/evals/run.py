@@ -6,8 +6,8 @@ annotated dataset in `annotations/manual_v1.json`.
 For each annotation, the claim text is treated as the "content" the user
 selected in the paper, and the agent is asked to map it to code snippets in
 the paper's associated GitHub repository. No metrics are computed here -
-this script only collects the raw predictions (plus timing) for later
-evaluation.
+this script only collects the raw predictions (plus timing and tool traces)
+for later evaluation.
 
 Usage:
     python -m src.evals.run [--limit N] [--output PATH] [--paper INDEX]
@@ -23,6 +23,8 @@ import traceback
 from tqdm import tqdm
 
 from src.agent import Agent
+from src.agentic_localization.planner import Planner
+from src.observability import attributes, init_weave, is_active, op
 from src.utils import delete_temp_dir, normalize_github_repo_url
 
 DEFAULT_ANNOTATIONS_PATH = os.path.join(
@@ -43,7 +45,8 @@ def build_context(paper: dict, annotation: dict) -> str:
     )
 
 
-async def run_annotation(agent: Agent, paper: dict, annotation: dict, repo_url: str) -> dict:
+@op(name="eval_run_annotation")
+async def run_annotation(agent: Agent | Planner, paper: dict, annotation: dict, repo_url: str) -> dict:
     record = {
         "paper_id": paper.get("paper_id"),
         "annotation_id": annotation.get("annotation_id"),
@@ -52,17 +55,33 @@ async def run_annotation(agent: Agent, paper: dict, annotation: dict, repo_url: 
         "ground_truth_verdict": annotation.get("verdict"),
         "ground_truth_locations": annotation.get("locations", []),
         "prediction": None,
+        "tool_trace": None,
+        "process_metrics": None,
         "error": None,
         "duration_seconds": None,
     }
 
     started_at = time.perf_counter()
     try:
-        prediction = await agent.map_content_to_code(
-            content=annotation.get("claim_text", ""),
-            repo_url=repo_url,
-            context=build_context(paper, annotation),
-        )
+        with attributes(
+            {
+                "paper_id": paper.get("paper_id"),
+                "annotation_id": annotation.get("annotation_id"),
+                "section_ref": annotation.get("section_ref"),
+                "ground_truth_verdict": annotation.get("verdict"),
+                "model": getattr(agent, "model", None),
+            }
+        ):
+            prediction = await agent.map_content_to_code(
+                content=annotation.get("claim_text", ""),
+                repo_url=repo_url,
+                context=build_context(paper, annotation),
+            )
+        # Lift process instrumentation out of the prediction payload so
+        # evaluate.py keeps seeing a clean ContentToCodeResult-shaped dict.
+        if isinstance(prediction, dict):
+            record["tool_trace"] = prediction.pop("tool_trace", None)
+            record["process_metrics"] = prediction.pop("process_metrics", None)
         record["prediction"] = prediction
     except Exception as exc:
         record["error"] = f"{type(exc).__name__}: {exc}"
@@ -79,7 +98,11 @@ async def run(
     limit: int | None = None,
     model: str = "sonnet",
     paper_index: int | None = None,
+    planner: bool = False,
 ) -> None:
+    init_weave()
+    print(f"Weave tracing active={is_active()}")
+
     with open(annotations_path, "r") as f:
         data = json.load(f)
 
@@ -104,7 +127,9 @@ async def run(
     if limit is not None:
         tasks = tasks[:limit]
 
-    agent = Agent(model=model)
+    # The planner exposes the same map_content_to_code signature as Agent, so the
+    # two-agent pipeline is measured through this harness unchanged.
+    agent = Planner(model=model) if planner else Agent(model=model)
     results = []
     processed_repo_urls = set()
 
@@ -113,11 +138,29 @@ async def run(
             record = await run_annotation(agent, paper, annotation, repo_url)
             results.append(record)
             processed_repo_urls.add(repo_url)
+            # Checkpoint after each annotation so a long run isn't lost on interrupt.
+            os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
+            with open(output_path, "w") as f:
+                json.dump(results, f, indent=2)
     finally:
-        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
         with open(output_path, "w") as f:
             json.dump(results, f, indent=2)
         print(f"Wrote {len(results)} predictions to {output_path}")
+
+        # Quick process-metric rollup so you can see search-vs-read behavior without W&B.
+        search_before = [
+            r.get("process_metrics", {}).get("search_before_read")
+            for r in results
+            if isinstance(r.get("process_metrics"), dict)
+        ]
+        known = [v for v in search_before if isinstance(v, bool)]
+        if known:
+            n_search_first = sum(1 for v in known if v)
+            print(
+                f"Process: search_before_read={n_search_first}/{len(known)} "
+                f"({100 * n_search_first / len(known):.0f}%)"
+            )
 
         for repo_url in processed_repo_urls:
             repo_name = repo_url.split("/")[-1].replace(".git", "")
@@ -136,9 +179,16 @@ def main() -> None:
         default=None,
         help="Only run annotations for the paper at this 1-indexed position in the annotations file's papers list",
     )
+    parser.add_argument(
+        "--planner",
+        action="store_true",
+        help="Use the repo-map planner (src.agentic_localization) instead of the single-agent baseline",
+    )
     args = parser.parse_args()
 
-    asyncio.run(run(args.annotations, args.output, args.limit, args.model, args.paper))
+    asyncio.run(
+        run(args.annotations, args.output, args.limit, args.model, args.paper, args.planner)
+    )
 
 
 if __name__ == "__main__":

@@ -173,6 +173,36 @@ def build_single_content_to_code_mapping_prompt(
             modules you inspected and where you expected the code to be.
             3. Reach one of the verdicts below based on what you found.
 
+            ## Content Types Guidance ##
+            For most content, find the source and its references. Do NOT reference imports.
+
+            More targeted guidelines per content-type:
+            1) Loss/objective function, whether as a name reference or equation - prefer the actual computation body
+            over the function/class header - the system can highlight the closure later.
+            2) Architecture component - focus on where it is instantiated and referenced, preferably as it relates
+            to the context of the selected content. For example, there could be multiple ViTs in the code but only one
+            is used on a specific dataset/task. Here, class and function headers are fine (because of size).
+            3) Algorithm step - find both actual computation and the references within the algorithm code. Note that this could span
+            multiple files, in which case try to cover as much ground as possible.
+            4) Data/dataset/preprocessing - point at the dataset class, loader, or the transform performing the described
+            preprocessing, not a download URL. A merely-cited external dataset with no local handling may be "not_applicable".
+            5) Training/optimization/fine-tuning procedure - prefer the loop body doing the update (train step, optimizer step,
+            the objective being optimized) over the trainer's __init__ or its config.
+            6) Evaluation/metric/probing computation - point at the function computing the reported quantity, not the
+            top-level eval harness or CLI that merely calls it.
+            7) Hyperparameter/quantitative value - point at where the value is set or used (a default arg, a constant,
+            an indexing/slice), not just where the owning object is defined. If the value is not found in the code, referencing
+            a config file (e.g. a YAML) where it is defined is acceptable.
+
+            Cross-cutting span rules:
+            - Tightness: return the minimal contiguous range that performs the described computation. Do not return a whole
+            enclosing function when only a few lines matter, and never return just a signature/header line.
+            - Ordering: put the single most direct implementation first; supporting or reference snippets come after.
+            - Definition vs invocation: if the content describes how something works, return the computation body; if it
+            describes that something is used (on a dataset/task), return the instantiation or call site.
+            - Exclude: imports, __init__.py re-exports, decorators alone, abstract base/interface stubs, config/registry
+            entries, and test files (unless the content is about testing).
+
             ## Verdicts ##
             - "implemented": you found code that genuinely implements or corresponds to the content.
             - "not_implemented": the content describes something that should have code, but no
@@ -199,6 +229,98 @@ def build_single_content_to_code_mapping_prompt(
             When the verdict is "not_implemented" or "not_applicable", "code_snippets" must be an
             empty list.
         """
+
+def build_planner_prompt(
+    content: str,
+    context: str,
+    repo_map_blob: str,
+    max_candidates: int = 5,
+):
+    """Agent 1 of the two-agent localization pipeline.
+
+    The planner never touches the repository. It gets a serialized repo map and
+    picks files and anchor symbols; a resolver pins the exact span afterwards.
+    Anchors must be copied verbatim from the map so they can be looked up in the
+    symbol table rather than searched for.
+    """
+    return f"""
+        Locate where a piece of content from a scientific paper is implemented in its
+        code repository, OR determine that no such code exists.
+
+        You do NOT have access to the repository. Instead you are given a map of it:
+        every file, its role, and every class and function with its line range. Work
+        from the map alone. This is deliberate — the map already contains the structure
+        you would otherwise spend many tool calls discovering.
+
+        ## Content ##
+        {content}
+        ## End Content ##
+
+        ## Context ##
+        {context}
+        ## End Context ##
+
+        ## Repository Map ##
+        {repo_map_blob}
+        ## End Repository Map ##
+
+        ## Important ##
+        Papers frequently describe methods, components, or results that are NOT present in
+        their associated repository — code is omitted, lives elsewhere, or was never released.
+        Reporting that a method is absent is a correct and valuable outcome, not a failure.
+        It is equally important NOT to invent a match. Returning a loosely related file
+        when no genuine implementation exists is worse than reporting absence.
+
+        ## Procedure ##
+        1. Decide whether the content is the kind of thing that *should* have a code
+        implementation (a concrete method, algorithm, or computation) versus content that
+        would not normally map to code (motivation, related work, a theoretical claim).
+        2. If it should map, use the map to pick the file. `role` tags (trainer, model,
+        dataset, loss, config, script, util) are the fastest route: content about a loss
+        belongs in a trainer or loss file, content about an architecture in a model file.
+        Symbol names and the file summary disambiguate within a role.
+        3. Pick the anchor symbol inside that file that performs the described work.
+        Prefer the method doing the computation over the class that contains it, and over
+        `__init__`. When the content names a component rather than an operation ("CURL is
+        implemented as ..."), the class itself is the right anchor.
+        4. Return up to {max_candidates} candidates, most likely first. Additional
+        candidates are for genuine alternatives, not padding — a single confident answer
+        is better than five guesses.
+
+        ## Anchor rules ##
+        - `filepath` must be copied exactly as it appears in the map, including directory.
+        - `anchor_symbol` must be a name that appears in the map for that file: a class
+        name (`CURLTrainer`), a qualified method name (`CURLTrainer.compute_loss`), or a
+        module-level function name (`run_worker`). Do not invent names, do not guess at
+        symbols the map does not list, and do not return a bare filename as an anchor.
+        - If the right file has no listed symbol (a config-style or script-style file whose
+        work happens at module level), give the filepath and set `anchor_symbol` to "".
+
+        ## Verdicts ##
+        - "implemented": the map shows code that implements or corresponds to the content.
+        - "not_implemented": the content should have code, but this repository has none.
+        - "not_applicable": the content is not the kind of thing that maps to code.
+
+        ## Output Format ##
+        Return just a JSON object. The first and last character of your output must be {{ and }}.
+        No prose outside the JSON.
+
+        {{
+            "reasoning": "Which role and file you chose and why, and what you rejected.",
+            "verdict": "implemented" | "not_implemented" | "not_applicable",
+            "candidates": [
+                {{
+                    "filepath": "path exactly as it appears in the map",
+                    "anchor_symbol": "CURLTrainer.compute_loss",
+                    "confidence": "high" | "medium" | "low",
+                    "reason": "Briefly, what this symbol does that matches the content."
+                }}
+            ]
+        }}
+
+        When the verdict is "not_implemented" or "not_applicable", "candidates" must be an
+        empty list.
+    """
 
 def build_code_to_content_mapping_prompt(
     code: str, # a single piece of code
