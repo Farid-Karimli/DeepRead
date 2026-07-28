@@ -60,3 +60,7 @@ logs/
 backend/scripts/out
 
 supabase/
+
+# Cloned repo checkouts and built repo maps
+backend/src/temp/
+backend/src/agentic_localization/cache/
