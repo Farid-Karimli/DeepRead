@@ -142,6 +142,8 @@ single_content_map_schema = {
 
 # Agent 1 of the two-agent localization pipeline: file + anchor symbol only, no
 # line numbers. Spans come from the repo map's symbol table, not from the model.
+# Shape matches Anthropic structured outputs (additionalProperties false; every
+# property listed in required).
 planner_schema = {
     "type": "object",
     "properties": {
@@ -157,11 +159,13 @@ planner_schema = {
                     "confidence": {"type": "string"},
                     "reason": {"type": "string"},
                 },
-                "required": ["filepath", "anchor_symbol"],
+                "required": ["filepath", "anchor_symbol", "confidence", "reason"],
+                "additionalProperties": False,
             },
         },
     },
     "required": ["reasoning", "verdict", "candidates"],
+    "additionalProperties": False,
 }
 
 single_code_map_schema = {

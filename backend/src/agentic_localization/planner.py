@@ -3,9 +3,10 @@ Planner: agent 1 of the two-agent localization pipeline.
 
 Mirrors `src.agent.Agent.map_content_to_code`, with one deliberate difference:
 the planner gets **no tools**. The repo map's minimal view is serialized into the
-prompt, so picking a file and an anchor symbol is a single call instead of a
-Search / ReadFile crawl. Line numbers come from the map's symbol table rather
-than from the model, so the planner cannot hallucinate a span.
+prompt, so picking a file and an anchor symbol is a single Anthropic Messages
+API call instead of a Search / ReadFile crawl through the Claude Code harness.
+Line numbers come from the map's symbol table rather than from the model, so
+the planner cannot hallucinate a span.
 
 Output is `ContentToCodeResult`-shaped, so `src.evals.evaluate` scores it
 unchanged. Until the resolver (agent 2) lands, each prediction's span is the
@@ -23,10 +24,11 @@ import time
 from pathlib import Path
 from typing import Any
 
-from claude_agent_sdk import ClaudeAgentOptions, ResultMessage, query
+from anthropic import AsyncAnthropic
 
 from src.agent_utils import _parse_json_result, planner_schema
-from src.observability import ToolTraceCollector, init_weave, log_summary, op
+from src.config import ANTHROPIC_API_KEY
+from src.observability import init_weave, log_summary, op
 from src.prompts import build_planner_prompt
 from src.types import ContentToCodeResult
 from src.utils import clone_repo_to_temp_dir
@@ -43,11 +45,39 @@ init_weave()
 # only read line numbers, so there is no reason to carry a 600-line class.
 MAX_SNIPPET_LINES = 200
 
+# Claude Agent SDK accepts short aliases; the Messages API needs full model IDs.
+# Keep accepting both so `src.evals.run --model sonnet` stays unchanged.
+MODEL_ALIASES = {
+    "sonnet": "claude-sonnet-4-5-20250929",
+    "opus": "claude-opus-4-1-20250805",
+    "haiku": "claude-haiku-4-5-20251001",
+}
+
 PLANNER_SYSTEM_PROMPT = (
     "You localize content from scientific papers to the code that implements it. "
     "You work from a serialized map of the repository, not from the repository itself. "
     "You reply with a single JSON object matching the requested schema and nothing else."
 )
+
+
+def resolve_model(model: str) -> str:
+    key = (model or "").strip().lower()
+    if key in MODEL_ALIASES:
+        return MODEL_ALIASES[key]
+    return model
+
+
+def _usage_dict(usage: Any) -> dict[str, Any] | None:
+    if usage is None:
+        return None
+    if isinstance(usage, dict):
+        return usage
+    return {
+        "input_tokens": getattr(usage, "input_tokens", None),
+        "output_tokens": getattr(usage, "output_tokens", None),
+        "cache_creation_input_tokens": getattr(usage, "cache_creation_input_tokens", None),
+        "cache_read_input_tokens": getattr(usage, "cache_read_input_tokens", None),
+    }
 
 
 class Planner:
@@ -59,10 +89,13 @@ class Planner:
         model: str = "sonnet",
         cache_dir: str | Path = DEFAULT_CACHE_DIR,
         max_candidates: int = 5,
+        temperature: float = 0.0,
     ) -> None:
         self.model = model
         self.cache_dir = cache_dir
         self.max_candidates = max_candidates
+        self.temperature = temperature
+        self._client = AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
 
     @op
     async def localize(
@@ -92,48 +125,39 @@ class Planner:
             repo_map_blob=blob,
             max_candidates=self.max_candidates,
         )
+        model_id = resolve_model(self.model)
         logger.info(
-            "localize: prompt prepared chars=%d repo_map_files=%d blob_tokens=~%d tools=%s",
+            "localize: prompt prepared chars=%d repo_map_files=%d blob_tokens=~%d model=%s",
             len(prompt),
             len(repo_map.files),
             estimate_tokens(blob),
-            [],
+            model_id,
         )
 
-        options = ClaudeAgentOptions(
-            model=self.model,
-            # `tools=[]` drops Claude Code's tool definitions from the request.
-            # `allowed_tools=[]` alone only withholds permission — the schemas are
-            # still sent, and they cost ~26k input tokens per call.
-            tools=[],
-            allowed_tools=[],
-            max_turns=1,
-            system_prompt=PLANNER_SYSTEM_PROMPT,
-            setting_sources=[],
-            cwd=local_code_path,
-            output_format={
-                "type": "json_schema",
-                "json_schema": planner_schema,
+        message = await self._client.messages.create(
+            model=model_id,
+            max_tokens=4096,
+            temperature=self.temperature,
+            system=PLANNER_SYSTEM_PROMPT,
+            messages=[{"role": "user", "content": prompt}],
+            output_config={
+                "format": {
+                    "type": "json_schema",
+                    "schema": planner_schema,
+                }
             },
         )
 
-        parsed_result = None
-        usage: dict[str, Any] | None = None
-        cost_usd = None
-        trace = ToolTraceCollector()
-        async for message in query(prompt=prompt, options=options):
-            trace.ingest(message)
-            if isinstance(message, ResultMessage):
-                usage = message.usage if isinstance(message.usage, dict) else None
-                cost_usd = message.total_cost_usd
-                parsed_result = _parse_json_result(message.result)
-                if parsed_result is None:
-                    cleaned = message.result.replace("```json", "").replace("```", "").strip()
-                    logger.warning("localize: failed to parse JSON result raw=%s", cleaned)
-
+        raw_text = ""
+        if isinstance(message.content, list) and message.content:
+            raw_text = getattr(message.content[0], "text", "") or ""
+        parsed_result = _parse_json_result(raw_text)
+        if parsed_result is None and raw_text:
+            logger.warning("localize: failed to parse JSON result raw=%s", raw_text[:500])
         if not isinstance(parsed_result, dict):
             parsed_result = {}
 
+        usage = _usage_dict(message.usage)
         candidates = parsed_result.get("candidates")
         snippets, resolution = self._resolve_candidates(
             candidates if isinstance(candidates, list) else [],
@@ -148,22 +172,33 @@ class Planner:
             code_snippets=snippets,
         )
 
-        process_metrics = trace.summarize()
-        process_metrics.update(
-            {
-                "planner": True,
-                "repo_map_files": len(repo_map.files),
-                "minimal_view_chars": len(blob),
-                "minimal_view_est_tokens": estimate_tokens(blob),
-                "usage": usage,
-                "total_cost_usd": cost_usd,
-                **resolution,
-            }
-        )
+        duration_s = round(time.perf_counter() - started_at, 3)
+        process_metrics = {
+            "num_tool_calls": 0,
+            "tool_sequence": [],
+            "num_searches": 0,
+            "num_reads": 0,
+            "num_unique_files_read": 0,
+            "files_read": [],
+            "search_patterns": [],
+            "first_search_step": None,
+            "first_read_step": None,
+            "search_before_read": None,
+            "duration_s": duration_s,
+            "num_errors": 0,
+            "planner": True,
+            "api": "anthropic",
+            "model": model_id,
+            "repo_map_files": len(repo_map.files),
+            "minimal_view_chars": len(blob),
+            "minimal_view_est_tokens": estimate_tokens(blob),
+            "usage": usage,
+            **resolution,
+        }
 
         result = final.model_dump()
         result["planner_candidates"] = candidates if isinstance(candidates, list) else []
-        result["tool_trace"] = trace.to_list()
+        result["tool_trace"] = []
         result["process_metrics"] = process_metrics
 
         log_summary("process_metrics", process_metrics)
@@ -181,12 +216,14 @@ class Planner:
         )
         logger.info(
             "localize: completed duration=%.2fs verdict=%s candidates=%s unresolved_files=%s "
-            "unresolved_anchors=%s",
-            time.perf_counter() - started_at,
+            "unresolved_anchors=%s input_tokens=%s output_tokens=%s",
+            duration_s,
             result.get("verdict"),
             len(result.get("code_snippets") or []),
             resolution["num_unresolved_files"],
             resolution["num_unresolved_anchors"],
+            (usage or {}).get("input_tokens"),
+            (usage or {}).get("output_tokens"),
         )
         return result
 

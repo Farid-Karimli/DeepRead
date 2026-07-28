@@ -87,12 +87,13 @@ for one checkout. Both `cache/` and `src/temp/` are gitignored.
 ## Planner (agent 1)
 
 `planner.py` mirrors `Agent.map_content_to_code`, with one deliberate difference:
-it gets **no tools**. The minimal view goes into the prompt, so picking a file and
-an anchor symbol is one call instead of a Search / ReadFile crawl. Line numbers
-come from the symbol table, not from the model, so the span cannot be
-hallucinated — an anchor that does not resolve is counted, not silently accepted.
-It exposes the same `map_content_to_code` signature as `Agent`, so
-`src.evals.run --planner` and `src.evals.evaluate` work unchanged.
+it gets **no tools** and calls the Anthropic Messages API directly. The minimal
+view goes into the prompt, so picking a file and an anchor symbol is one call
+instead of a Search / ReadFile crawl. Line numbers come from the symbol table,
+not from the model, so the span cannot be hallucinated — an anchor that does not
+resolve is counted, not silently accepted. It exposes the same
+`map_content_to_code` signature as `Agent`, so `src.evals.run --planner` and
+`src.evals.evaluate` work unchanged.
 
 Paper 1 (Atari-PB, 12 annotations), sonnet, against the single-agent baselines on
 the same 12 annotations:
@@ -119,22 +120,15 @@ content described an operation inside one of its methods, so the span is the who
 class and lands in the right file but the wrong method. Both a prompt nudge and the
 resolver attack this directly, which makes it the obvious next lever.
 
-Token load per annotation is 18.8k input / 494 output. Two findings behind that
-number, both measured:
+Token load per annotation is dominated by the repo map (~4k estimated tokens for
+Atari-PB) plus a short system prompt. The planner talks to the Anthropic Messages
+API directly — not the Claude Code harness — so there is no tool-schema or CLI
+scaffolding tax. Short model aliases (`sonnet`, `opus`, `haiku`) still work and
+resolve to full model IDs inside `planner.py`.
 
-- `allowed_tools=[]` withholds tool *permission* but the SDK still ships every
-  Claude Code tool schema, worth ~15k input tokens per call. `tools=[]` drops
-  them and takes the call from 33.7k to 18.5k.
-- Even with `tools=[]`, an explicit `system_prompt` and `setting_sources=[]`, the
-  Claude Code CLI injects ~11.3k tokens of its own scaffolding per call (measured
-  with a stub prompt). So of 18.8k input tokens, only ~7.5k is the repo map and
-  the instructions. Calling the `anthropic` SDK directly would remove that floor;
-  it is left in place for now so the planner and the baseline run through the same
-  harness.
-
-The baseline's token usage was never recorded, so there is no like-for-like token
-comparison yet. `Agent.map_content_to_code` now records `usage` and
-`total_cost_usd` in its process metrics, so the next baseline run will produce one.
+Baseline `Agent.map_content_to_code` still goes through Claude Code and now
+records `usage` / `total_cost_usd` in its process metrics for a like-for-like
+comparison on the next baseline run.
 
 ## Measured on the annotation ground truth
 
