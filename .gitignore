@@ -64,3 +64,9 @@ supabase/
 # Cloned repo checkouts and built repo maps
 backend/src/temp/
 backend/src/agentic_localization/cache/
+
+# Local editor, deploy notes, and presentations
+DeepRead_Presentation.pptx
+deploycommands.md
+.cursor/settings.json
+.cursor/.cursorrules
