@@ -38,3 +38,33 @@ cd .. && make up
 UI at http://localhost:5173, API at http://localhost:8000. Use `make down`, `make status`, and `make logs` to manage processes.
 
 For Cloud Run deployment, see `deploycommands.md`.
+
+## Roadmap
+
+### Matching Engine
+
+Code-to-content matching pipeline.
+
+- [**DONE**] v0.1: Reranking query from `prompt` → `content` in `agent:map_content_to_code`
+- [**DONE**] v0.5: Add few-shot instructions for content type and span calibration in prompt
+- [**DONE**]v0.7: Search a map of codebase symbols, definitions and calls, not local codebase files.
+  - Create a Repo Map with per-file annotations (classes, methods, definitions, calls, etc.)
+  - Planner agent: Identify relevant files and suggest tree-sitter code symbol hints (references, search terms) - powered by a single Anthropic API call (with the repo map supplied in the prompt), not a Search / ReadFile crawl through the Claude Code harness.
+- [IN PROGRESS] v0.8-v0.9: Search Planner + Resolver
+  - Resolver agent, 2 types: menu and guided-crawl.
+    - Menu (v0.8): Pinpoint specific symbols and line ranges for finding matches, informed by the Search Planner's output as hints. This is powered by a single API call to Claude, with snippets of the repo map supplied in the prompt. No crawling and no custom tools.
+    - Guided-crawl (v0.9): Crawl the codebase to find matches, guided by the Search Planner's output as hints. This is powered by a custom agentic-harness with custom tools for reading codebase files, symbols and calls.
+- v1.0: Past Memory
+  - Retrieve and reuse previously discovered code snippets, search scopes and matches.
+  - Decide best way to surface memory to the agent (e.g., through prompt context)
+
+Optimize for model cost and performance.
+
+### AI Matches 
+
+- v1.0: Scalable Search
+  - Plan and enable parallel search for large papers and codebases. Integrate best working techniques from the Matching Engine.
+
+### UI
+
+- Copilot Chat in the bottom right corner of the page: Ask further questions about the paper, code, or matches.
