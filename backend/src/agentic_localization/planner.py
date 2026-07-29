@@ -27,6 +27,7 @@ from src.utils import clone_repo_to_temp_dir
 
 from .repo_map import DEFAULT_CACHE_DIR, estimate_tokens, load_or_build, render_minimal_view
 from .schema import FileRecord, RepoMap, SymbolRecord
+from .utils import resolve_model
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -35,25 +36,11 @@ init_weave()
 
 MAX_SNIPPET_LINES = 200
 
-MODEL_ALIASES = {
-    "sonnet": "claude-sonnet-4-5-20250929",
-    "opus": "claude-opus-4-1-20250805",
-    "haiku": "claude-haiku-4-5-20251001",
-}
-
 PLANNER_SYSTEM_PROMPT = (
     "You localize content from scientific papers to the code that implements it. "
     "You work from a serialized map of the repository, not from the repository itself. "
     "You reply with a single JSON object matching the requested schema and nothing else."
 )
-
-
-def resolve_model(model: str) -> str:
-    key = (model or "").strip().lower()
-    if key in MODEL_ALIASES:
-        return MODEL_ALIASES[key]
-    return model
-
 
 def _usage_dict(usage: Any) -> dict[str, Any] | None:
     if usage is None:

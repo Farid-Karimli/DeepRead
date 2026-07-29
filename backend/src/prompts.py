@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import List
 
 _LLM_PAPERMAGE_SCHEMA = """
         Root object (PaperMageResult):
@@ -314,6 +315,81 @@ def build_planner_prompt(
                     "anchor_symbol": "CURLTrainer.compute_loss",
                     "confidence": "high" | "medium" | "low",
                     "reason": "Briefly, what this symbol does that matches the content."
+                }}
+            ]
+        }}
+
+        When the verdict is "not_implemented" or "not_applicable", "candidates" must be an
+        empty list.
+    """
+
+def build_resolver_menu_prompt(
+    content: str,
+    context: str,
+    candidates: List[dict],
+    max_snippets: int,
+):
+    """
+        Agent 2 (kind=menu) of the agent-localization pipeline.
+        This agent picks from the candidate spans for each candidate symbol that 
+        the Planner returned to narrow down the prediction to specific lines.
+        It does not perform any repository crawling.
+    """
+    return f"""
+        Narrow down where a piece of content from a scientific paper is implemented in its
+        code repository.
+
+        You do NOT have access to the repository. Instead you are given the output of the Planner,
+        which had access to a minimal version of the repository symbol map. The Planner result
+        includes a candidate set of symbols (classes, functions and methods) 
+        that likely contain the precise snippet of code that is the answer. This result was then augmented
+        to include more information about each candidate, likes its comment-delineated spans. 
+        Pick from this result alone. This is deliberate — this result already contains the structure
+        you would otherwise spend many tool calls discovering.
+
+        ## Content ##
+        {content}
+        ## End Content ##
+
+        ## Context ##
+        {context}
+        ## End Context ##
+
+        ## Candidates ## 
+        {candidates}
+        ## End Candidates ##  
+
+        ## Procedure ##
+        1. Decide whether the entire symbol contains the computations/claims described in the content.
+        Try to cover as much ground as you can. 
+        2. Return up to {max_snippets} candidates, most likely first. Additional
+        candidates are for genuine alternatives, not padding — a single confident answer
+        is better than five guesses.
+
+        ## Anchor rules ##
+        - `filepath` must be copied exactly as it appears in the map, including directory.
+        - `name` must be a name that appears in the map for that file: a class
+        name (`CURLTrainer`), a qualified method name (`CURLTrainer.compute_loss`), or a
+        module-level function name (`run_worker`). Do not invent names, do not guess at
+        symbols the map does not list, and do not return a bare filename as an anchor.
+        - `spans` must be a list of indices corresponding to the candidates.spans that are most relevant to the content.
+        - If the correct symbol has no listed spans (a small function/method), 
+        reference the symbol and set `spans` to -1..
+
+
+        ## Output Format ##
+        Return just a JSON object. The first and last character of your output must be {{ and }}.
+        No prose outside the JSON.
+
+        {{
+            "reasoning": "Which symbols and spans you chose and why, and what you rejected.",
+            "symbols": [
+                {{
+                    "filepath": "path exactly as it appears in the map",
+                    "name": "CURLTrainer.compute_loss",
+                    "spans": [0,1],
+                    "confidence": "high" | "medium" | "low",
+                    "reason": "Briefly, what this symbol/span does that matches the content."
                 }}
             ]
         }}

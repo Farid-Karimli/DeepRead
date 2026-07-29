@@ -168,6 +168,30 @@ planner_schema = {
     "additionalProperties": False,
 }
 
+resolver_schema = {
+    "type": "object",
+    "properties": {
+        "reasoning": {"type": "string"},
+        "symbols": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "filepath": {"type": "string"},
+                    "name": {"type": "string"},
+                    "spans": {"type": "array", "items": {"type": "integer"}},
+                    "confidence": {"type": "string"},
+                    "reason": {"type": "string"},
+                },
+                "required": ["filepath", "name", "spans"],
+                "additionalProperties": False,
+            },
+        },
+    },
+    "required": ["reasoning", "symbols"],
+    "additionalProperties": False,
+}
+
 single_code_map_schema = {
     "type": "object",
     "properties": {

@@ -2,6 +2,18 @@ from pydantic import BaseModel, Field
 from typing import Any
 import uuid
 
+MODEL_ALIASES = {
+    "sonnet": "claude-sonnet-4-5-20250929",
+    "opus": "claude-opus-4-1-20250805",
+    "haiku": "claude-haiku-4-5-20251001",
+}
+
+def resolve_model(model: str) -> str:
+    key = (model or "").strip().lower()
+    if key in MODEL_ALIASES:
+        return MODEL_ALIASES[key]
+    return model
+
 class TreeSitterCodeChunk(BaseModel):
     language: str
     file_path: str
