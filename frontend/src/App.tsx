@@ -16,6 +16,8 @@ import {
 import type { AgentTaskResult, codeEntityMatch, codeMatchesResult, codeSectionsResult } from './api/types.ts';
 import { SidePanelProvider } from './context/SidePanelContext.tsx';
 import { UserContext, type User } from './context/UserContext.tsx';
+import { CopilotProvider } from './context/CopilotContext.tsx';
+import CopilotChat from './components/CopilotChat.tsx';
 
 /** Celery stores the agent return value: `{ github_repo_url, code_result }`. */
 
@@ -227,8 +229,6 @@ function App() {
     setSelectedPaperId(id);
   };
 
-  const defaultUser: User = {username: "faridkar", id: 1}
-
   if (
     selectedPaperId &&
     paperFile &&
@@ -243,15 +243,18 @@ function App() {
                 value={{
                   currentUser, setUser
                 }}>
-                <PaperView
-                  analysisResult={analysisResult}
-                  processResult={papermageResult}
-                  paperFile={paperFile}
-                  tree={repoTree}
-                  githubRepoUrl={githubRepoUrl}
-                  paperId={selectedPaperId}
-                  clearEnvironment={clearEnvironment}
-                />
+                <CopilotProvider key={selectedPaperId}>
+                  <PaperView
+                    analysisResult={analysisResult}
+                    processResult={papermageResult}
+                    paperFile={paperFile}
+                    tree={repoTree}
+                    githubRepoUrl={githubRepoUrl}
+                    paperId={selectedPaperId}
+                    clearEnvironment={clearEnvironment}
+                  />
+                  <CopilotChat paperId={selectedPaperId} />
+                </CopilotProvider>
             </UserContext>
         </SidePanelProvider>
     );

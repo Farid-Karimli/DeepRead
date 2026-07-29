@@ -14,10 +14,10 @@ import { Group, Panel, Separator } from "react-resizable-panels";
 import { useQuery, useMutation, useQueryClient} from '@tanstack/react-query';
 
 import { mapContentToCode, getContentToCodeMatches } from '../api/main.ts';
-import type { codeMatchesResult, githubRepoTreeResponse, processPDFResult, paperContentToCodeMatch, paperContentBox, PaperContentMatch } from '../api/types.ts';
+import type { codeMatchesResult, githubRepoTreeResponse, processPDFResult, paperContentToCodeMatch, paperContentBox } from '../api/types.ts';
 import { resolvePaperMageEntity } from '../utils/resolvePaperMageEntity.ts';
 import { HighlightOverlayDemo, type BoundingBoxWithTooltip } from './CodeOverlay.tsx';
-import RepoView from './RepoView.tsx';
+import RepoView, { type ContextualPaperContentMatch } from './RepoView.tsx';
 import { captureSelectionHighlightsFromRange } from '../utils/selectionRangeToPageBox.ts';
 import { usePDFTextSelection } from '../hooks/useTextSelection.tsx';
 import { useCeleryTaskStatus } from '../hooks/useCeleryTaskStatus.ts';
@@ -106,7 +106,7 @@ function PdfPageList({
 }: {
     analysisResult: codeMatchesResult;
     processResult: processPDFResult;
-    paperContentMatches: PaperContentMatch[];
+    paperContentMatches: ContextualPaperContentMatch[];
     scrollRef: React.RefObject<HTMLDivElement | null>;
     codeMatches: paperContentToCodeMatch[];
 }) {
@@ -138,7 +138,7 @@ function PdfPageList({
             return;
         }
         let cancelled = false;
-        let boxes: BoundingBoxWithTooltip[] = [];
+        const boxes: BoundingBoxWithTooltip[] = [];
 
         const contentToBBoxPaperMage = async () => {
             const aiMatches = analysisResult.matches ?? [];
@@ -165,6 +165,7 @@ function PdfPageList({
 
                 const scaleX = pageDimensions.width / viewport.width;
                 const scaleY = pageDimensions.height / viewport.height;
+                const primarySnippet = analyzedMatch.code_snippets[0];
     
                 boxes.push({
                     page:   box.page,
@@ -178,6 +179,15 @@ function PdfPageList({
                     description: analyzedMatch.description || analyzedMatch.content,
                     content_type: analyzedMatch.content_type,
                     color: CODE_MATCH_VERDICT_TO_COLOR.ai,
+                    contextRef: {
+                        type: 'mapping',
+                        mapping_type: 'initial_analysis',
+                        entity_id: analyzedMatch.entity_id,
+                        filepath: primarySnippet.filepath,
+                        start_line: primarySnippet.start_line,
+                        end_line: primarySnippet.end_line,
+                        label: `AI match for ${analyzedMatch.entity_id}`,
+                    },
                 })
             }
 
@@ -212,6 +222,7 @@ function PdfPageList({
                     description: match.description,
                     variant: 'underline',
                     color: CODE_TO_CONTENT_HIGHLIGHT_COLOR,
+                    contextRef: match.sourceMappingRef,
                 });
             }
 
@@ -247,6 +258,14 @@ function PdfPageList({
                     description: codeMatch.outputs.reasoning,
                     variant: 'overlay',
                     color: CODE_MATCH_VERDICT_TO_COLOR[codeMatch.outputs.verdict] ?? CODE_MATCH_VERDICT_TO_COLOR.not_implemented,
+                    contextRef: codeMatch.cache_key
+                        ? {
+                            type: 'mapping',
+                            mapping_type: 'content_to_code',
+                            cache_key: codeMatch.cache_key,
+                            label: `Paper-to-code match ${codeMatch.cache_key}`,
+                        }
+                        : undefined,
                 });
             }
 
@@ -338,7 +357,7 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
     const {currentUser} = useContext(UserContext);
 
     const [matchingTaskId, setMatchingTaskId] = useState<string | null>(null);
-    const [paperContentMatches, setPaperContentMatches] = useState<PaperContentMatch[]>([]);
+    const [paperContentMatches, setPaperContentMatches] = useState<ContextualPaperContentMatch[]>([]);
     const [contentToCodeMatches, setContentToCodeMatches] = useState<paperContentToCodeMatch[]>([]);
     const [isMatchFilterOpen, setIsMatchFilterOpen] = useState(false);
     const [matchFilter, setMatchFilter] = useState<MatchFilter>(readStoredMatchFilter);

@@ -13,8 +13,13 @@ import ShikiHighlighter from 'react-shiki';
 import * as React from 'react';
 import { createPortal } from 'react-dom';
 import { useSidePanel } from '../context/SidePanelContext.tsx';
+import {
+  copilotContextRefKey,
+  useCopilotContext,
+} from '../context/CopilotContext.tsx';
 import { useTheme } from '../context/ThemeContext';
 import { getShikiLanguage } from '../utils/codeLanguage';
+import type { CopilotContextRef } from '../api/types.ts';
 
 /** First N lines of a snippet shown in the tooltip preview, to keep it glanceable. */
 const TOOLTIP_PREVIEW_LINE_COUNT = 6;
@@ -39,6 +44,8 @@ export type BoundingBoxWithTooltip = BoundingBoxType & {
   variant?: 'overlay' | 'underline';
   color?: string;
   content_type?: string;
+  /** Canonical reference attached to the next Copilot message on request. */
+  contextRef?: CopilotContextRef;
 };
 
 type overlayProps = {
@@ -65,9 +72,15 @@ function PdfBoundingHitTarget({
   const leaveTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { showCode } = useSidePanel();
+  const { contextRefs, addContext } = useCopilotContext();
   const { resolvedTheme } = useTheme();
 
   const [codeIndex, setCodeIndex] = React.useState(0);
+  const isContextAttached = box.contextRef
+    ? contextRefs.some(
+        (ref) => copilotContextRefKey(ref) === copilotContextRefKey(box.contextRef!),
+      )
+    : false;
 
   if (box.page !== pageIndex) {
     return null;
@@ -203,6 +216,19 @@ function PdfBoundingHitTarget({
             {codeIndex + 1} / {box.code_snippets.length}
           </div>
         )}
+        {box.contextRef && (
+          <div className="pdf-hit-tooltip__actions">
+            <button
+              type="button"
+              className="pdf-hit-tooltip__text-btn"
+              aria-pressed={isContextAttached}
+              disabled={isContextAttached}
+              onClick={() => addContext(box.contextRef!)}
+            >
+              {isContextAttached ? 'Added to chat' : 'Add to chat'}
+            </button>
+          </div>
+        )}
       </div>,
       document.body,
     );
@@ -265,10 +291,17 @@ function PdfUnderlineHitTarget({
   const [floating, setFloating] = React.useState<{ x: number; y: number } | null>(null);
   const [hover, setHover] = React.useState(false);
   const leaveTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { contextRefs, addContext } = useCopilotContext();
 
   if (box.page !== pageIndex) {
     return null;
   }
+
+  const isContextAttached = box.contextRef
+    ? contextRefs.some(
+        (ref) => copilotContextRefKey(ref) === copilotContextRefKey(box.contextRef!),
+      )
+    : false;
 
   const { top, left, width, height } = computeBoundingBoxStyle(
     { top: box.top, left: box.left, width: box.width, height: box.height },
@@ -336,6 +369,19 @@ function PdfUnderlineHitTarget({
           {box.content_type ? `[${box.content_type}] ` : ''}
           {box.description}
         </div>
+        {box.contextRef && (
+          <div className="pdf-hit-tooltip__actions">
+            <button
+              type="button"
+              className="pdf-hit-tooltip__text-btn"
+              aria-pressed={isContextAttached}
+              disabled={isContextAttached}
+              onClick={() => addContext(box.contextRef!)}
+            >
+              {isContextAttached ? 'Added to chat' : 'Add to chat'}
+            </button>
+          </div>
+        )}
       </div>,
       document.body,
     );

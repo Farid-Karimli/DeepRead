@@ -1,5 +1,11 @@
 import { useContext, useEffect, useMemo, useRef, useState } from 'react';
-import type { codeToContentMatch, githubRepoTreeResponse, PaperContentMatch } from '../api/types.ts';
+import type {
+    CodeRangeRef,
+    MappingRef,
+    codeToContentMatch,
+    githubRepoTreeResponse,
+    PaperContentMatch,
+} from '../api/types.ts';
 import { getGithubFileFromBlobUrl, mapCodeToContent, getCodeToContentMatches } from '../api/main';
 import { dedupeRanges } from '../utils/dedupeRanges.ts';
 import { VscFolder, VscFile } from 'react-icons/vsc';
@@ -12,13 +18,18 @@ import { useCeleryTaskStatus } from '../hooks/useCeleryTaskStatus.ts';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { UserContext } from '../context/UserContext.tsx';
+import { useCopilotContext } from '../context/CopilotContext.tsx';
+
+export type ContextualPaperContentMatch = PaperContentMatch & {
+    sourceMappingRef?: MappingRef;
+};
 
 interface RepoViewProps {
     tree: githubRepoTreeResponse;
     paperId: string;
     code?: string,
     filepath?: string,
-    setPaperContentMatches: (matches: PaperContentMatch[]) => void
+    setPaperContentMatches: (matches: ContextualPaperContentMatch[]) => void
 }
 
 const CONTENT_MATCH_VERDICT_TO_COLOR: Record<string, string> = {
@@ -61,6 +72,7 @@ const readStoredCodeMatchFilter = (): CodeMatchFilter => {
 
 const RepoView = ({ tree, paperId, setPaperContentMatches }: RepoViewProps) => {
     const {currentUser} = useContext(UserContext);
+    const { addContext } = useCopilotContext();
     const [currentPath, setCurrentPath] = useState(() => "");
     const [currentFileContent, setCurrentFileContent] = useState<string | null>(null);
     const [scrollFocusRange, setScrollFocusRange] = useState<{ start: number; end: number } | null>(null);
@@ -77,7 +89,6 @@ const RepoView = ({ tree, paperId, setPaperContentMatches }: RepoViewProps) => {
         rect: DOMRect;
         range: Range;
     } | null>(null);
-    const [codeMappingLoading, setCodeMappingLoading] = useState(false);
     const [codeMatchingTaskId, setCodeMatchingTaskId] = useState<string | null>(null);
 
     const queryClient = useQueryClient();
@@ -165,12 +176,28 @@ const RepoView = ({ tree, paperId, setPaperContentMatches }: RepoViewProps) => {
             (m: codeToContentMatch) => m.inputs.start === range.start && m.inputs.end === range.end,
         );
         if (match?.outputs.matches) {
-            setPaperContentMatches(match.outputs.matches);
+            const sourceMappingRef: MappingRef | undefined = match.cache_key
+                ? {
+                    type: 'mapping',
+                    mapping_type: 'code_to_content',
+                    cache_key: match.cache_key,
+                    filepath: match.inputs.filepath,
+                    start_line: match.inputs.start,
+                    end_line: match.inputs.end,
+                    label: `Code-to-paper match ${match.cache_key}`,
+                }
+                : undefined;
+            setPaperContentMatches(
+                match.outputs.matches.map((paperMatch) => ({
+                    ...paperMatch,
+                    sourceMappingRef,
+                })),
+            );
         }
     };
 
     const getFileURLByPath = (path: string) => {
-        return tree.tree.find((obj, _) => obj.path === path)?.url;
+        return tree.tree.find((obj) => obj.path === path)?.url;
     };
 
     useEffect(() => {
@@ -186,7 +213,6 @@ const RepoView = ({ tree, paperId, setPaperContentMatches }: RepoViewProps) => {
 
         if (codeMatchingTaskQuery.data?.status === 'FAILURE') {
             console.error('Code mapping failed');
-            setCodeMappingLoading(false);
             setCodeMatchingTaskId(null);
             setPendingCodeSelection(null);
         }
@@ -308,6 +334,22 @@ const RepoView = ({ tree, paperId, setPaperContentMatches }: RepoViewProps) => {
         codeMatchingMutation.mutate(input);
     }
 
+    const handleAddSelectionToChat = () => {
+        if (!pendingCodeSelection || !currentFileContent || !currentPath) return;
+
+        const lineRange = lineRangeFromRange(currentFileContent, pendingCodeSelection.range);
+        const contextRef: CodeRangeRef = {
+            type: 'code_range',
+            filepath: currentPath,
+            start_line: lineRange.start,
+            end_line: lineRange.end,
+            label: `${currentPath}:${lineRange.start}-${lineRange.end}`,
+        };
+        addContext(contextRef);
+        setPendingCodeSelection(null);
+        window.getSelection()?.removeAllRanges();
+    };
+
     const isMapping = codeMatchingMutation.isPending || codeMatchingTaskId !== null;    
 
     return (
@@ -413,6 +455,13 @@ const RepoView = ({ tree, paperId, setPaperContentMatches }: RepoViewProps) => {
                             disabled={isMapping}
                         >
                             {isMapping ? 'Mapping...' : 'Map to paper content'}
+                        </button>
+                        <button
+                            type="button"
+                            className="pdf-selection-popover__btn pdf-selection-popover__btn--ghost"
+                            onClick={handleAddSelectionToChat}
+                        >
+                            Add to chat
                         </button>
                         <button
                             type="button"

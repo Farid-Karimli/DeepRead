@@ -11,6 +11,11 @@ import type {
     paperContentToCodeMatch,
     paperContentBox,
     codeToContentMatch,
+    CopilotConversation,
+    CopilotContextRef,
+    GetCopilotConversationResponse,
+    SendCopilotMessageRequest,
+    SendCopilotMessageResponse,
 } from './types.ts';
 
 const API_URL: string =
@@ -179,6 +184,54 @@ const getUserByUsername = async (username: string): Promise<User | null> => {
     return response.json();
 }
 
+const getCopilotConversation = async (
+    paperId: string,
+    userId: number,
+): Promise<CopilotConversation | null> => {
+    const response = await fetch(
+        `${API_URL}/papers/${encodeURIComponent(paperId)}/conversation?user_id=${encodeURIComponent(String(userId))}`,
+    );
+    // A conversation is created lazily with the first message.
+    if (response.status === 404) return null;
+    if (!response.ok) {
+        throw new Error(`Failed to get Copilot conversation (${response.status})`);
+    }
+    const result: GetCopilotConversationResponse = await response.json();
+    return result.conversation;
+};
+
+const sendCopilotMessage = async (
+    paperId: string,
+    userId: number,
+    content: string,
+    contextRefs: CopilotContextRef[] = [],
+): Promise<SendCopilotMessageResponse> => {
+    const request: SendCopilotMessageRequest = {
+        user_id: userId,
+        content,
+        context_refs: contextRefs,
+    };
+    const response = await fetch(
+        `${API_URL}/papers/${encodeURIComponent(paperId)}/conversation/messages`,
+        {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(request),
+        },
+    );
+    if (!response.ok) {
+        let detail = `Failed to send Copilot message (${response.status})`;
+        try {
+            const body: { detail?: string } = await response.json();
+            if (body.detail) detail = body.detail;
+        } catch {
+            // Keep the status-based fallback when the response is not JSON.
+        }
+        throw new Error(detail);
+    }
+    return response.json();
+};
+
 export {
     submitPaperAnalysis,
     getPaperAnalysisStatus,
@@ -194,5 +247,7 @@ export {
     getCodeMappingStatus,
     getContentToCodeMatches,
     getCodeToContentMatches,
-    getUserByUsername
+    getUserByUsername,
+    getCopilotConversation,
+    sendCopilotMessage,
 };

@@ -229,6 +229,95 @@ interface mapCodeToContentResponse {
     task_id: string | null;
 }
 
+type PaperEntityRef = {
+    type: "paper_entity";
+    entity_id: string;
+    entity_type: "section" | "sentence" | "equation";
+    section_id?: string | null;
+    label: string;
+};
+
+type CodeRangeRef = {
+    type: "code_range";
+    filepath: string;
+    start_line: number;
+    end_line: number;
+    label: string;
+};
+
+type MappingRef = {
+    type: "mapping";
+    mapping_type: "content_to_code" | "code_to_content" | "initial_analysis";
+    cache_key?: string | null;
+    entity_id?: string | null;
+    filepath?: string | null;
+    start_line?: number | null;
+    end_line?: number | null;
+    label: string;
+};
+
+type CopilotContextRef = PaperEntityRef | CodeRangeRef | MappingRef;
+type CopilotCitation = CopilotContextRef;
+type CopilotMessageStatus = "queued" | "processing" | "complete" | "failed";
+type CopilotConversationStatus = "idle" | "processing" | "failed";
+
+interface CopilotMessageMetadata {
+    model?: string | null;
+    prompt_version?: string | null;
+    task_id?: string | null;
+    duration_seconds?: number | null;
+    input_tokens?: number | null;
+    output_tokens?: number | null;
+    tool_calls?: number | null;
+    repo_commit_sha?: string | null;
+    error?: string | null;
+    [key: string]: unknown;
+}
+
+interface CopilotMessage {
+    id: string;
+    role: "user" | "assistant";
+    content: string;
+    created_at: string;
+    status: CopilotMessageStatus;
+    context_refs: CopilotContextRef[];
+    citations: CopilotCitation[];
+    in_reply_to?: string | null;
+    metadata?: CopilotMessageMetadata | null;
+}
+
+interface CopilotConversation {
+    id: number;
+    paper_id: string;
+    user_id: number;
+    title?: string | null;
+    messages: CopilotMessage[];
+    summary?: string | null;
+    summarized_through_message_id?: string | null;
+    status: CopilotConversationStatus;
+    active_task_id?: string | null;
+    version: number;
+    created_at: string;
+    updated_at: string;
+}
+
+interface GetCopilotConversationResponse {
+    conversation: CopilotConversation;
+}
+
+interface SendCopilotMessageRequest {
+    user_id: number;
+    content: string;
+    context_refs: CopilotContextRef[];
+}
+
+interface SendCopilotMessageResponse {
+    conversation: CopilotConversation;
+    task_id: string;
+    message_id: string;
+    status: "PENDING";
+}
+
 export type { codeSection, 
     codeSnippet,
     codeEntityMatch,
@@ -257,5 +346,17 @@ export type { codeSection,
     paperContentBox,
     codeToContentMatch,
     PaperContentMatch,
+    PaperEntityRef,
+    CodeRangeRef,
+    MappingRef,
+    CopilotContextRef,
+    CopilotCitation,
+    CopilotMessageStatus,
+    CopilotConversationStatus,
+    CopilotMessageMetadata,
+    CopilotMessage,
+    CopilotConversation,
+    GetCopilotConversationResponse,
+    SendCopilotMessageRequest,
+    SendCopilotMessageResponse,
 }
-    
