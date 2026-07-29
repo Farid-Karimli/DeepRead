@@ -1,0 +1,966 @@
+=== RESTART Wed Jul 29 12:06:39 EDT 2026 ===
+/Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/.venv/lib/python3.11/site-packages/requests/__init__.py:113: RequestsDependencyWarning: urllib3 (2.5.0) or chardet (7.4.3)/charset_normalizer (3.4.4) doesn't match a supported version!
+  warnings.warn(
+2026-07-29 12:06:41,553 INFO [httpx] HTTP Request: GET https://trace.wandb.ai/server_info "HTTP/1.1 200 OK"
+2026-07-29 12:06:42,157 INFO [httpx] HTTP Request: POST https://api.wandb.ai/graphql "HTTP/1.1 200 OK"
+2026-07-29 12:06:42,511 INFO [httpx] HTTP Request: POST https://api.wandb.ai/graphql "HTTP/1.1 200 OK"
+2026-07-29 12:06:42,570 INFO [httpx] HTTP Request: GET https://trace.wandb.ai/server_info "HTTP/1.1 200 OK"
+2026-07-29 12:06:42,641 INFO [httpx] HTTP Request: GET https://pypi.org/pypi/wandb/json "HTTP/1.1 200 OK"
+[36m[1mweave[0m: wandb version 0.28.1 is available!  To upgrade, please run:
+[36m[1mweave[0m:  $ pip install wandb --upgrade
+2026-07-29 12:06:42,689 INFO [weave.trace.init_message] wandb version 0.28.1 is available!  To upgrade, please run:
+ $ pip install wandb --upgrade
+2026-07-29 12:06:42,757 INFO [httpx] HTTP Request: GET https://pypi.org/pypi/weave/json "HTTP/1.1 200 OK"
+[36m[1mweave[0m: weave version 0.53.3 is available!  To upgrade, please run:
+[36m[1mweave[0m:  $ pip install weave --upgrade
+2026-07-29 12:06:42,772 INFO [weave.trace.init_message] weave version 0.53.3 is available!  To upgrade, please run:
+ $ pip install weave --upgrade
+[36m[1mweave[0m: Logged in as Weights & Biases user: faridkar.
+[36m[1mweave[0m: View Weave data at https://wandb.ai/gardoslab/deepread/weave
+2026-07-29 12:06:42,772 INFO [weave.trace.init_message] Logged in as Weights & Biases user: faridkar.
+View Weave data at https://wandb.ai/gardoslab/deepread/weave
+2026-07-29 12:06:42,773 INFO [src.observability] Weave initialized project=gardoslab/deepread
+2026-07-29 12:06:42,790 INFO [chunker.languages.base] Registered language configuration: clojure
+2026-07-29 12:06:42,791 INFO [chunker.languages.base] Registered language configuration: c_sharp
+2026-07-29 12:06:42,791 INFO [chunker.languages.base] Registered language configuration: dart
+2026-07-29 12:06:42,791 INFO [chunker.languages.base] Registered language configuration: dockerfile
+2026-07-29 12:06:42,792 INFO [chunker.languages.base] Registered language configuration: elixir
+2026-07-29 12:06:42,792 INFO [chunker.languages.base] Registered language configuration: go
+2026-07-29 12:06:42,793 INFO [chunker.languages.base] Registered language configuration: java
+2026-07-29 12:06:42,793 INFO [chunker.languages.base] Registered language configuration: matlab
+2026-07-29 12:06:42,793 INFO [chunker.languages.base] Registered language configuration: ocaml
+2026-07-29 12:06:42,793 INFO [chunker.languages.base] Registered language configuration: python
+2026-07-29 12:06:42,794 INFO [chunker.languages.base] Registered language configuration: r
+2026-07-29 12:06:42,794 INFO [chunker.languages.base] Registered language configuration: ruby
+2026-07-29 12:06:42,794 INFO [chunker.languages.base] Registered language configuration: rust
+2026-07-29 12:06:42,795 INFO [chunker.languages.base] Registered language configuration: scala
+2026-07-29 12:06:42,795 INFO [chunker.languages.base] Registered language configuration: sql
+2026-07-29 12:06:42,796 INFO [chunker.languages.base] Registered language configuration: toml
+2026-07-29 12:06:42,796 INFO [chunker.languages.base] Registered language configuration: typescript
+2026-07-29 12:06:42,796 INFO [chunker.languages.base] Registered language configuration: tsx
+2026-07-29 12:06:42,797 INFO [chunker.languages.base] Registered language configuration: xml
+2026-07-29 12:06:42,797 INFO [chunker.languages.base] Registered language configuration: yaml
+2026-07-29 12:06:42,797 INFO [chunker.languages.base] Registered language configuration: c
+2026-07-29 12:06:42,798 INFO [chunker.languages.base] Registered language configuration: cpp
+2026-07-29 12:06:42,798 INFO [chunker.languages.base] Registered language configuration: javascript
+2026-07-29 12:06:42,798 INFO [chunker.languages.base] Registered language configuration: kotlin
+2026-07-29 12:06:42,799 INFO [chunker.languages.base] Registered language configuration: php
+2026-07-29 12:06:42,799 INFO [chunker.languages.base] Registered language configuration: swift
+Weave tracing active=True
+Running agent on annotations:   0%|          | 0/54 [00:00<?, ?it/s][36m[1mweave[0m: 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faea0-d73c-757e-be4a-ff5ed542e9a3
+2026-07-29 12:06:44,375 INFO [weave.trace.weave_client] 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faea0-d73c-757e-be4a-ff5ed542e9a3
+2026-07-29 12:06:45,205 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/files/create "HTTP/1.1 200 OK"
+2026-07-29 12:06:45,456 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/files/create "HTTP/1.1 200 OK"
+2026-07-29 12:06:45,493 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/obj/create "HTTP/1.1 200 OK"
+2026-07-29 12:06:45,875 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/obj/create "HTTP/1.1 200 OK"
+2026-07-29 12:06:46,200 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:06:48,125 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:06:58,370 INFO [src.agentic_localization.planner] get_candidates: chars=21209 files=72 blob_tokens=~3954 model=claude-sonnet-4-5-20250929
+2026-07-29 12:07:02,166 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:07:09,671 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:07:09,713 INFO [src.agentic_localization.planner] get_candidates: done duration=11.34s verdict=implemented num_candidates=3 in=7920 out=416
+2026-07-29 12:07:10,709 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/files/create "HTTP/1.1 200 OK"
+2026-07-29 12:07:10,823 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/obj/create "HTTP/1.1 200 OK"
+2026-07-29 12:07:11,099 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:07:23,266 INFO [src.agentic_localization.planner] resolve_anchors: done duration=0.02s snippets=3 unresolved_files=0 unresolved_anchors=0
+2026-07-29 12:07:23,266 INFO [src.agentic_localization.planner] localize: done duration=38.91s verdict=implemented snippets=3
+Running agent on annotations:   2%|▏         | 1/54 [00:38<34:26, 39.00s/it][36m[1mweave[0m: 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faea1-6f8d-7733-93ef-cd1d214f3d32
+2026-07-29 12:07:23,278 INFO [weave.trace.weave_client] 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faea1-6f8d-7733-93ef-cd1d214f3d32
+2026-07-29 12:07:26,432 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:07:37,304 INFO [src.agentic_localization.planner] get_candidates: chars=21208 files=72 blob_tokens=~3954 model=claude-sonnet-4-5-20250929
+2026-07-29 12:07:39,866 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:07:49,137 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:07:49,148 INFO [src.agentic_localization.planner] get_candidates: done duration=11.85s verdict=implemented num_candidates=4 in=7912 out=532
+2026-07-29 12:07:51,332 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:08:03,051 INFO [src.agentic_localization.planner] resolve_anchors: done duration=0.02s snippets=4 unresolved_files=0 unresolved_anchors=0
+2026-07-29 12:08:03,052 INFO [src.agentic_localization.planner] localize: done duration=39.77s verdict=implemented snippets=4
+Running agent on annotations:   4%|▎         | 2/54 [01:18<34:11, 39.46s/it][36m[1mweave[0m: 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faea2-0af7-74bf-b51a-75a99944f143
+2026-07-29 12:08:03,065 INFO [weave.trace.weave_client] 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faea2-0af7-74bf-b51a-75a99944f143
+2026-07-29 12:08:05,876 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:08:16,674 INFO [src.agentic_localization.planner] get_candidates: chars=21162 files=72 blob_tokens=~3954 model=claude-sonnet-4-5-20250929
+2026-07-29 12:08:19,691 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:08:26,935 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:08:26,959 INFO [src.agentic_localization.planner] get_candidates: done duration=10.29s verdict=implemented num_candidates=3 in=7908 out=405
+2026-07-29 12:08:29,409 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:08:40,351 INFO [src.agentic_localization.planner] resolve_anchors: done duration=0.12s snippets=3 unresolved_files=0 unresolved_anchors=0
+2026-07-29 12:08:40,352 INFO [src.agentic_localization.planner] localize: done duration=37.29s verdict=implemented snippets=3
+Running agent on annotations:   6%|▌         | 3/54 [01:56<32:42, 38.47s/it][36m[1mweave[0m: 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faea2-9ca8-752c-8a38-0577aa5b2d37
+2026-07-29 12:08:40,361 INFO [weave.trace.weave_client] 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faea2-9ca8-752c-8a38-0577aa5b2d37
+2026-07-29 12:08:45,465 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:08:53,553 INFO [src.agentic_localization.planner] get_candidates: chars=21241 files=72 blob_tokens=~3954 model=claude-sonnet-4-5-20250929
+2026-07-29 12:08:54,987 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:08:56,853 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:09:04,639 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:09:04,649 INFO [src.agentic_localization.planner] get_candidates: done duration=11.10s verdict=implemented num_candidates=4 in=7926 out=522
+2026-07-29 12:09:05,875 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:09:17,584 INFO [src.agentic_localization.planner] resolve_anchors: done duration=0.02s snippets=4 unresolved_files=0 unresolved_anchors=0
+2026-07-29 12:09:17,584 INFO [src.agentic_localization.planner] localize: done duration=37.22s verdict=implemented snippets=4
+Running agent on annotations:   7%|▋         | 4/54 [02:33<31:39, 37.98s/it][36m[1mweave[0m: 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faea3-2e19-7d63-9855-69c99c3950ca
+2026-07-29 12:09:17,594 INFO [weave.trace.weave_client] 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faea3-2e19-7d63-9855-69c99c3950ca
+2026-07-29 12:09:20,510 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:09:30,767 INFO [src.agentic_localization.planner] get_candidates: chars=21332 files=72 blob_tokens=~3954 model=claude-sonnet-4-5-20250929
+2026-07-29 12:09:32,930 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:10:12,282 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:10:12,303 INFO [src.agentic_localization.planner] get_candidates: done duration=41.54s verdict=implemented num_candidates=4 in=7937 out=475
+2026-07-29 12:10:14,611 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:10:24,993 INFO [src.agentic_localization.planner] resolve_anchors: done duration=0.02s snippets=4 unresolved_files=0 unresolved_anchors=0
+2026-07-29 12:10:24,994 INFO [src.agentic_localization.planner] localize: done duration=67.40s verdict=implemented snippets=4
+Running agent on annotations:   9%|▉         | 5/54 [03:40<39:41, 48.60s/it][36m[1mweave[0m: 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faea4-356b-7161-a4f3-6771f1d6edca
+2026-07-29 12:10:25,004 INFO [weave.trace.weave_client] 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faea4-356b-7161-a4f3-6771f1d6edca
+2026-07-29 12:10:28,265 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:10:37,857 INFO [src.agentic_localization.planner] get_candidates: chars=21344 files=72 blob_tokens=~3954 model=claude-sonnet-4-5-20250929
+2026-07-29 12:10:39,398 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:10:46,824 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:10:46,845 INFO [src.agentic_localization.planner] get_candidates: done duration=8.99s verdict=implemented num_candidates=2 in=7949 out=308
+2026-07-29 12:10:48,062 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:10:59,529 INFO [src.agentic_localization.planner] resolve_anchors: done duration=0.02s snippets=2 unresolved_files=0 unresolved_anchors=0
+2026-07-29 12:10:59,529 INFO [src.agentic_localization.planner] localize: done duration=34.53s verdict=implemented snippets=2
+Running agent on annotations:  11%|█         | 6/54 [04:15<35:03, 43.81s/it][36m[1mweave[0m: 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faea4-bc53-7ad4-b322-646529590de8
+2026-07-29 12:10:59,540 INFO [weave.trace.weave_client] 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faea4-bc53-7ad4-b322-646529590de8
+2026-07-29 12:11:01,252 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:11:12,430 INFO [src.agentic_localization.planner] get_candidates: chars=21324 files=72 blob_tokens=~3954 model=claude-sonnet-4-5-20250929
+2026-07-29 12:11:14,712 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:11:21,641 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:11:21,652 INFO [src.agentic_localization.planner] get_candidates: done duration=9.22s verdict=implemented num_candidates=2 in=7936 out=327
+2026-07-29 12:11:22,121 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:11:34,383 INFO [src.agentic_localization.planner] resolve_anchors: done duration=0.02s snippets=2 unresolved_files=0 unresolved_anchors=0
+2026-07-29 12:11:34,384 INFO [src.agentic_localization.planner] localize: done duration=34.84s verdict=implemented snippets=2
+Running agent on annotations:  13%|█▎        | 7/54 [04:50<32:01, 40.89s/it][36m[1mweave[0m: 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faea5-4478-7258-b8c4-2ad4a7b9d1da
+2026-07-29 12:11:34,393 INFO [weave.trace.weave_client] 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faea5-4478-7258-b8c4-2ad4a7b9d1da
+2026-07-29 12:11:39,965 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:11:47,188 INFO [src.agentic_localization.planner] get_candidates: chars=21339 files=72 blob_tokens=~3954 model=claude-sonnet-4-5-20250929
+2026-07-29 12:11:50,268 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:11:59,474 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:11:59,484 INFO [src.agentic_localization.planner] get_candidates: done duration=12.30s verdict=implemented num_candidates=4 in=7938 out=478
+2026-07-29 12:12:01,586 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:12:12,659 INFO [src.agentic_localization.planner] resolve_anchors: done duration=0.14s snippets=4 unresolved_files=0 unresolved_anchors=0
+2026-07-29 12:12:12,660 INFO [src.agentic_localization.planner] localize: done duration=38.27s verdict=implemented snippets=4
+Running agent on annotations:  15%|█▍        | 8/54 [05:28<30:42, 40.05s/it][36m[1mweave[0m: 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faea5-d9fe-7acd-a06e-106f3e4d079f
+2026-07-29 12:12:12,671 INFO [weave.trace.weave_client] 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faea5-d9fe-7acd-a06e-106f3e4d079f
+2026-07-29 12:12:13,880 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:12:25,679 INFO [src.agentic_localization.planner] get_candidates: chars=21312 files=72 blob_tokens=~3954 model=claude-sonnet-4-5-20250929
+2026-07-29 12:12:28,162 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:12:35,119 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:12:35,141 INFO [src.agentic_localization.planner] get_candidates: done duration=9.46s verdict=implemented num_candidates=2 in=7968 out=338
+2026-07-29 12:12:36,215 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:12:48,049 INFO [src.agentic_localization.planner] resolve_anchors: done duration=0.02s snippets=2 unresolved_files=0 unresolved_anchors=0
+2026-07-29 12:12:48,050 INFO [src.agentic_localization.planner] localize: done duration=35.38s verdict=implemented snippets=2
+Running agent on annotations:  17%|█▋        | 9/54 [06:03<28:56, 38.60s/it][36m[1mweave[0m: 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faea6-643b-72ac-9f28-c29b843b9125
+2026-07-29 12:12:48,060 INFO [weave.trace.weave_client] 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faea6-643b-72ac-9f28-c29b843b9125
+2026-07-29 12:12:50,280 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:13:01,005 INFO [src.agentic_localization.planner] get_candidates: chars=21125 files=72 blob_tokens=~3954 model=claude-sonnet-4-5-20250929
+2026-07-29 12:13:03,399 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:13:11,797 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:13:11,818 INFO [src.agentic_localization.planner] get_candidates: done duration=10.81s verdict=implemented num_candidates=3 in=7906 out=431
+2026-07-29 12:13:13,722 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:13:24,656 INFO [src.agentic_localization.planner] resolve_anchors: done duration=0.02s snippets=3 unresolved_files=0 unresolved_anchors=0
+2026-07-29 12:13:24,656 INFO [src.agentic_localization.planner] localize: done duration=36.60s verdict=implemented snippets=3
+Running agent on annotations:  19%|█▊        | 10/54 [06:40<27:51, 37.98s/it][36m[1mweave[0m: 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faea6-f33a-7fae-8e8d-9f99d086fdd2
+2026-07-29 12:13:24,667 INFO [weave.trace.weave_client] 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faea6-f33a-7fae-8e8d-9f99d086fdd2
+2026-07-29 12:13:26,065 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:13:37,502 INFO [src.agentic_localization.planner] get_candidates: chars=21174 files=72 blob_tokens=~3954 model=claude-sonnet-4-5-20250929
+2026-07-29 12:13:39,503 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:13:48,690 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:13:48,711 INFO [src.agentic_localization.planner] get_candidates: done duration=11.21s verdict=implemented num_candidates=4 in=7907 out=482
+2026-07-29 12:13:51,003 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:14:01,318 INFO [src.agentic_localization.planner] resolve_anchors: done duration=0.02s snippets=4 unresolved_files=0 unresolved_anchors=0
+2026-07-29 12:14:01,318 INFO [src.agentic_localization.planner] localize: done duration=36.65s verdict=implemented snippets=4
+Running agent on annotations:  20%|██        | 11/54 [07:17<26:55, 37.58s/it][36m[1mweave[0m: 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faea7-826f-73c2-9289-ae182f2c5fcb
+2026-07-29 12:14:01,328 INFO [weave.trace.weave_client] 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faea7-826f-73c2-9289-ae182f2c5fcb
+2026-07-29 12:14:02,923 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:14:14,032 INFO [src.agentic_localization.planner] get_candidates: chars=21200 files=72 blob_tokens=~3954 model=claude-sonnet-4-5-20250929
+2026-07-29 12:14:16,313 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:14:29,010 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:14:29,032 INFO [src.agentic_localization.planner] get_candidates: done duration=15.00s verdict=implemented num_candidates=4 in=7917 out=408
+2026-07-29 12:14:30,644 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:14:41,659 INFO [src.agentic_localization.planner] resolve_anchors: done duration=0.02s snippets=4 unresolved_files=0 unresolved_anchors=0
+2026-07-29 12:14:41,659 INFO [src.agentic_localization.planner] localize: done duration=40.33s verdict=implemented snippets=4
+Running agent on annotations:  22%|██▏       | 12/54 [07:57<26:53, 38.42s/it][36m[1mweave[0m: 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faea8-2004-7fd4-9b4b-10c76ac0b35f
+2026-07-29 12:14:41,669 INFO [weave.trace.weave_client] 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faea8-2004-7fd4-9b4b-10c76ac0b35f
+2026-07-29 12:14:42,797 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:14:45,169 INFO [src.agentic_localization.planner] get_candidates: chars=8310 files=9 blob_tokens=~723 model=claude-sonnet-4-5-20250929
+2026-07-29 12:14:46,332 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:14:57,300 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:14:57,321 INFO [src.agentic_localization.planner] get_candidates: done duration=12.15s verdict=implemented num_candidates=4 in=2736 out=547
+2026-07-29 12:14:58,323 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:15:00,817 INFO [src.agentic_localization.planner] resolve_anchors: done duration=0.01s snippets=4 unresolved_files=0 unresolved_anchors=0
+2026-07-29 12:15:00,817 INFO [src.agentic_localization.planner] localize: done duration=19.15s verdict=implemented snippets=4
+Running agent on annotations:  24%|██▍       | 13/54 [08:16<22:15, 32.58s/it][36m[1mweave[0m: 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faea8-6ad9-7339-aef9-17535ec98d39
+2026-07-29 12:15:00,826 INFO [weave.trace.weave_client] 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faea8-6ad9-7339-aef9-17535ec98d39
+2026-07-29 12:15:02,335 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:15:04,374 INFO [src.agentic_localization.planner] get_candidates: chars=8575 files=9 blob_tokens=~723 model=claude-sonnet-4-5-20250929
+2026-07-29 12:15:05,335 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:15:16,785 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:15:16,807 INFO [src.agentic_localization.planner] get_candidates: done duration=12.43s verdict=implemented num_candidates=4 in=2809 out=543
+2026-07-29 12:15:18,242 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:15:20,363 INFO [src.agentic_localization.planner] resolve_anchors: done duration=0.07s snippets=4 unresolved_files=0 unresolved_anchors=0
+2026-07-29 12:15:20,363 INFO [src.agentic_localization.planner] localize: done duration=19.54s verdict=implemented snippets=4
+Running agent on annotations:  26%|██▌       | 14/54 [08:36<19:05, 28.65s/it][36m[1mweave[0m: 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faea8-b733-7aee-84de-cfb4e2b2c59f
+2026-07-29 12:15:20,372 INFO [weave.trace.weave_client] 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faea8-b733-7aee-84de-cfb4e2b2c59f
+2026-07-29 12:15:22,411 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:15:23,912 INFO [src.agentic_localization.planner] get_candidates: chars=8239 files=9 blob_tokens=~723 model=claude-sonnet-4-5-20250929
+2026-07-29 12:15:25,871 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:15:37,585 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:15:37,602 INFO [src.agentic_localization.planner] get_candidates: done duration=13.69s verdict=implemented num_candidates=4 in=2718 out=453
+2026-07-29 12:15:38,742 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:15:41,111 INFO [src.agentic_localization.planner] resolve_anchors: done duration=0.01s snippets=4 unresolved_files=0 unresolved_anchors=0
+2026-07-29 12:15:41,111 INFO [src.agentic_localization.planner] localize: done duration=20.74s verdict=implemented snippets=4
+Running agent on annotations:  28%|██▊       | 15/54 [08:56<17:04, 26.26s/it][36m[1mweave[0m: 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faea9-083f-7fa6-9f04-cb3b5543c936
+2026-07-29 12:15:41,120 INFO [weave.trace.weave_client] 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faea9-083f-7fa6-9f04-cb3b5543c936
+2026-07-29 12:15:43,169 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:15:44,608 INFO [src.agentic_localization.planner] get_candidates: chars=8818 files=9 blob_tokens=~723 model=claude-sonnet-4-5-20250929
+2026-07-29 12:15:45,900 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:16:04,147 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:16:04,169 INFO [src.agentic_localization.planner] get_candidates: done duration=19.56s verdict=implemented num_candidates=4 in=2851 out=480
+2026-07-29 12:16:05,910 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:16:07,713 INFO [src.agentic_localization.planner] resolve_anchors: done duration=0.01s snippets=4 unresolved_files=0 unresolved_anchors=0
+2026-07-29 12:16:07,714 INFO [src.agentic_localization.planner] localize: done duration=26.59s verdict=implemented snippets=4
+Running agent on annotations:  30%|██▉       | 16/54 [09:23<16:41, 26.37s/it][36m[1mweave[0m: 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faea9-702a-7c3f-b540-17970288b861
+2026-07-29 12:16:07,723 INFO [weave.trace.weave_client] 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faea9-702a-7c3f-b540-17970288b861
+2026-07-29 12:16:08,885 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:16:11,360 INFO [src.agentic_localization.planner] get_candidates: chars=8218 files=9 blob_tokens=~723 model=claude-sonnet-4-5-20250929
+2026-07-29 12:16:16,034 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:16:26,261 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:16:26,283 INFO [src.agentic_localization.planner] get_candidates: done duration=14.92s verdict=implemented num_candidates=3 in=2756 out=414
+2026-07-29 12:16:27,614 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:16:29,800 INFO [src.agentic_localization.planner] resolve_anchors: done duration=0.01s snippets=3 unresolved_files=0 unresolved_anchors=0
+2026-07-29 12:16:29,801 INFO [src.agentic_localization.planner] localize: done duration=22.08s verdict=implemented snippets=3
+Running agent on annotations:  31%|███▏      | 17/54 [09:45<15:27, 25.08s/it][36m[1mweave[0m: 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faea9-c670-74e9-a2c1-967adb185e2b
+2026-07-29 12:16:29,809 INFO [weave.trace.weave_client] 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faea9-c670-74e9-a2c1-967adb185e2b
+2026-07-29 12:16:31,599 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:16:33,516 INFO [src.agentic_localization.planner] get_candidates: chars=8312 files=9 blob_tokens=~723 model=claude-sonnet-4-5-20250929
+2026-07-29 12:16:34,886 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:16:48,993 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:16:49,012 INFO [src.agentic_localization.planner] get_candidates: done duration=15.50s verdict=implemented num_candidates=3 in=2747 out=352
+2026-07-29 12:16:51,376 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:16:52,509 INFO [src.agentic_localization.planner] resolve_anchors: done duration=0.01s snippets=3 unresolved_files=0 unresolved_anchors=0
+2026-07-29 12:16:52,509 INFO [src.agentic_localization.planner] localize: done duration=22.70s verdict=implemented snippets=3
+Running agent on annotations:  33%|███▎      | 18/54 [10:08<14:37, 24.37s/it][36m[1mweave[0m: 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faeaa-1f25-7ca2-8be2-7835c96c1b13
+2026-07-29 12:16:52,518 INFO [weave.trace.weave_client] 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faeaa-1f25-7ca2-8be2-7835c96c1b13
+2026-07-29 12:16:54,525 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:16:56,009 INFO [src.agentic_localization.planner] get_candidates: chars=8422 files=9 blob_tokens=~723 model=claude-sonnet-4-5-20250929
+2026-07-29 12:16:57,242 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:17:06,858 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:17:06,879 INFO [src.agentic_localization.planner] get_candidates: done duration=10.87s verdict=implemented num_candidates=3 in=2793 out=441
+2026-07-29 12:17:08,302 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:17:10,402 INFO [src.agentic_localization.planner] resolve_anchors: done duration=0.01s snippets=3 unresolved_files=0 unresolved_anchors=0
+2026-07-29 12:17:10,403 INFO [src.agentic_localization.planner] localize: done duration=17.89s verdict=implemented snippets=3
+Running agent on annotations:  35%|███▌      | 19/54 [10:26<13:04, 22.42s/it][36m[1mweave[0m: 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faeaa-650a-76f9-81a0-a81729acf5f0
+2026-07-29 12:17:10,411 INFO [weave.trace.weave_client] 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faeaa-650a-76f9-81a0-a81729acf5f0
+2026-07-29 12:17:12,342 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:17:13,919 INFO [src.agentic_localization.planner] get_candidates: chars=8429 files=9 blob_tokens=~723 model=claude-sonnet-4-5-20250929
+2026-07-29 12:17:14,985 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:17:25,066 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:17:25,087 INFO [src.agentic_localization.planner] get_candidates: done duration=11.17s verdict=implemented num_candidates=3 in=2793 out=515
+2026-07-29 12:17:26,933 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:17:28,607 INFO [src.agentic_localization.planner] resolve_anchors: done duration=0.01s snippets=3 unresolved_files=0 unresolved_anchors=0
+2026-07-29 12:17:28,608 INFO [src.agentic_localization.planner] localize: done duration=18.20s verdict=implemented snippets=3
+Running agent on annotations:  37%|███▋      | 20/54 [10:44<11:59, 21.16s/it][36m[1mweave[0m: 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faeaa-ac27-786c-827f-ba2119e185a9
+2026-07-29 12:17:28,616 INFO [weave.trace.weave_client] 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faeaa-ac27-786c-827f-ba2119e185a9
+2026-07-29 12:17:29,448 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:17:32,121 INFO [src.agentic_localization.planner] get_candidates: chars=8464 files=9 blob_tokens=~723 model=claude-sonnet-4-5-20250929
+2026-07-29 12:17:33,131 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:17:41,244 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:17:41,264 INFO [src.agentic_localization.planner] get_candidates: done duration=9.14s verdict=implemented num_candidates=4 in=2769 out=424
+2026-07-29 12:17:42,759 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:17:44,767 INFO [src.agentic_localization.planner] resolve_anchors: done duration=0.01s snippets=4 unresolved_files=0 unresolved_anchors=0
+2026-07-29 12:17:44,767 INFO [src.agentic_localization.planner] localize: done duration=16.15s verdict=implemented snippets=4
+Running agent on annotations:  39%|███▉      | 21/54 [11:00<10:48, 19.66s/it][36m[1mweave[0m: 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faeaa-eb47-76e6-b93e-c5323626d4b9
+2026-07-29 12:17:44,776 INFO [weave.trace.weave_client] 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faeaa-eb47-76e6-b93e-c5323626d4b9
+2026-07-29 12:17:45,384 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:17:48,344 INFO [src.agentic_localization.planner] get_candidates: chars=8453 files=9 blob_tokens=~723 model=claude-sonnet-4-5-20250929
+2026-07-29 12:17:49,087 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:17:59,911 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:17:59,932 INFO [src.agentic_localization.planner] get_candidates: done duration=11.59s verdict=implemented num_candidates=4 in=2767 out=510
+2026-07-29 12:18:01,137 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:18:03,558 INFO [src.agentic_localization.planner] resolve_anchors: done duration=0.01s snippets=4 unresolved_files=0 unresolved_anchors=0
+2026-07-29 12:18:03,559 INFO [src.agentic_localization.planner] localize: done duration=18.78s verdict=implemented snippets=4
+Running agent on annotations:  41%|████      | 22/54 [11:19<10:20, 19.40s/it][36m[1mweave[0m: 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faeab-34ae-7389-93a9-86a274212bfe
+2026-07-29 12:18:03,567 INFO [weave.trace.weave_client] 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faeab-34ae-7389-93a9-86a274212bfe
+2026-07-29 12:18:05,064 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:18:07,083 INFO [src.agentic_localization.planner] get_candidates: chars=8257 files=9 blob_tokens=~723 model=claude-sonnet-4-5-20250929
+2026-07-29 12:18:07,693 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:18:17,709 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:18:17,730 INFO [src.agentic_localization.planner] get_candidates: done duration=10.65s verdict=implemented num_candidates=5 in=2727 out=603
+2026-07-29 12:18:19,735 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:18:21,217 INFO [src.agentic_localization.planner] resolve_anchors: done duration=0.01s snippets=5 unresolved_files=0 unresolved_anchors=0
+2026-07-29 12:18:21,218 INFO [src.agentic_localization.planner] localize: done duration=17.65s verdict=implemented snippets=5
+Running agent on annotations:  43%|████▎     | 23/54 [11:36<09:45, 18.88s/it][36m[1mweave[0m: 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faeab-79aa-75c5-9f02-c52b0162a4be
+2026-07-29 12:18:21,227 INFO [weave.trace.weave_client] 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faeab-79aa-75c5-9f02-c52b0162a4be
+2026-07-29 12:18:22,715 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:18:24,716 INFO [src.agentic_localization.planner] get_candidates: chars=8823 files=9 blob_tokens=~723 model=claude-sonnet-4-5-20250929
+2026-07-29 12:18:25,576 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:18:36,543 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:18:36,562 INFO [src.agentic_localization.planner] get_candidates: done duration=11.85s verdict=implemented num_candidates=4 in=2844 out=527
+2026-07-29 12:18:40,085 INFO [src.agentic_localization.planner] resolve_anchors: done duration=0.01s snippets=4 unresolved_files=0 unresolved_anchors=0
+2026-07-29 12:18:40,085 INFO [src.agentic_localization.planner] localize: done duration=18.86s verdict=implemented snippets=4
+Running agent on annotations:  44%|████▍     | 24/54 [11:55<09:26, 18.87s/it][36m[1mweave[0m: 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faeab-c35d-7d69-b68d-798bb5f59acd
+2026-07-29 12:18:40,093 INFO [weave.trace.weave_client] 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faeab-c35d-7d69-b68d-798bb5f59acd
+2026-07-29 12:18:41,788 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:18:43,726 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:18:44,509 INFO [src.agentic_localization.planner] get_candidates: chars=11049 files=18 blob_tokens=~1297 model=claude-sonnet-4-5-20250929
+2026-07-29 12:18:45,540 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:18:56,771 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:18:56,793 INFO [src.agentic_localization.planner] get_candidates: done duration=12.29s verdict=implemented num_candidates=5 in=3873 out=560
+2026-07-29 12:18:58,375 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:19:01,140 INFO [src.agentic_localization.planner] resolve_anchors: done duration=0.01s snippets=5 unresolved_files=0 unresolved_anchors=0
+2026-07-29 12:19:01,141 INFO [src.agentic_localization.planner] localize: done duration=21.05s verdict=implemented snippets=5
+Running agent on annotations:  46%|████▋     | 25/54 [12:16<09:26, 19.53s/it][36m[1mweave[0m: 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faeac-159d-7555-9be5-80341c9a8256
+2026-07-29 12:19:01,150 INFO [weave.trace.weave_client] 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faeac-159d-7555-9be5-80341c9a8256
+2026-07-29 12:19:02,404 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:19:05,483 INFO [src.agentic_localization.planner] get_candidates: chars=10775 files=18 blob_tokens=~1297 model=claude-sonnet-4-5-20250929
+2026-07-29 12:19:07,284 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:19:14,910 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:19:14,931 INFO [src.agentic_localization.planner] get_candidates: done duration=9.45s verdict=implemented num_candidates=4 in=3766 out=482
+2026-07-29 12:19:15,719 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:19:19,274 INFO [src.agentic_localization.planner] resolve_anchors: done duration=0.01s snippets=4 unresolved_files=0 unresolved_anchors=0
+2026-07-29 12:19:19,274 INFO [src.agentic_localization.planner] localize: done duration=18.12s verdict=implemented snippets=4
+Running agent on annotations:  48%|████▊     | 26/54 [12:35<08:55, 19.11s/it][36m[1mweave[0m: 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faeac-5c72-7926-a4b0-d5940409fc3d
+2026-07-29 12:19:19,283 INFO [weave.trace.weave_client] 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faeac-5c72-7926-a4b0-d5940409fc3d
+2026-07-29 12:19:20,620 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:19:23,675 INFO [src.agentic_localization.planner] get_candidates: chars=10805 files=18 blob_tokens=~1297 model=claude-sonnet-4-5-20250929
+2026-07-29 12:19:26,111 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:19:32,865 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:19:32,886 INFO [src.agentic_localization.planner] get_candidates: done duration=9.21s verdict=implemented num_candidates=4 in=3768 out=399
+2026-07-29 12:19:33,626 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:19:37,233 INFO [src.agentic_localization.planner] resolve_anchors: done duration=0.01s snippets=4 unresolved_files=0 unresolved_anchors=0
+2026-07-29 12:19:37,233 INFO [src.agentic_localization.planner] localize: done duration=17.95s verdict=implemented snippets=4
+Running agent on annotations:  50%|█████     | 27/54 [12:52<08:26, 18.76s/it][36m[1mweave[0m: 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faeac-a299-7914-b989-eca2e7391e8a
+2026-07-29 12:19:37,242 INFO [weave.trace.weave_client] 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faeac-a299-7914-b989-eca2e7391e8a
+2026-07-29 12:19:38,877 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:19:41,625 INFO [src.agentic_localization.planner] get_candidates: chars=10886 files=18 blob_tokens=~1297 model=claude-sonnet-4-5-20250929
+2026-07-29 12:19:42,632 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:19:51,646 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:19:51,667 INFO [src.agentic_localization.planner] get_candidates: done duration=10.04s verdict=implemented num_candidates=4 in=3786 out=505
+2026-07-29 12:19:53,459 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:19:55,991 INFO [src.agentic_localization.planner] resolve_anchors: done duration=0.01s snippets=4 unresolved_files=0 unresolved_anchors=0
+2026-07-29 12:19:55,992 INFO [src.agentic_localization.planner] localize: done duration=18.75s verdict=implemented snippets=4
+Running agent on annotations:  52%|█████▏    | 28/54 [13:11<08:07, 18.76s/it][36m[1mweave[0m: 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faeac-ebe0-79b0-969c-3ba2b747fec8
+2026-07-29 12:19:56,001 INFO [weave.trace.weave_client] 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faeac-ebe0-79b0-969c-3ba2b747fec8
+2026-07-29 12:19:57,388 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:20:00,326 INFO [src.agentic_localization.planner] get_candidates: chars=11073 files=18 blob_tokens=~1297 model=claude-sonnet-4-5-20250929
+2026-07-29 12:20:01,166 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:20:13,343 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:20:13,364 INFO [src.agentic_localization.planner] get_candidates: done duration=13.04s verdict=implemented num_candidates=3 in=3819 out=573
+2026-07-29 12:20:14,652 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:20:17,689 INFO [src.agentic_localization.planner] resolve_anchors: done duration=0.01s snippets=3 unresolved_files=0 unresolved_anchors=0
+2026-07-29 12:20:17,690 INFO [src.agentic_localization.planner] localize: done duration=21.69s verdict=implemented snippets=3
+Running agent on annotations:  54%|█████▎    | 29/54 [13:33<08:11, 19.64s/it][36m[1mweave[0m: 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faead-40a2-7b87-ad9c-713ffe35935d
+2026-07-29 12:20:17,699 INFO [weave.trace.weave_client] 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faead-40a2-7b87-ad9c-713ffe35935d
+2026-07-29 12:20:19,682 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:20:30,754 INFO [src.agentic_localization.planner] get_candidates: chars=20280 files=43 blob_tokens=~3642 model=claude-sonnet-4-5-20250929
+2026-07-29 12:20:32,636 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:20:43,182 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:20:43,205 INFO [src.agentic_localization.planner] get_candidates: done duration=12.45s verdict=not_implemented num_candidates=0 in=7474 out=360
+2026-07-29 12:20:44,412 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:20:56,498 INFO [src.agentic_localization.planner] resolve_anchors: done duration=0.00s snippets=0 unresolved_files=0 unresolved_anchors=0
+2026-07-29 12:20:56,504 INFO [src.agentic_localization.planner] localize: done duration=38.81s verdict=not_implemented snippets=0
+Running agent on annotations:  56%|█████▌    | 30/54 [14:12<10:09, 25.40s/it][36m[1mweave[0m: 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faead-d84e-7055-bd56-9f242e589118
+2026-07-29 12:20:56,527 INFO [weave.trace.weave_client] 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faead-d84e-7055-bd56-9f242e589118
+2026-07-29 12:20:57,849 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:21:10,081 INFO [src.agentic_localization.planner] get_candidates: chars=20187 files=43 blob_tokens=~3642 model=claude-sonnet-4-5-20250929
+2026-07-29 12:21:12,429 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:21:21,700 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:21:21,712 INFO [src.agentic_localization.planner] get_candidates: done duration=11.63s verdict=implemented num_candidates=2 in=7454 out=409
+2026-07-29 12:21:23,538 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:21:35,018 INFO [src.agentic_localization.planner] resolve_anchors: done duration=0.02s snippets=2 unresolved_files=0 unresolved_anchors=0
+2026-07-29 12:21:35,019 INFO [src.agentic_localization.planner] localize: done duration=38.49s verdict=implemented snippets=2
+Running agent on annotations:  57%|█████▋    | 31/54 [14:50<11:14, 29.33s/it][36m[1mweave[0m: 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faeae-6eb5-7b56-872a-c96c3371f69e
+2026-07-29 12:21:35,030 INFO [weave.trace.weave_client] 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faeae-6eb5-7b56-872a-c96c3371f69e
+2026-07-29 12:21:36,963 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:21:48,353 INFO [src.agentic_localization.planner] get_candidates: chars=20834 files=43 blob_tokens=~3642 model=claude-sonnet-4-5-20250929
+2026-07-29 12:21:50,412 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:22:00,748 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:22:00,770 INFO [src.agentic_localization.planner] get_candidates: done duration=12.42s verdict=implemented num_candidates=5 in=7656 out=512
+2026-07-29 12:22:02,081 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:22:13,886 INFO [src.agentic_localization.planner] resolve_anchors: done duration=0.02s snippets=5 unresolved_files=0 unresolved_anchors=0
+2026-07-29 12:22:13,886 INFO [src.agentic_localization.planner] localize: done duration=38.86s verdict=implemented snippets=5
+Running agent on annotations:  59%|█████▉    | 32/54 [15:29<11:48, 32.19s/it][36m[1mweave[0m: 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faeaf-068a-75f5-ba01-df3b64e72e17
+2026-07-29 12:22:13,899 INFO [weave.trace.weave_client] 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faeaf-068a-75f5-ba01-df3b64e72e17
+2026-07-29 12:22:15,393 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:22:27,290 INFO [src.agentic_localization.planner] get_candidates: chars=20717 files=43 blob_tokens=~3642 model=claude-sonnet-4-5-20250929
+2026-07-29 12:22:28,573 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:22:55,027 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:22:55,045 INFO [src.agentic_localization.planner] get_candidates: done duration=27.76s verdict=implemented num_candidates=4 in=7626 out=548
+2026-07-29 12:22:56,665 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:23:08,289 INFO [src.agentic_localization.planner] resolve_anchors: done duration=0.09s snippets=4 unresolved_files=0 unresolved_anchors=0
+2026-07-29 12:23:08,290 INFO [src.agentic_localization.planner] localize: done duration=54.39s verdict=implemented snippets=4
+Running agent on annotations:  61%|██████    | 33/54 [16:24<13:35, 38.86s/it][36m[1mweave[0m: 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faeaf-db0d-7c11-99a5-2a15f1dd2845
+2026-07-29 12:23:08,302 INFO [weave.trace.weave_client] 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faeaf-db0d-7c11-99a5-2a15f1dd2845
+2026-07-29 12:23:10,738 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:23:21,769 INFO [src.agentic_localization.planner] get_candidates: chars=20325 files=43 blob_tokens=~3642 model=claude-sonnet-4-5-20250929
+2026-07-29 12:23:22,865 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:23:35,368 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:23:35,390 INFO [src.agentic_localization.planner] get_candidates: done duration=13.62s verdict=implemented num_candidates=5 in=7493 out=579
+2026-07-29 12:23:37,113 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:23:48,532 INFO [src.agentic_localization.planner] resolve_anchors: done duration=0.02s snippets=5 unresolved_files=0 unresolved_anchors=0
+2026-07-29 12:23:48,533 INFO [src.agentic_localization.planner] localize: done duration=40.23s verdict=implemented snippets=5
+Running agent on annotations:  63%|██████▎   | 34/54 [17:04<13:05, 39.27s/it][36m[1mweave[0m: 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faeb0-7840-7a55-bc05-2f954f72ade3
+2026-07-29 12:23:48,545 INFO [weave.trace.weave_client] 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faeb0-7840-7a55-bc05-2f954f72ade3
+2026-07-29 12:23:50,516 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:24:01,592 INFO [src.agentic_localization.planner] get_candidates: chars=20326 files=43 blob_tokens=~3642 model=claude-sonnet-4-5-20250929
+2026-07-29 12:24:03,261 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:24:17,371 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:24:17,391 INFO [src.agentic_localization.planner] get_candidates: done duration=15.80s verdict=implemented num_candidates=3 in=7479 out=448
+2026-07-29 12:24:19,390 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:24:30,656 INFO [src.agentic_localization.planner] resolve_anchors: done duration=0.02s snippets=3 unresolved_files=0 unresolved_anchors=0
+2026-07-29 12:24:30,656 INFO [src.agentic_localization.planner] localize: done duration=42.11s verdict=implemented snippets=3
+Running agent on annotations:  65%|██████▍   | 35/54 [17:46<12:42, 40.13s/it][36m[1mweave[0m: 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faeb1-1ccb-7c1a-a177-8a20be608961
+2026-07-29 12:24:30,668 INFO [weave.trace.weave_client] 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faeb1-1ccb-7c1a-a177-8a20be608961
+2026-07-29 12:24:32,919 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:24:43,895 INFO [src.agentic_localization.planner] get_candidates: chars=20400 files=43 blob_tokens=~3642 model=claude-sonnet-4-5-20250929
+2026-07-29 12:24:45,298 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:24:55,988 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:24:56,009 INFO [src.agentic_localization.planner] get_candidates: done duration=12.11s verdict=implemented num_candidates=2 in=7510 out=388
+2026-07-29 12:24:57,212 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:25:09,094 INFO [src.agentic_localization.planner] resolve_anchors: done duration=0.02s snippets=2 unresolved_files=0 unresolved_anchors=0
+2026-07-29 12:25:09,094 INFO [src.agentic_localization.planner] localize: done duration=38.43s verdict=implemented snippets=2
+Running agent on annotations:  67%|██████▋   | 36/54 [18:24<11:53, 39.62s/it][36m[1mweave[0m: 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faeb1-b2f1-7ded-97cd-44256c91ed40
+2026-07-29 12:25:09,106 INFO [weave.trace.weave_client] 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faeb1-b2f1-7ded-97cd-44256c91ed40
+2026-07-29 12:25:10,269 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:25:22,272 INFO [src.agentic_localization.planner] get_candidates: chars=20599 files=43 blob_tokens=~3642 model=claude-sonnet-4-5-20250929
+2026-07-29 12:25:24,045 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:25:41,473 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:25:41,496 INFO [src.agentic_localization.planner] get_candidates: done duration=19.22s verdict=implemented num_candidates=4 in=7586 out=562
+2026-07-29 12:25:43,096 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:25:54,664 INFO [src.agentic_localization.planner] resolve_anchors: done duration=0.08s snippets=4 unresolved_files=0 unresolved_anchors=0
+2026-07-29 12:25:54,665 INFO [src.agentic_localization.planner] localize: done duration=45.56s verdict=implemented snippets=4
+Running agent on annotations:  69%|██████▊   | 37/54 [19:10<11:43, 41.41s/it][36m[1mweave[0m: 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faeb2-64f4-76c7-ad59-b4796fec21d2
+2026-07-29 12:25:54,677 INFO [weave.trace.weave_client] 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faeb2-64f4-76c7-ad59-b4796fec21d2
+2026-07-29 12:25:56,775 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:26:07,769 INFO [src.agentic_localization.planner] get_candidates: chars=20277 files=43 blob_tokens=~3642 model=claude-sonnet-4-5-20250929
+2026-07-29 12:26:08,961 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:26:21,289 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:26:21,317 INFO [src.agentic_localization.planner] get_candidates: done duration=13.55s verdict=implemented num_candidates=3 in=7463 out=595
+2026-07-29 12:26:22,827 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:26:34,314 INFO [src.agentic_localization.planner] resolve_anchors: done duration=0.02s snippets=3 unresolved_files=0 unresolved_anchors=0
+2026-07-29 12:26:34,315 INFO [src.agentic_localization.planner] localize: done duration=39.64s verdict=implemented snippets=3
+Running agent on annotations:  70%|███████   | 38/54 [19:50<10:54, 40.88s/it][36m[1mweave[0m: 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faeb2-ffd6-7269-9a54-e117ca717642
+2026-07-29 12:26:34,327 INFO [weave.trace.weave_client] 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faeb2-ffd6-7269-9a54-e117ca717642
+2026-07-29 12:26:36,165 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:26:47,300 INFO [src.agentic_localization.planner] get_candidates: chars=20465 files=43 blob_tokens=~3642 model=claude-sonnet-4-5-20250929
+2026-07-29 12:26:48,335 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:26:50,428 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:26:57,610 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:26:57,630 INFO [src.agentic_localization.planner] get_candidates: done duration=10.33s verdict=implemented num_candidates=2 in=7521 out=393
+2026-07-29 12:27:07,343 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:27:10,703 INFO [src.agentic_localization.planner] resolve_anchors: done duration=0.02s snippets=2 unresolved_files=0 unresolved_anchors=0
+2026-07-29 12:27:10,703 INFO [src.agentic_localization.planner] localize: done duration=36.38s verdict=implemented snippets=2
+Running agent on annotations:  72%|███████▏  | 39/54 [20:26<09:52, 39.53s/it][36m[1mweave[0m: 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faeb3-8dfa-7d5c-a18e-df8953c50157
+2026-07-29 12:27:10,715 INFO [weave.trace.weave_client] 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faeb3-8dfa-7d5c-a18e-df8953c50157
+2026-07-29 12:27:13,702 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:27:23,843 INFO [src.agentic_localization.planner] get_candidates: chars=20616 files=43 blob_tokens=~3642 model=claude-sonnet-4-5-20250929
+2026-07-29 12:27:26,877 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:27:37,165 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:27:37,182 INFO [src.agentic_localization.planner] get_candidates: done duration=13.34s verdict=implemented num_candidates=2 in=7566 out=486
+2026-07-29 12:27:38,748 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:27:50,222 INFO [src.agentic_localization.planner] resolve_anchors: done duration=0.02s snippets=2 unresolved_files=0 unresolved_anchors=0
+2026-07-29 12:27:50,223 INFO [src.agentic_localization.planner] localize: done duration=39.51s verdict=implemented snippets=2
+Running agent on annotations:  74%|███████▍  | 40/54 [21:05<09:13, 39.53s/it][36m[1mweave[0m: 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faeb4-2859-717c-a515-4d3d52456e07
+2026-07-29 12:27:50,234 INFO [weave.trace.weave_client] 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faeb4-2859-717c-a515-4d3d52456e07
+2026-07-29 12:27:52,037 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:28:03,318 INFO [src.agentic_localization.planner] get_candidates: chars=20276 files=43 blob_tokens=~3642 model=claude-sonnet-4-5-20250929
+2026-07-29 12:28:05,440 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:28:14,063 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:28:14,084 INFO [src.agentic_localization.planner] get_candidates: done duration=10.77s verdict=not_implemented num_candidates=0 in=7464 out=302
+2026-07-29 12:28:16,098 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:28:27,005 INFO [src.agentic_localization.planner] resolve_anchors: done duration=0.00s snippets=0 unresolved_files=0 unresolved_anchors=0
+2026-07-29 12:28:27,005 INFO [src.agentic_localization.planner] localize: done duration=36.77s verdict=not_implemented snippets=0
+Running agent on annotations:  76%|███████▌  | 41/54 [21:42<08:23, 38.73s/it][36m[1mweave[0m: 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faeb4-b851-7924-87aa-aec28a17409a
+2026-07-29 12:28:27,090 INFO [weave.trace.weave_client] 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faeb4-b851-7924-87aa-aec28a17409a
+2026-07-29 12:28:28,718 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:28:49,847 INFO [src.agentic_localization.planner] get_candidates: chars=29447 files=87 blob_tokens=~5823 model=claude-sonnet-4-5-20250929
+2026-07-29 12:28:51,815 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:28:59,906 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:28:59,927 INFO [src.agentic_localization.planner] get_candidates: done duration=10.08s verdict=implemented num_candidates=4 in=10873 out=535
+2026-07-29 12:29:01,365 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:29:22,689 INFO [src.agentic_localization.planner] resolve_anchors: done duration=0.12s snippets=4 unresolved_files=0 unresolved_anchors=0
+2026-07-29 12:29:22,690 INFO [src.agentic_localization.planner] localize: done duration=55.60s verdict=implemented snippets=4
+Running agent on annotations:  78%|███████▊  | 42/54 [22:38<08:45, 43.79s/it][36m[1mweave[0m: 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faeb5-918f-7a92-9aa4-7071e90d448a
+2026-07-29 12:29:22,704 INFO [weave.trace.weave_client] 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faeb5-918f-7a92-9aa4-7071e90d448a
+2026-07-29 12:29:24,948 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:29:27,024 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:29:45,645 INFO [src.agentic_localization.planner] get_candidates: chars=29372 files=87 blob_tokens=~5823 model=claude-sonnet-4-5-20250929
+2026-07-29 12:29:48,334 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:29:58,354 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:29:58,374 INFO [src.agentic_localization.planner] get_candidates: done duration=12.73s verdict=implemented num_candidates=3 in=10868 out=487
+2026-07-29 12:29:59,473 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:30:21,107 INFO [src.agentic_localization.planner] resolve_anchors: done duration=0.03s snippets=3 unresolved_files=0 unresolved_anchors=0
+2026-07-29 12:30:21,107 INFO [src.agentic_localization.planner] localize: done duration=58.40s verdict=implemented snippets=3
+Running agent on annotations:  80%|███████▉  | 43/54 [23:36<08:49, 48.18s/it][36m[1mweave[0m: 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faeb6-75c0-75d0-b0b3-f3d0ea1e5d2f
+2026-07-29 12:30:21,121 INFO [weave.trace.weave_client] 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faeb6-75c0-75d0-b0b3-f3d0ea1e5d2f
+2026-07-29 12:30:23,230 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:30:43,854 INFO [src.agentic_localization.planner] get_candidates: chars=29356 files=87 blob_tokens=~5823 model=claude-sonnet-4-5-20250929
+2026-07-29 12:30:45,891 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:30:54,275 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:30:54,297 INFO [src.agentic_localization.planner] get_candidates: done duration=10.44s verdict=implemented num_candidates=4 in=10866 out=500
+2026-07-29 12:30:56,154 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:31:17,169 INFO [src.agentic_localization.planner] resolve_anchors: done duration=0.03s snippets=4 unresolved_files=0 unresolved_anchors=0
+2026-07-29 12:31:17,169 INFO [src.agentic_localization.planner] localize: done duration=56.02s verdict=implemented snippets=4
+Running agent on annotations:  81%|████████▏ | 44/54 [24:32<08:25, 50.54s/it][36m[1mweave[0m: 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faeb7-50bf-7d77-b7bc-214c9ee2e9f3
+2026-07-29 12:31:17,184 INFO [weave.trace.weave_client] 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faeb7-50bf-7d77-b7bc-214c9ee2e9f3
+2026-07-29 12:31:18,933 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:31:39,963 INFO [src.agentic_localization.planner] get_candidates: chars=29302 files=87 blob_tokens=~5823 model=claude-sonnet-4-5-20250929
+2026-07-29 12:31:41,714 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:31:50,946 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:31:50,967 INFO [src.agentic_localization.planner] get_candidates: done duration=11.00s verdict=implemented num_candidates=4 in=10826 out=471
+2026-07-29 12:31:52,728 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:32:13,818 INFO [src.agentic_localization.planner] resolve_anchors: done duration=0.03s snippets=4 unresolved_files=0 unresolved_anchors=0
+2026-07-29 12:32:13,819 INFO [src.agentic_localization.planner] localize: done duration=56.63s verdict=implemented snippets=4
+Running agent on annotations:  83%|████████▎ | 45/54 [25:29<07:51, 52.38s/it][36m[1mweave[0m: 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faeb8-2e08-7bf4-9261-4ac022f788e5
+2026-07-29 12:32:13,833 INFO [weave.trace.weave_client] 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faeb8-2e08-7bf4-9261-4ac022f788e5
+2026-07-29 12:32:16,012 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:32:36,517 INFO [src.agentic_localization.planner] get_candidates: chars=29299 files=87 blob_tokens=~5823 model=claude-sonnet-4-5-20250929
+2026-07-29 12:32:38,878 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:32:50,043 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:32:50,065 INFO [src.agentic_localization.planner] get_candidates: done duration=13.55s verdict=implemented num_candidates=2 in=10833 out=416
+2026-07-29 12:32:52,185 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:33:12,784 INFO [src.agentic_localization.planner] resolve_anchors: done duration=0.03s snippets=2 unresolved_files=0 unresolved_anchors=0
+2026-07-29 12:33:12,785 INFO [src.agentic_localization.planner] localize: done duration=58.95s verdict=implemented snippets=2
+Running agent on annotations:  85%|████████▌ | 46/54 [26:28<07:14, 54.35s/it][36m[1mweave[0m: 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faeb9-145e-7814-922a-345b150fdcdf
+2026-07-29 12:33:12,799 INFO [weave.trace.weave_client] 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faeb9-145e-7814-922a-345b150fdcdf
+2026-07-29 12:33:15,312 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:33:35,505 INFO [src.agentic_localization.planner] get_candidates: chars=29657 files=87 blob_tokens=~5823 model=claude-sonnet-4-5-20250929
+2026-07-29 12:33:37,052 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:33:49,723 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:33:49,746 INFO [src.agentic_localization.planner] get_candidates: done duration=14.24s verdict=implemented num_candidates=3 in=10925 out=514
+2026-07-29 12:33:51,157 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:34:12,459 INFO [src.agentic_localization.planner] resolve_anchors: done duration=0.03s snippets=3 unresolved_files=0 unresolved_anchors=0
+2026-07-29 12:34:12,459 INFO [src.agentic_localization.planner] localize: done duration=59.66s verdict=implemented snippets=3
+Running agent on annotations:  87%|████████▋ | 47/54 [27:28<06:31, 55.95s/it][36m[1mweave[0m: 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faeb9-fd79-7b5f-895f-52b8ca4499c9
+2026-07-29 12:34:12,474 INFO [weave.trace.weave_client] 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faeb9-fd79-7b5f-895f-52b8ca4499c9
+2026-07-29 12:34:14,898 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:34:35,097 INFO [src.agentic_localization.planner] get_candidates: chars=29463 files=87 blob_tokens=~5823 model=claude-sonnet-4-5-20250929
+2026-07-29 12:34:36,687 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:34:46,830 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:34:46,853 INFO [src.agentic_localization.planner] get_candidates: done duration=11.76s verdict=implemented num_candidates=3 in=10880 out=456
+2026-07-29 12:34:48,367 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:35:09,547 INFO [src.agentic_localization.planner] resolve_anchors: done duration=0.03s snippets=3 unresolved_files=0 unresolved_anchors=0
+2026-07-29 12:35:09,548 INFO [src.agentic_localization.planner] localize: done duration=57.07s verdict=implemented snippets=3
+Running agent on annotations:  89%|████████▉ | 48/54 [28:25<05:37, 56.29s/it][36m[1mweave[0m: 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faeba-dc79-7719-a7c6-baffb0533625
+2026-07-29 12:35:09,562 INFO [weave.trace.weave_client] 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faeba-dc79-7719-a7c6-baffb0533625
+2026-07-29 12:35:11,463 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:35:32,261 INFO [src.agentic_localization.planner] get_candidates: chars=29468 files=87 blob_tokens=~5823 model=claude-sonnet-4-5-20250929
+2026-07-29 12:35:34,522 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:35:51,350 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:35:51,369 INFO [src.agentic_localization.planner] get_candidates: done duration=19.11s verdict=implemented num_candidates=3 in=10876 out=435
+2026-07-29 12:35:52,856 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:36:14,462 INFO [src.agentic_localization.planner] resolve_anchors: done duration=0.03s snippets=3 unresolved_files=0 unresolved_anchors=0
+2026-07-29 12:36:14,462 INFO [src.agentic_localization.planner] localize: done duration=64.90s verdict=implemented snippets=3
+Running agent on annotations:  91%|█████████ | 49/54 [29:30<04:54, 58.88s/it][36m[1mweave[0m: 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faebb-da0c-79b8-952f-92b0e76ad33a
+2026-07-29 12:36:14,477 INFO [weave.trace.weave_client] 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faebb-da0c-79b8-952f-92b0e76ad33a
+2026-07-29 12:36:16,910 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:36:37,663 INFO [src.agentic_localization.planner] get_candidates: chars=29480 files=87 blob_tokens=~5823 model=claude-sonnet-4-5-20250929
+2026-07-29 12:36:40,575 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:36:54,916 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:36:54,937 INFO [src.agentic_localization.planner] get_candidates: done duration=17.27s verdict=implemented num_candidates=3 in=10890 out=645
+2026-07-29 12:36:56,911 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:37:18,157 INFO [src.agentic_localization.planner] resolve_anchors: done duration=0.10s snippets=3 unresolved_files=0 unresolved_anchors=0
+2026-07-29 12:37:18,157 INFO [src.agentic_localization.planner] localize: done duration=63.68s verdict=implemented snippets=3
+Running agent on annotations:  93%|█████████▎| 50/54 [30:33<04:01, 60.32s/it][36m[1mweave[0m: 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faebc-d2dc-7161-8daf-aee0213d8191
+2026-07-29 12:37:18,173 INFO [weave.trace.weave_client] 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faebc-d2dc-7161-8daf-aee0213d8191
+2026-07-29 12:37:20,037 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:37:41,415 INFO [src.agentic_localization.planner] get_candidates: chars=29376 files=87 blob_tokens=~5823 model=claude-sonnet-4-5-20250929
+2026-07-29 12:37:44,088 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:37:59,656 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:37:59,674 INFO [src.agentic_localization.planner] get_candidates: done duration=18.26s verdict=implemented num_candidates=2 in=10844 out=556
+2026-07-29 12:38:01,099 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:38:22,958 INFO [src.agentic_localization.planner] resolve_anchors: done duration=0.03s snippets=2 unresolved_files=0 unresolved_anchors=0
+2026-07-29 12:38:22,959 INFO [src.agentic_localization.planner] localize: done duration=64.79s verdict=implemented snippets=2
+Running agent on annotations:  94%|█████████▍| 51/54 [31:38<03:05, 61.67s/it][36m[1mweave[0m: 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faebd-cffd-7748-b1dd-9a4cd18a927e
+2026-07-29 12:38:22,974 INFO [weave.trace.weave_client] 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faebd-cffd-7748-b1dd-9a4cd18a927e
+2026-07-29 12:38:24,649 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:38:45,691 INFO [src.agentic_localization.planner] get_candidates: chars=29792 files=87 blob_tokens=~5823 model=claude-sonnet-4-5-20250929
+2026-07-29 12:38:47,143 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:38:59,809 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:38:59,830 INFO [src.agentic_localization.planner] get_candidates: done duration=14.14s verdict=implemented num_candidates=2 in=11037 out=484
+2026-07-29 12:39:01,427 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:39:22,510 INFO [src.agentic_localization.planner] resolve_anchors: done duration=0.03s snippets=2 unresolved_files=0 unresolved_anchors=0
+2026-07-29 12:39:22,511 INFO [src.agentic_localization.planner] localize: done duration=59.54s verdict=implemented snippets=2
+Running agent on annotations:  96%|█████████▋| 52/54 [32:38<02:02, 61.03s/it][36m[1mweave[0m: 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faebe-b89d-7af3-8d43-ab8e832928ec
+2026-07-29 12:39:22,525 INFO [weave.trace.weave_client] 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faebe-b89d-7af3-8d43-ab8e832928ec
+2026-07-29 12:39:23,984 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:39:45,393 INFO [src.agentic_localization.planner] get_candidates: chars=29362 files=87 blob_tokens=~5823 model=claude-sonnet-4-5-20250929
+2026-07-29 12:39:48,711 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:40:00,273 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:40:00,292 INFO [src.agentic_localization.planner] get_candidates: done duration=14.90s verdict=implemented num_candidates=2 in=10857 out=474
+2026-07-29 12:40:02,011 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:40:22,975 INFO [src.agentic_localization.planner] resolve_anchors: done duration=0.03s snippets=2 unresolved_files=0 unresolved_anchors=0
+2026-07-29 12:40:22,975 INFO [src.agentic_localization.planner] localize: done duration=60.45s verdict=implemented snippets=2
+Running agent on annotations:  98%|█████████▊| 53/54 [33:38<01:00, 60.86s/it][36m[1mweave[0m: 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faebf-a4dc-759b-a77d-e1a4ab997c90
+2026-07-29 12:40:23,007 INFO [weave.trace.weave_client] 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faebf-a4dc-759b-a77d-e1a4ab997c90
+2026-07-29 12:40:25,260 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:40:45,673 INFO [src.agentic_localization.planner] get_candidates: chars=29401 files=87 blob_tokens=~5823 model=claude-sonnet-4-5-20250929
+2026-07-29 12:40:49,129 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:40:57,869 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:40:57,890 INFO [src.agentic_localization.planner] get_candidates: done duration=12.22s verdict=implemented num_candidates=3 in=10863 out=565
+2026-07-29 12:40:58,974 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:41:20,912 INFO [src.agentic_localization.planner] resolve_anchors: done duration=0.04s snippets=3 unresolved_files=0 unresolved_anchors=0
+2026-07-29 12:41:20,912 INFO [src.agentic_localization.planner] localize: done duration=57.91s verdict=implemented snippets=3
+Running agent on annotations: 100%|██████████| 54/54 [34:36<00:00, 59.98s/it]Running agent on annotations: 100%|██████████| 54/54 [34:36<00:00, 38.46s/it]
+2026-07-29 12:41:23,755 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+Repository already cloned to /Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/Atari-PB
+Repository already cloned to /Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/Atari-PB
+Repository already cloned to /Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/Atari-PB
+Repository already cloned to /Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/Atari-PB
+Repository already cloned to /Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/Atari-PB
+Repository already cloned to /Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/Atari-PB
+Repository already cloned to /Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/Atari-PB
+Repository already cloned to /Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/Atari-PB
+Repository already cloned to /Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/Atari-PB
+Repository already cloned to /Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/Atari-PB
+Repository already cloned to /Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/Atari-PB
+Repository already cloned to /Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/honest_llama
+Repository already cloned to /Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/honest_llama
+Repository already cloned to /Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/honest_llama
+Repository already cloned to /Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/honest_llama
+Repository already cloned to /Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/honest_llama
+Repository already cloned to /Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/honest_llama
+Repository already cloned to /Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/honest_llama
+Repository already cloned to /Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/honest_llama
+Repository already cloned to /Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/honest_llama
+Repository already cloned to /Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/honest_llama
+Repository already cloned to /Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/honest_llama
+Repository already cloned to /Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/honest_llama
+Repository already cloned to /Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/LoRA
+Repository already cloned to /Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/LoRA
+Repository already cloned to /Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/LoRA
+Repository already cloned to /Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/LoRA
+Repository already cloned to /Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/LoRA
+Repository already cloned to /Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/MATT
+Repository already cloned to /Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/MATT
+Repository already cloned to /Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/MATT
+Repository already cloned to /Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/MATT
+Repository already cloned to /Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/MATT
+Repository already cloned to /Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/MATT
+Repository already cloned to /Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/MATT
+Repository already cloned to /Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/MATT
+Repository already cloned to /Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/MATT
+Repository already cloned to /Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/MATT
+Repository already cloned to /Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/MATT
+Repository already cloned to /Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/MATT
+Repository already cloned to /Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/vjepa2
+Repository already cloned to /Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/vjepa2
+Repository already cloned to /Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/vjepa2
+Repository already cloned to /Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/vjepa2
+Repository already cloned to /Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/vjepa2
+Repository already cloned to /Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/vjepa2
+Repository already cloned to /Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/vjepa2
+Repository already cloned to /Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/vjepa2
+Repository already cloned to /Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/vjepa2
+Repository already cloned to /Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/vjepa2
+Repository already cloned to /Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/vjepa2
+Repository already cloned to /Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/vjepa2
+Repository already cloned to /Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/vjepa2
+Wrote 54 predictions to src/evals/v0.8/planner-only-predictions.json
+/Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/.venv/lib/python3.11/site-packages/requests/__init__.py:113: RequestsDependencyWarning: urllib3 (2.5.0) or chardet (7.4.3)/charset_normalizer (3.4.4) doesn't match a supported version!
+  warnings.warn(
+Wrote evaluation results to src/evals/v0.8/planner-only-metrics.json
+Wrote evaluation summary to src/evals/v0.8/planner-only-metrics.md
+{
+  "total_annotations": 54,
+  "num_errored": 0,
+  "num_with_prediction": 52,
+  "num_filepath_correct": 41,
+  "filepath_accuracy": 0.7592592592592593,
+  "num_filepath_hit_at_5": 45,
+  "filepath_hit_at_5_rate": 0.8333333333333334,
+  "mean_iou_given_correct_filepath": 0.2780237664517658,
+  "num_annotations_with_iou": 41,
+  "mean_iou_matching_filepaths": 0.20873475707815384,
+  "num_annotations_with_matching_filepath_iou": 45,
+  "class_accuracy_given_applicable": 0.9545454545454546,
+  "num_class_correct": 21,
+  "num_class_applicable": 22,
+  "method_accuracy_given_applicable": 0.6176470588235294,
+  "num_method_correct": 21,
+  "num_method_applicable": 34,
+  "mean_duration_seconds": 38.44579036422322,
+  "by_paper": {
+    "investigating_pre_training_objectives_for_generalization_in_vision_based_reinforcement_learning": {
+      "total_annotations": 12,
+      "filepath_accuracy": 1.0,
+      "filepath_hit_at_5_rate": 1.0,
+      "mean_iou_given_correct_filepath": 0.12152078471632959,
+      "mean_iou_matching_filepaths": 0.12351336740951635,
+      "num_annotations_with_matching_filepath_iou": 12,
+      "class_accuracy_given_applicable": 1.0,
+      "num_class_applicable": 9,
+      "method_accuracy_given_applicable": 0.7,
+      "num_method_applicable": 10
+    },
+    "inference_time_intervention_eliciting_truthful_answers_from_a_language_mode": {
+      "total_annotations": 12,
+      "filepath_accuracy": 0.6666666666666666,
+      "filepath_hit_at_5_rate": 0.75,
+      "mean_iou_given_correct_filepath": 0.6230836323763955,
+      "mean_iou_matching_filepaths": 0.3537188925454451,
+      "num_annotations_with_matching_filepath_iou": 9,
+      "class_accuracy_given_applicable": 1.0,
+      "num_class_applicable": 1,
+      "method_accuracy_given_applicable": 0.75,
+      "num_method_applicable": 8
+    },
+    "lora_low_rank_adaptation_of_large_lan_guage_models": {
+      "total_annotations": 5,
+      "filepath_accuracy": 0.8,
+      "filepath_hit_at_5_rate": 1.0,
+      "mean_iou_given_correct_filepath": 0.2599206349206349,
+      "mean_iou_matching_filepaths": 0.2646259018759019,
+      "num_annotations_with_matching_filepath_iou": 5,
+      "class_accuracy_given_applicable": 0.75,
+      "num_class_applicable": 4,
+      "method_accuracy_given_applicable": 0.5,
+      "num_method_applicable": 4
+    },
+    "mistake_attribution_fine_grained_mistake_understanding_in_egocentric_videos": {
+      "total_annotations": 12,
+      "filepath_accuracy": 0.5,
+      "filepath_hit_at_5_rate": 0.6666666666666666,
+      "mean_iou_given_correct_filepath": 0.32469760846308837,
+      "mean_iou_matching_filepaths": 0.2559308214106386,
+      "num_annotations_with_matching_filepath_iou": 8,
+      "class_accuracy_given_applicable": 1.0,
+      "num_class_applicable": 3,
+      "method_accuracy_given_applicable": 1.0,
+      "num_method_applicable": 3
+    },
+    "v_jepa_2_self_supervised_video_models_enable_understanding_prediction_and_planning": {
+      "total_annotations": 13,
+      "filepath_accuracy": 0.8461538461538461,
+      "filepath_hit_at_5_rate": 0.8461538461538461,
+      "mean_iou_given_correct_filepath": 0.1789261598594735,
+      "mean_iou_matching_filepaths": 0.12335068600264548,
+      "num_annotations_with_matching_filepath_iou": 11,
+      "class_accuracy_given_applicable": 1.0,
+      "num_class_applicable": 5,
+      "method_accuracy_given_applicable": 0.3333333333333333,
+      "num_method_applicable": 9
+    }
+  },
+  "run_stats": {
+    "mean_duration_seconds": 38.44579036422322,
+    "mean_num_tool_calls": 0.0,
+    "total_cost_usd": null,
+    "mean_input_tokens": 7021.777777777777,
+    "mean_output_tokens": 473.51851851851853,
+    "num_records": 54
+  }
+}
+/Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/.venv/lib/python3.11/site-packages/requests/__init__.py:113: RequestsDependencyWarning: urllib3 (2.5.0) or chardet (7.4.3)/charset_normalizer (3.4.4) doesn't match a supported version!
+  warnings.warn(
+2026-07-29 12:41:32,614 INFO [httpx] HTTP Request: GET https://trace.wandb.ai/server_info "HTTP/1.1 200 OK"
+2026-07-29 12:41:32,881 INFO [httpx] HTTP Request: POST https://api.wandb.ai/graphql "HTTP/1.1 200 OK"
+2026-07-29 12:41:33,574 INFO [httpx] HTTP Request: POST https://api.wandb.ai/graphql "HTTP/1.1 200 OK"
+2026-07-29 12:41:33,630 INFO [httpx] HTTP Request: GET https://trace.wandb.ai/server_info "HTTP/1.1 200 OK"
+2026-07-29 12:41:33,708 INFO [httpx] HTTP Request: GET https://pypi.org/pypi/wandb/json "HTTP/1.1 200 OK"
+[36m[1mweave[0m: wandb version 0.28.1 is available!  To upgrade, please run:
+[36m[1mweave[0m:  $ pip install wandb --upgrade
+2026-07-29 12:41:33,750 INFO [weave.trace.init_message] wandb version 0.28.1 is available!  To upgrade, please run:
+ $ pip install wandb --upgrade
+2026-07-29 12:41:33,850 INFO [httpx] HTTP Request: GET https://pypi.org/pypi/weave/json "HTTP/1.1 200 OK"
+[36m[1mweave[0m: weave version 0.53.3 is available!  To upgrade, please run:
+[36m[1mweave[0m:  $ pip install weave --upgrade
+2026-07-29 12:41:33,885 INFO [weave.trace.init_message] weave version 0.53.3 is available!  To upgrade, please run:
+ $ pip install weave --upgrade
+[36m[1mweave[0m: Logged in as Weights & Biases user: faridkar.
+[36m[1mweave[0m: View Weave data at https://wandb.ai/gardoslab/deepread/weave
+2026-07-29 12:41:33,886 INFO [weave.trace.init_message] Logged in as Weights & Biases user: faridkar.
+View Weave data at https://wandb.ai/gardoslab/deepread/weave
+2026-07-29 12:41:33,886 INFO [src.observability] Weave initialized project=gardoslab/deepread
+2026-07-29 12:41:33,912 INFO [chunker.languages.base] Registered language configuration: clojure
+2026-07-29 12:41:33,913 INFO [chunker.languages.base] Registered language configuration: c_sharp
+2026-07-29 12:41:33,913 INFO [chunker.languages.base] Registered language configuration: dart
+2026-07-29 12:41:33,913 INFO [chunker.languages.base] Registered language configuration: dockerfile
+2026-07-29 12:41:33,913 INFO [chunker.languages.base] Registered language configuration: elixir
+2026-07-29 12:41:33,914 INFO [chunker.languages.base] Registered language configuration: go
+2026-07-29 12:41:33,915 INFO [chunker.languages.base] Registered language configuration: java
+2026-07-29 12:41:33,915 INFO [chunker.languages.base] Registered language configuration: matlab
+2026-07-29 12:41:33,916 INFO [chunker.languages.base] Registered language configuration: ocaml
+2026-07-29 12:41:33,916 INFO [chunker.languages.base] Registered language configuration: python
+2026-07-29 12:41:33,916 INFO [chunker.languages.base] Registered language configuration: r
+2026-07-29 12:41:33,916 INFO [chunker.languages.base] Registered language configuration: ruby
+2026-07-29 12:41:33,917 INFO [chunker.languages.base] Registered language configuration: rust
+2026-07-29 12:41:33,917 INFO [chunker.languages.base] Registered language configuration: scala
+2026-07-29 12:41:33,917 INFO [chunker.languages.base] Registered language configuration: sql
+2026-07-29 12:41:33,918 INFO [chunker.languages.base] Registered language configuration: toml
+2026-07-29 12:41:33,918 INFO [chunker.languages.base] Registered language configuration: typescript
+2026-07-29 12:41:33,918 INFO [chunker.languages.base] Registered language configuration: tsx
+2026-07-29 12:41:33,919 INFO [chunker.languages.base] Registered language configuration: xml
+2026-07-29 12:41:33,919 INFO [chunker.languages.base] Registered language configuration: yaml
+2026-07-29 12:41:33,920 INFO [chunker.languages.base] Registered language configuration: c
+2026-07-29 12:41:33,920 INFO [chunker.languages.base] Registered language configuration: cpp
+2026-07-29 12:41:33,920 INFO [chunker.languages.base] Registered language configuration: javascript
+2026-07-29 12:41:33,920 INFO [chunker.languages.base] Registered language configuration: kotlin
+2026-07-29 12:41:33,921 INFO [chunker.languages.base] Registered language configuration: php
+2026-07-29 12:41:33,921 INFO [chunker.languages.base] Registered language configuration: swift
+Weave tracing active=True
+Running agent on annotations:   0%|          | 0/54 [00:00<?, ?it/s][36m[1mweave[0m: 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faec0-bf63-73cd-be21-0a9ecc56e498
+2026-07-29 12:41:35,407 INFO [weave.trace.weave_client] 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faec0-bf63-73cd-be21-0a9ecc56e498
+2026-07-29 12:41:36,791 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:41:48,651 INFO [src.agentic_localization.planner] get_candidates: chars=21209 files=72 blob_tokens=~3954 model=claude-sonnet-4-5-20250929
+2026-07-29 12:41:50,775 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:41:59,481 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:41:59,518 INFO [src.agentic_localization.planner] get_candidates: done duration=10.87s verdict=implemented num_candidates=4 in=7920 out=449
+2026-07-29 12:42:00,248 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/obj/create "HTTP/1.1 200 OK"
+2026-07-29 12:42:00,640 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/files/create "HTTP/1.1 200 OK"
+2026-07-29 12:42:01,027 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:42:12,392 INFO [src.agentic_localization.resolver] resolve_menu: chars=9719 est_tokens=~2429 planner_candidates=4 model=claude-sonnet-4-5-20250929
+2026-07-29 12:42:14,338 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:42:21,395 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:42:21,416 INFO [src.agentic_localization.resolver] resolve_menu: done duration=9.02s symbols=3 in=3632 out=399
+2026-07-29 12:42:22,978 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:42:34,153 INFO [src.agentic_localization.resolver] resolve_spans: done duration=0.02s snippets=7 symbols=3
+2026-07-29 12:42:34,154 INFO [src.agentic_localization.resolver] resolve: done snippets=7
+2026-07-29 12:42:34,154 INFO [src.agentic_localization.pipeline] pipeline: done kind=planner_menu duration=58.82s verdict=implemented snippets=5
+Running agent on annotations:   2%|▏         | 1/54 [00:58<51:58, 58.84s/it][36m[1mweave[0m: 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faec1-a53a-781e-8a38-ba328c02ccbd
+2026-07-29 12:42:34,171 INFO [weave.trace.weave_client] 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faec1-a53a-781e-8a38-ba328c02ccbd
+2026-07-29 12:42:36,970 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:42:47,058 INFO [src.agentic_localization.planner] get_candidates: chars=21208 files=72 blob_tokens=~3954 model=claude-sonnet-4-5-20250929
+2026-07-29 12:42:48,248 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:42:58,519 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:42:58,540 INFO [src.agentic_localization.planner] get_candidates: done duration=11.48s verdict=implemented num_candidates=4 in=7912 out=532
+2026-07-29 12:43:01,168 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:43:11,331 INFO [src.agentic_localization.resolver] resolve_menu: chars=6887 est_tokens=~1721 planner_candidates=4 model=claude-sonnet-4-5-20250929
+2026-07-29 12:43:13,926 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:43:24,272 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:43:24,298 INFO [src.agentic_localization.resolver] resolve_menu: done duration=12.97s symbols=4 in=2449 out=418
+2026-07-29 12:43:25,560 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:43:37,079 INFO [src.agentic_localization.resolver] resolve_spans: done duration=0.02s snippets=4 symbols=4
+2026-07-29 12:43:37,079 INFO [src.agentic_localization.resolver] resolve: done snippets=4
+2026-07-29 12:43:37,080 INFO [src.agentic_localization.pipeline] pipeline: done kind=planner_menu duration=62.91s verdict=implemented snippets=4
+Running agent on annotations:   4%|▎         | 2/54 [02:01<53:04, 61.24s/it][36m[1mweave[0m: 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faec2-9b03-7b44-9aa8-3599f89945a0
+2026-07-29 12:43:37,092 INFO [weave.trace.weave_client] 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faec2-9b03-7b44-9aa8-3599f89945a0
+2026-07-29 12:43:38,881 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:43:49,995 INFO [src.agentic_localization.planner] get_candidates: chars=21162 files=72 blob_tokens=~3954 model=claude-sonnet-4-5-20250929
+2026-07-29 12:43:50,875 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:43:53,248 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:44:01,237 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:44:01,258 INFO [src.agentic_localization.planner] get_candidates: done duration=11.26s verdict=implemented num_candidates=3 in=7908 out=424
+2026-07-29 12:44:02,600 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:44:13,963 INFO [src.agentic_localization.resolver] resolve_menu: chars=11212 est_tokens=~2803 planner_candidates=3 model=claude-sonnet-4-5-20250929
+2026-07-29 12:44:16,288 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:44:22,212 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:44:22,232 INFO [src.agentic_localization.resolver] resolve_menu: done duration=8.27s symbols=2 in=4069 out=375
+2026-07-29 12:44:22,956 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:44:34,990 INFO [src.agentic_localization.resolver] resolve_spans: done duration=0.02s snippets=2 symbols=2
+2026-07-29 12:44:34,991 INFO [src.agentic_localization.resolver] resolve: done snippets=2
+2026-07-29 12:44:34,991 INFO [src.agentic_localization.pipeline] pipeline: done kind=planner_menu duration=57.90s verdict=implemented snippets=2
+Running agent on annotations:   6%|▌         | 3/54 [02:59<50:45, 59.72s/it][36m[1mweave[0m: 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faec3-7d40-775f-baad-094cf87cddab
+2026-07-29 12:44:35,008 INFO [weave.trace.weave_client] 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faec3-7d40-775f-baad-094cf87cddab
+2026-07-29 12:44:36,986 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:44:47,861 INFO [src.agentic_localization.planner] get_candidates: chars=21241 files=72 blob_tokens=~3954 model=claude-sonnet-4-5-20250929
+2026-07-29 12:44:49,262 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:45:02,679 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:45:02,693 INFO [src.agentic_localization.planner] get_candidates: done duration=14.83s verdict=implemented num_candidates=4 in=7926 out=534
+2026-07-29 12:45:04,224 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:45:15,427 INFO [src.agentic_localization.resolver] resolve_menu: chars=7077 est_tokens=~1769 planner_candidates=4 model=claude-sonnet-4-5-20250929
+2026-07-29 12:45:18,184 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:45:27,861 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:45:27,872 INFO [src.agentic_localization.resolver] resolve_menu: done duration=12.45s symbols=4 in=2563 out=519
+2026-07-29 12:45:29,006 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:45:40,708 INFO [src.agentic_localization.resolver] resolve_spans: done duration=0.02s snippets=5 symbols=4
+2026-07-29 12:45:40,708 INFO [src.agentic_localization.resolver] resolve: done snippets=5
+2026-07-29 12:45:40,709 INFO [src.agentic_localization.pipeline] pipeline: done kind=planner_menu duration=65.70s verdict=implemented snippets=5
+Running agent on annotations:   7%|▋         | 4/54 [04:05<51:44, 62.09s/it][36m[1mweave[0m: 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faec4-7df1-7f17-ab23-72d93a805cf2
+2026-07-29 12:45:40,722 INFO [weave.trace.weave_client] 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faec4-7df1-7f17-ab23-72d93a805cf2
+2026-07-29 12:45:42,844 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:45:53,462 INFO [src.agentic_localization.planner] get_candidates: chars=21332 files=72 blob_tokens=~3954 model=claude-sonnet-4-5-20250929
+2026-07-29 12:45:55,005 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:46:04,636 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:46:04,657 INFO [src.agentic_localization.planner] get_candidates: done duration=11.20s verdict=implemented num_candidates=3 in=7937 out=431
+2026-07-29 12:46:06,103 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:46:17,439 INFO [src.agentic_localization.resolver] resolve_menu: chars=9442 est_tokens=~2360 planner_candidates=3 model=claude-sonnet-4-5-20250929
+2026-07-29 12:46:19,330 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:46:26,959 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:46:26,979 INFO [src.agentic_localization.resolver] resolve_menu: done duration=9.54s symbols=3 in=3366 out=420
+2026-07-29 12:46:28,298 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:46:39,736 INFO [src.agentic_localization.resolver] resolve_spans: done duration=0.02s snippets=3 symbols=3
+2026-07-29 12:46:39,736 INFO [src.agentic_localization.resolver] resolve: done snippets=3
+2026-07-29 12:46:39,736 INFO [src.agentic_localization.pipeline] pipeline: done kind=planner_menu duration=59.02s verdict=implemented snippets=3
+Running agent on annotations:   9%|▉         | 5/54 [05:04<49:48, 60.99s/it][36m[1mweave[0m: 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faec5-6488-7db5-bb79-fbcde9ae0be4
+2026-07-29 12:46:39,752 INFO [weave.trace.weave_client] 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faec5-6488-7db5-bb79-fbcde9ae0be4
+2026-07-29 12:46:45,063 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:46:52,463 INFO [src.agentic_localization.planner] get_candidates: chars=21344 files=72 blob_tokens=~3954 model=claude-sonnet-4-5-20250929
+2026-07-29 12:46:54,210 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:47:00,379 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:47:00,399 INFO [src.agentic_localization.planner] get_candidates: done duration=7.94s verdict=implemented num_candidates=2 in=7949 out=292
+2026-07-29 12:47:01,802 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:47:13,281 INFO [src.agentic_localization.resolver] resolve_menu: chars=6226 est_tokens=~1556 planner_candidates=2 model=claude-sonnet-4-5-20250929
+2026-07-29 12:47:15,607 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:47:20,707 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:47:20,728 INFO [src.agentic_localization.resolver] resolve_menu: done duration=7.44s symbols=2 in=2201 out=295
+2026-07-29 12:47:22,210 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:47:33,453 INFO [src.agentic_localization.resolver] resolve_spans: done duration=0.02s snippets=2 symbols=2
+2026-07-29 12:47:33,453 INFO [src.agentic_localization.resolver] resolve: done snippets=2
+2026-07-29 12:47:33,453 INFO [src.agentic_localization.pipeline] pipeline: done kind=planner_menu duration=53.70s verdict=implemented snippets=2
+Running agent on annotations:  11%|█         | 6/54 [05:58<46:48, 58.51s/it][36m[1mweave[0m: 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faec6-3658-7ba9-bd9f-54de3396ea02
+2026-07-29 12:47:33,465 INFO [weave.trace.weave_client] 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faec6-3658-7ba9-bd9f-54de3396ea02
+2026-07-29 12:47:35,918 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:47:46,301 INFO [src.agentic_localization.planner] get_candidates: chars=21324 files=72 blob_tokens=~3954 model=claude-sonnet-4-5-20250929
+2026-07-29 12:47:49,173 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:47:55,240 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:47:55,250 INFO [src.agentic_localization.planner] get_candidates: done duration=8.95s verdict=implemented num_candidates=2 in=7936 out=332
+2026-07-29 12:47:57,593 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:48:08,038 INFO [src.agentic_localization.resolver] resolve_menu: chars=12832 est_tokens=~3208 planner_candidates=2 model=claude-sonnet-4-5-20250929
+2026-07-29 12:48:10,315 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:48:20,727 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:48:20,748 INFO [src.agentic_localization.resolver] resolve_menu: done duration=12.71s symbols=3 in=4899 out=548
+2026-07-29 12:48:22,272 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:48:33,498 INFO [src.agentic_localization.resolver] resolve_spans: done duration=0.02s snippets=4 symbols=3
+2026-07-29 12:48:33,498 INFO [src.agentic_localization.resolver] resolve: done snippets=4
+2026-07-29 12:48:33,499 INFO [src.agentic_localization.pipeline] pipeline: done kind=planner_menu duration=60.03s verdict=implemented snippets=4
+Running agent on annotations:  13%|█▎        | 7/54 [06:58<46:13, 59.02s/it][36m[1mweave[0m: 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faec7-20f0-799d-8a4f-ce03c6fff8a1
+2026-07-29 12:48:33,521 INFO [weave.trace.weave_client] 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faec7-20f0-799d-8a4f-ce03c6fff8a1
+2026-07-29 12:48:36,868 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:48:46,368 INFO [src.agentic_localization.planner] get_candidates: chars=21339 files=72 blob_tokens=~3954 model=claude-sonnet-4-5-20250929
+2026-07-29 12:48:48,674 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:49:05,273 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:49:05,294 INFO [src.agentic_localization.planner] get_candidates: done duration=18.93s verdict=implemented num_candidates=4 in=7938 out=477
+2026-07-29 12:49:07,124 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:49:18,020 INFO [src.agentic_localization.resolver] resolve_menu: chars=12506 est_tokens=~3126 planner_candidates=4 model=claude-sonnet-4-5-20250929
+2026-07-29 12:49:20,015 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:49:35,734 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:49:35,755 INFO [src.agentic_localization.resolver] resolve_menu: done duration=17.73s symbols=3 in=4578 out=477
+2026-07-29 12:49:37,230 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:49:48,661 INFO [src.agentic_localization.resolver] resolve_spans: done duration=0.02s snippets=7 symbols=3
+2026-07-29 12:49:48,661 INFO [src.agentic_localization.resolver] resolve: done snippets=7
+2026-07-29 12:49:48,662 INFO [src.agentic_localization.pipeline] pipeline: done kind=planner_menu duration=75.14s verdict=implemented snippets=5
+Running agent on annotations:  15%|█▍        | 8/54 [08:13<49:11, 64.16s/it][36m[1mweave[0m: 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faec8-468a-72ca-b6f7-0b21eb41c2a4
+2026-07-29 12:49:48,683 INFO [weave.trace.weave_client] 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faec8-468a-72ca-b6f7-0b21eb41c2a4
+2026-07-29 12:49:50,795 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:50:01,565 INFO [src.agentic_localization.planner] get_candidates: chars=21312 files=72 blob_tokens=~3954 model=claude-sonnet-4-5-20250929
+2026-07-29 12:50:03,009 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:50:18,165 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:50:18,186 INFO [src.agentic_localization.planner] get_candidates: done duration=16.62s verdict=implemented num_candidates=2 in=7968 out=338
+2026-07-29 12:50:20,501 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:50:30,895 INFO [src.agentic_localization.resolver] resolve_menu: chars=4997 est_tokens=~1249 planner_candidates=2 model=claude-sonnet-4-5-20250929
+2026-07-29 12:50:33,385 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:50:44,422 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:50:44,443 INFO [src.agentic_localization.resolver] resolve_menu: done duration=13.55s symbols=2 in=1658 out=282
+2026-07-29 12:50:46,465 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:50:57,273 INFO [src.agentic_localization.resolver] resolve_spans: done duration=0.02s snippets=2 symbols=2
+2026-07-29 12:50:57,274 INFO [src.agentic_localization.resolver] resolve: done snippets=2
+2026-07-29 12:50:57,274 INFO [src.agentic_localization.pipeline] pipeline: done kind=planner_menu duration=68.59s verdict=implemented snippets=2
+Running agent on annotations:  17%|█▋        | 9/54 [09:21<49:09, 65.55s/it][36m[1mweave[0m: 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faec9-5284-7f92-a5cc-5814900660b1
+2026-07-29 12:50:57,285 INFO [weave.trace.weave_client] 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faec9-5284-7f92-a5cc-5814900660b1
+2026-07-29 12:50:59,511 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:51:10,080 INFO [src.agentic_localization.planner] get_candidates: chars=21125 files=72 blob_tokens=~3954 model=claude-sonnet-4-5-20250929
+2026-07-29 12:51:11,941 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:51:20,176 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:51:20,198 INFO [src.agentic_localization.planner] get_candidates: done duration=10.12s verdict=implemented num_candidates=3 in=7906 out=466
+2026-07-29 12:51:21,974 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:51:33,203 INFO [src.agentic_localization.resolver] resolve_menu: chars=17710 est_tokens=~4427 planner_candidates=3 model=claude-sonnet-4-5-20250929
+2026-07-29 12:51:35,908 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:51:46,061 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-07-29 12:51:46,083 INFO [src.agentic_localization.resolver] resolve_menu: done duration=12.87s symbols=2 in=6522 out=480
+2026-07-29 12:51:48,101 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+2026-07-29 12:51:58,830 INFO [src.agentic_localization.resolver] resolve_spans: done duration=0.09s snippets=3 symbols=2
+2026-07-29 12:51:58,830 INFO [src.agentic_localization.resolver] resolve: done snippets=3
+2026-07-29 12:51:58,831 INFO [src.agentic_localization.pipeline] pipeline: done kind=planner_menu duration=61.55s verdict=implemented snippets=3
+Running agent on annotations:  19%|█▊        | 10/54 [10:23<47:10, 64.32s/it][36m[1mweave[0m: 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faeca-4309-7154-b694-8204b015d63b
+2026-07-29 12:51:58,858 INFO [weave.trace.weave_client] 🍩 https://wandb.ai/gardoslab/deepread/r/call/019faeca-4309-7154-b694-8204b015d63b
+2026-07-29 12:52:00,513 INFO [httpx] HTTP Request: POST https://trace.wandb.ai/call/upsert_batch "HTTP/1.1 200 OK"
+=== planner_menu Wed Jul 29 12:55:35 EDT 2026 ===
+=== planner_menu DONE Wed Jul 29 15:04:14 EDT 2026 ===
+=== planner_crawl Wed Jul 29 15:09:28 EDT 2026 ===
