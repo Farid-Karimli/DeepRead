@@ -59,7 +59,10 @@ logs/
 *.patch
 backend/scripts/out
 
-supabase/
+# Keep database migrations tracked; Supabase CLI state/config remains local.
+supabase/*
+!supabase/migrations/
+!supabase/migrations/*.sql
 
 # Cloned repo checkouts and built repo maps
 backend/src/temp/
