@@ -1,0 +1,1723 @@
+{
+  "summary": {
+    "total_annotations": 54,
+    "num_errored": 0,
+    "num_with_prediction": 50,
+    "num_filepath_correct": 40,
+    "filepath_accuracy": 0.7407407407407407,
+    "num_filepath_hit_at_5": 45,
+    "filepath_hit_at_5_rate": 0.8333333333333334,
+    "mean_iou_given_correct_filepath": 0.40207962091412985,
+    "num_annotations_with_iou": 40,
+    "mean_iou_matching_filepaths": 0.27553884964391606,
+    "num_annotations_with_matching_filepath_iou": 45,
+    "class_accuracy_given_applicable": 1.0,
+    "num_class_correct": 24,
+    "num_class_applicable": 24,
+    "method_accuracy_given_applicable": 0.84375,
+    "num_method_correct": 27,
+    "num_method_applicable": 32,
+    "mean_duration_seconds": 110.44048606175757,
+    "by_paper": {
+      "investigating_pre_training_objectives_for_generalization_in_vision_based_reinforcement_learning": {
+        "total_annotations": 12,
+        "filepath_accuracy": 1.0,
+        "filepath_hit_at_5_rate": 1.0,
+        "mean_iou_given_correct_filepath": 0.3971834946099652,
+        "mean_iou_matching_filepaths": 0.20024164922957366,
+        "num_annotations_with_matching_filepath_iou": 12,
+        "class_accuracy_given_applicable": 1.0,
+        "num_class_applicable": 9,
+        "method_accuracy_given_applicable": 0.9,
+        "num_method_applicable": 10
+      },
+      "inference_time_intervention_eliciting_truthful_answers_from_a_language_mode": {
+        "total_annotations": 12,
+        "filepath_accuracy": 0.5833333333333334,
+        "filepath_hit_at_5_rate": 0.6666666666666666,
+        "mean_iou_given_correct_filepath": 0.5244409725612733,
+        "mean_iou_matching_filepaths": 0.36569221348826614,
+        "num_annotations_with_matching_filepath_iou": 8,
+        "class_accuracy_given_applicable": 1.0,
+        "num_class_applicable": 1,
+        "method_accuracy_given_applicable": 0.7142857142857143,
+        "num_method_applicable": 7
+      },
+      "lora_low_rank_adaptation_of_large_lan_guage_models": {
+        "total_annotations": 5,
+        "filepath_accuracy": 0.8,
+        "filepath_hit_at_5_rate": 1.0,
+        "mean_iou_given_correct_filepath": 0.4861111111111111,
+        "mean_iou_matching_filepaths": 0.36631296043138145,
+        "num_annotations_with_matching_filepath_iou": 5,
+        "class_accuracy_given_applicable": 1.0,
+        "num_class_applicable": 4,
+        "method_accuracy_given_applicable": 1.0,
+        "num_method_applicable": 4
+      },
+      "mistake_attribution_fine_grained_mistake_understanding_in_egocentric_videos": {
+        "total_annotations": 12,
+        "filepath_accuracy": 0.4166666666666667,
+        "filepath_hit_at_5_rate": 0.5833333333333334,
+        "mean_iou_given_correct_filepath": 0.42369101486748545,
+        "mean_iou_matching_filepaths": 0.2924830305082406,
+        "num_annotations_with_matching_filepath_iou": 7,
+        "class_accuracy_given_applicable": 1.0,
+        "num_class_applicable": 3,
+        "method_accuracy_given_applicable": 1.0,
+        "num_method_applicable": 3
+      },
+      "v_jepa_2_self_supervised_video_models_enable_understanding_prediction_and_planning": {
+        "total_annotations": 13,
+        "filepath_accuracy": 0.9230769230769231,
+        "filepath_hit_at_5_rate": 1.0,
+        "mean_iou_given_correct_filepath": 0.29858304787790235,
+        "mean_iou_matching_filepaths": 0.2455280553538935,
+        "num_annotations_with_matching_filepath_iou": 13,
+        "class_accuracy_given_applicable": 1.0,
+        "num_class_applicable": 7,
+        "method_accuracy_given_applicable": 0.75,
+        "num_method_applicable": 8
+      }
+    },
+    "run_stats": {
+      "mean_duration_seconds": 110.44048606175757,
+      "mean_num_tool_calls": 14.814814814814815,
+      "total_cost_usd": null,
+      "mean_input_tokens": 7021.777777777777,
+      "mean_output_tokens": 469.0,
+      "num_records": 54
+    }
+  },
+  "annotations": [
+    {
+      "paper_id": "investigating_pre_training_objectives_for_generalization_in_vision_based_reinforcement_learning",
+      "annotation_id": "61fc660b",
+      "duration_seconds": 90.99537520800368,
+      "had_error": false,
+      "predicted_filepath": "src/trainers/curl.py",
+      "predicted_line_range": [
+        59,
+        65
+      ],
+      "ground_truth_filepaths": [
+        "src/trainers/curl.py"
+      ],
+      "num_predicted_snippets": 5,
+      "filepath_correct": true,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 1,
+      "best_iou": 1.0,
+      "matched_ground_truth_range": [
+        59,
+        65
+      ],
+      "mean_iou_matching_filepaths": 0.37777777777777777,
+      "num_matching_filepath_snippets": 5,
+      "correct_class": true,
+      "correct_method": true,
+      "predicted_class": "CURLTrainer",
+      "predicted_method": "CURLTrainer.compute_loss",
+      "ground_truth_class": "CURLTrainer",
+      "ground_truth_method": "CURLTrainer.compute_loss"
+    },
+    {
+      "paper_id": "investigating_pre_training_objectives_for_generalization_in_vision_based_reinforcement_learning",
+      "annotation_id": "5d48d1f7",
+      "duration_seconds": 99.24580941599561,
+      "had_error": false,
+      "predicted_filepath": "src/trainers/mae.py",
+      "predicted_line_range": [
+        53,
+        59
+      ],
+      "ground_truth_filepaths": [
+        "src/models/heads/mae_head.py",
+        "src/models/necks/mae_neck.py",
+        "src/trainers/mae.py"
+      ],
+      "num_predicted_snippets": 5,
+      "filepath_correct": true,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 1,
+      "best_iou": 0.7142857142857143,
+      "matched_ground_truth_range": [
+        53,
+        57
+      ],
+      "mean_iou_matching_filepaths": 0.17922077922077922,
+      "num_matching_filepath_snippets": 5,
+      "correct_class": true,
+      "correct_method": true,
+      "predicted_class": "MAETrainer",
+      "predicted_method": "MAETrainer.compute_loss",
+      "ground_truth_class": "MAETrainer",
+      "ground_truth_method": "MAETrainer.compute_loss"
+    },
+    {
+      "paper_id": "investigating_pre_training_objectives_for_generalization_in_vision_based_reinforcement_learning",
+      "annotation_id": "89b38c78",
+      "duration_seconds": 101.52857349999249,
+      "had_error": false,
+      "predicted_filepath": "src/trainers/atc.py",
+      "predicted_line_range": [
+        101,
+        108
+      ],
+      "ground_truth_filepaths": [
+        "src/trainers/atc.py"
+      ],
+      "num_predicted_snippets": 5,
+      "filepath_correct": true,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 1,
+      "best_iou": 0.6153846153846154,
+      "matched_ground_truth_range": [
+        97,
+        109
+      ],
+      "mean_iou_matching_filepaths": 0.22827151625963174,
+      "num_matching_filepath_snippets": 5,
+      "correct_class": true,
+      "correct_method": true,
+      "predicted_class": "ATCTrainer",
+      "predicted_method": "ATCTrainer.compute_loss",
+      "ground_truth_class": "ATCTrainer",
+      "ground_truth_method": "ATCTrainer.compute_loss"
+    },
+    {
+      "paper_id": "investigating_pre_training_objectives_for_generalization_in_vision_based_reinforcement_learning",
+      "annotation_id": "efa2457a",
+      "duration_seconds": 94.85795866700937,
+      "had_error": false,
+      "predicted_filepath": "src/trainers/siammae.py",
+      "predicted_line_range": [
+        50,
+        65
+      ],
+      "ground_truth_filepaths": [
+        "src/models/necks/siammae_neck.py",
+        "src/trainers/siammae.py"
+      ],
+      "num_predicted_snippets": 5,
+      "filepath_correct": true,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 1,
+      "best_iou": 0.4117647058823529,
+      "matched_ground_truth_range": [
+        59,
+        66
+      ],
+      "mean_iou_matching_filepaths": 0.3113633513106735,
+      "num_matching_filepath_snippets": 4,
+      "correct_class": true,
+      "correct_method": true,
+      "predicted_class": "SiamMAETrainer",
+      "predicted_method": "SiamMAETrainer.compute_loss",
+      "ground_truth_class": "SiamMAETrainer",
+      "ground_truth_method": "SiamMAETrainer.compute_loss"
+    },
+    {
+      "paper_id": "investigating_pre_training_objectives_for_generalization_in_vision_based_reinforcement_learning",
+      "annotation_id": "0a45a8c4",
+      "duration_seconds": 98.53400029198383,
+      "had_error": false,
+      "predicted_filepath": "src/models/heads/spr_head.py",
+      "predicted_line_range": [
+        10,
+        33
+      ],
+      "ground_truth_filepaths": [
+        "src/models/heads/spr_head.py",
+        "src/trainers/spr.py"
+      ],
+      "num_predicted_snippets": 5,
+      "filepath_correct": true,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 1,
+      "best_iou": 0.3333333333333333,
+      "matched_ground_truth_range": [
+        23,
+        30
+      ],
+      "mean_iou_matching_filepaths": 0.1912087912087912,
+      "num_matching_filepath_snippets": 5,
+      "correct_class": true,
+      "correct_method": true,
+      "predicted_class": "SPRHead",
+      "predicted_method": "SPRHead.__init__",
+      "ground_truth_class": "SPRHead",
+      "ground_truth_method": "SPRHead.__init__"
+    },
+    {
+      "paper_id": "investigating_pre_training_objectives_for_generalization_in_vision_based_reinforcement_learning",
+      "annotation_id": "5475f170",
+      "duration_seconds": 66.8451862920192,
+      "had_error": false,
+      "predicted_filepath": "src/trainers/idm.py",
+      "predicted_line_range": [
+        48,
+        71
+      ],
+      "ground_truth_filepaths": [
+        "src/trainers/idm.py"
+      ],
+      "num_predicted_snippets": 1,
+      "filepath_correct": true,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 1,
+      "best_iou": 0.2916666666666667,
+      "matched_ground_truth_range": [
+        56,
+        62
+      ],
+      "mean_iou_matching_filepaths": 0.2916666666666667,
+      "num_matching_filepath_snippets": 1,
+      "correct_class": true,
+      "correct_method": true,
+      "predicted_class": "IDMTrainer",
+      "predicted_method": "IDMTrainer.compute_loss",
+      "ground_truth_class": "IDMTrainer",
+      "ground_truth_method": "IDMTrainer.compute_loss"
+    },
+    {
+      "paper_id": "investigating_pre_training_objectives_for_generalization_in_vision_based_reinforcement_learning",
+      "annotation_id": "e7c20af5",
+      "duration_seconds": 88.09014087502146,
+      "had_error": false,
+      "predicted_filepath": "src/trainers/cql.py",
+      "predicted_line_range": [
+        128,
+        132
+      ],
+      "ground_truth_filepaths": [
+        "src/trainers/cql.py"
+      ],
+      "num_predicted_snippets": 4,
+      "filepath_correct": true,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 1,
+      "best_iou": 0.38461538461538464,
+      "matched_ground_truth_range": [
+        128,
+        140
+      ],
+      "mean_iou_matching_filepaths": 0.35915384615384616,
+      "num_matching_filepath_snippets": 4,
+      "correct_class": true,
+      "correct_method": true,
+      "predicted_class": "CQLTrainer",
+      "predicted_method": "CQLTrainer.compute_loss",
+      "ground_truth_class": "CQLTrainer",
+      "ground_truth_method": "CQLTrainer.compute_loss"
+    },
+    {
+      "paper_id": "investigating_pre_training_objectives_for_generalization_in_vision_based_reinforcement_learning",
+      "annotation_id": "d8974e2c",
+      "duration_seconds": 91.23807558399858,
+      "had_error": false,
+      "predicted_filepath": "src/models/necks/dt_neck.py",
+      "predicted_line_range": [
+        56,
+        110
+      ],
+      "ground_truth_filepaths": [
+        "src/models/necks/dt_neck.py",
+        "src/trainers/dt.py"
+      ],
+      "num_predicted_snippets": 5,
+      "filepath_correct": true,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 1,
+      "best_iou": 0.18181818181818182,
+      "matched_ground_truth_range": [
+        93,
+        102
+      ],
+      "mean_iou_matching_filepaths": 0.10695187165775402,
+      "num_matching_filepath_snippets": 5,
+      "correct_class": true,
+      "correct_method": true,
+      "predicted_class": "DTNeck",
+      "predicted_method": "DTNeck.forward",
+      "ground_truth_class": "DTNeck",
+      "ground_truth_method": "DTNeck.forward"
+    },
+    {
+      "paper_id": "investigating_pre_training_objectives_for_generalization_in_vision_based_reinforcement_learning",
+      "annotation_id": "893e1818",
+      "duration_seconds": 83.99744679199648,
+      "had_error": false,
+      "predicted_filepath": "src/models/backbones/resnet.py",
+      "predicted_line_range": [
+        137,
+        148
+      ],
+      "ground_truth_filepaths": [
+        "src/models/backbones/resnet.py"
+      ],
+      "num_predicted_snippets": 3,
+      "filepath_correct": true,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 1,
+      "best_iou": 0.8333333333333334,
+      "matched_ground_truth_range": [
+        137,
+        146
+      ],
+      "mean_iou_matching_filepaths": 0.32679738562091504,
+      "num_matching_filepath_snippets": 3,
+      "correct_class": true,
+      "correct_method": true,
+      "predicted_class": "ResNet",
+      "predicted_method": "ResNet.forward",
+      "ground_truth_class": "ResNet",
+      "ground_truth_method": "ResNet.forward"
+    },
+    {
+      "paper_id": "investigating_pre_training_objectives_for_generalization_in_vision_based_reinforcement_learning",
+      "annotation_id": "ff93a88d",
+      "duration_seconds": 108.8059027499985,
+      "had_error": false,
+      "predicted_filepath": "src/common/dataset_utils.py",
+      "predicted_line_range": [
+        14,
+        65
+      ],
+      "ground_truth_filepaths": [
+        "src/common/dataset_utils.py",
+        "src/dataloaders/__init__.py"
+      ],
+      "num_predicted_snippets": 3,
+      "filepath_correct": true,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 1,
+      "best_iou": 0.0,
+      "matched_ground_truth_range": [
+        134,
+        145
+      ],
+      "mean_iou_matching_filepaths": 0.024390243902439022,
+      "num_matching_filepath_snippets": 3,
+      "correct_class": "not_applicable",
+      "correct_method": false,
+      "predicted_class": null,
+      "predicted_method": "prepare_ataripb_dataset",
+      "ground_truth_class": null,
+      "ground_truth_method": "load_replay_dataset"
+    },
+    {
+      "paper_id": "investigating_pre_training_objectives_for_generalization_in_vision_based_reinforcement_learning",
+      "annotation_id": "d0cf1fff",
+      "duration_seconds": 103.08021220899536,
+      "had_error": false,
+      "predicted_filepath": "run_offline_bc.py",
+      "predicted_line_range": [
+        118,
+        120
+      ],
+      "ground_truth_filepaths": [
+        "run_offline_bc.py"
+      ],
+      "num_predicted_snippets": 5,
+      "filepath_correct": true,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 1,
+      "best_iou": 0.0,
+      "matched_ground_truth_range": null,
+      "mean_iou_matching_filepaths": 0.0,
+      "num_matching_filepath_snippets": 3,
+      "correct_class": null,
+      "correct_method": null,
+      "predicted_class": null,
+      "predicted_method": null,
+      "ground_truth_class": null,
+      "ground_truth_method": null
+    },
+    {
+      "paper_id": "investigating_pre_training_objectives_for_generalization_in_vision_based_reinforcement_learning",
+      "annotation_id": "c58f2e9b",
+      "duration_seconds": 94.17213058299967,
+      "had_error": false,
+      "predicted_filepath": "run_online_rl.py",
+      "predicted_line_range": [
+        162,
+        174
+      ],
+      "ground_truth_filepaths": [
+        "configs/online_rl.yaml",
+        "run_online_rl.py",
+        "src/agents/rainbow.py"
+      ],
+      "num_predicted_snippets": 4,
+      "filepath_correct": true,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 1,
+      "best_iou": 0.0,
+      "matched_ground_truth_range": null,
+      "mean_iou_matching_filepaths": 0.0060975609756097554,
+      "num_matching_filepath_snippets": 3,
+      "correct_class": null,
+      "correct_method": null,
+      "predicted_class": null,
+      "predicted_method": null,
+      "ground_truth_class": null,
+      "ground_truth_method": null
+    },
+    {
+      "paper_id": "inference_time_intervention_eliciting_truthful_answers_from_a_language_mode",
+      "annotation_id": "e057ec74",
+      "duration_seconds": 75.79388358301367,
+      "had_error": false,
+      "predicted_filepath": "get_activations/get_activations.py",
+      "predicted_line_range": [
+        35,
+        102
+      ],
+      "ground_truth_filepaths": [
+        "finetune_gpt.ipynb",
+        "utils.py"
+      ],
+      "num_predicted_snippets": 5,
+      "filepath_correct": false,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 2,
+      "best_iou": null,
+      "matched_ground_truth_range": null,
+      "mean_iou_matching_filepaths": 0.025,
+      "num_matching_filepath_snippets": 4,
+      "correct_class": null,
+      "correct_method": null,
+      "predicted_class": null,
+      "predicted_method": null,
+      "ground_truth_class": null,
+      "ground_truth_method": null
+    },
+    {
+      "paper_id": "inference_time_intervention_eliciting_truthful_answers_from_a_language_mode",
+      "annotation_id": "069557e9",
+      "duration_seconds": 76.17575295799179,
+      "had_error": false,
+      "predicted_filepath": "utils.py",
+      "predicted_line_range": [
+        682,
+        705
+      ],
+      "ground_truth_filepaths": [
+        "utils.py"
+      ],
+      "num_predicted_snippets": 5,
+      "filepath_correct": true,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 1,
+      "best_iou": 0.75,
+      "matched_ground_truth_range": [
+        687,
+        704
+      ],
+      "mean_iou_matching_filepaths": 0.33999999999999997,
+      "num_matching_filepath_snippets": 5,
+      "correct_class": "not_applicable",
+      "correct_method": true,
+      "predicted_class": null,
+      "predicted_method": "train_probes",
+      "ground_truth_class": null,
+      "ground_truth_method": "train_probes"
+    },
+    {
+      "paper_id": "inference_time_intervention_eliciting_truthful_answers_from_a_language_mode",
+      "annotation_id": "fee0c5e1",
+      "duration_seconds": 168.22494562499924,
+      "had_error": false,
+      "predicted_filepath": "utils.py",
+      "predicted_line_range": [
+        707,
+        721
+      ],
+      "ground_truth_filepaths": [
+        "utils.py",
+        "validation/validate_2fold.py"
+      ],
+      "num_predicted_snippets": 3,
+      "filepath_correct": true,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 1,
+      "best_iou": 0.9333333333333333,
+      "matched_ground_truth_range": [
+        707,
+        720
+      ],
+      "mean_iou_matching_filepaths": 0.4666666666666667,
+      "num_matching_filepath_snippets": 2,
+      "correct_class": "not_applicable",
+      "correct_method": true,
+      "predicted_class": null,
+      "predicted_method": "get_top_heads",
+      "ground_truth_class": null,
+      "ground_truth_method": "get_top_heads"
+    },
+    {
+      "paper_id": "inference_time_intervention_eliciting_truthful_answers_from_a_language_mode",
+      "annotation_id": "557a6a4b",
+      "duration_seconds": 76.81165791599778,
+      "had_error": false,
+      "predicted_filepath": "utils.py",
+      "predicted_line_range": [
+        723,
+        743
+      ],
+      "ground_truth_filepaths": [
+        "utils.py",
+        "validation/validate_2fold.py"
+      ],
+      "num_predicted_snippets": 3,
+      "filepath_correct": true,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 1,
+      "best_iou": 0.0,
+      "matched_ground_truth_range": [
+        772,
+        781
+      ],
+      "mean_iou_matching_filepaths": 0.2222222222222222,
+      "num_matching_filepath_snippets": 3,
+      "correct_class": "not_applicable",
+      "correct_method": false,
+      "predicted_class": null,
+      "predicted_method": "get_interventions_dict",
+      "ground_truth_class": null,
+      "ground_truth_method": "get_com_directions"
+    },
+    {
+      "paper_id": "inference_time_intervention_eliciting_truthful_answers_from_a_language_mode",
+      "annotation_id": "00f83386",
+      "duration_seconds": 73.99018187497859,
+      "had_error": false,
+      "predicted_filepath": "interveners.py",
+      "predicted_line_range": [
+        40,
+        45
+      ],
+      "ground_truth_filepaths": [
+        "interveners.py",
+        "validation/validate_2fold.py"
+      ],
+      "num_predicted_snippets": 2,
+      "filepath_correct": true,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 1,
+      "best_iou": 0.8333333333333334,
+      "matched_ground_truth_range": [
+        41,
+        45
+      ],
+      "mean_iou_matching_filepaths": 0.8333333333333334,
+      "num_matching_filepath_snippets": 1,
+      "correct_class": true,
+      "correct_method": true,
+      "predicted_class": "ITI_Intervener",
+      "predicted_method": "ITI_Intervener.__call__",
+      "ground_truth_class": "ITI_Intervener",
+      "ground_truth_method": "ITI_Intervener.__call__"
+    },
+    {
+      "paper_id": "inference_time_intervention_eliciting_truthful_answers_from_a_language_mode",
+      "annotation_id": "edb3e102",
+      "duration_seconds": 71.34118312498322,
+      "had_error": false,
+      "predicted_filepath": "interveners.py",
+      "predicted_line_range": [
+        30,
+        36
+      ],
+      "ground_truth_filepaths": [
+        "validation/validate_2fold.py"
+      ],
+      "num_predicted_snippets": 4,
+      "filepath_correct": false,
+      "filepath_hit_at_5": false,
+      "filepath_hit_rank": null,
+      "best_iou": null,
+      "matched_ground_truth_range": null,
+      "mean_iou_matching_filepaths": null,
+      "num_matching_filepath_snippets": 0,
+      "correct_class": null,
+      "correct_method": null,
+      "predicted_class": null,
+      "predicted_method": null,
+      "ground_truth_class": null,
+      "ground_truth_method": null
+    },
+    {
+      "paper_id": "inference_time_intervention_eliciting_truthful_answers_from_a_language_mode",
+      "annotation_id": "6654d21e",
+      "duration_seconds": 79.86877083301079,
+      "had_error": false,
+      "predicted_filepath": "utils.py",
+      "predicted_line_range": [
+        682,
+        705
+      ],
+      "ground_truth_filepaths": [
+        "utils.py"
+      ],
+      "num_predicted_snippets": 4,
+      "filepath_correct": true,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 1,
+      "best_iou": 0.08333333333333333,
+      "matched_ground_truth_range": [
+        697,
+        698
+      ],
+      "mean_iou_matching_filepaths": 0.027777777777777776,
+      "num_matching_filepath_snippets": 3,
+      "correct_class": "not_applicable",
+      "correct_method": true,
+      "predicted_class": null,
+      "predicted_method": "train_probes",
+      "ground_truth_class": null,
+      "ground_truth_method": "train_probes"
+    },
+    {
+      "paper_id": "inference_time_intervention_eliciting_truthful_answers_from_a_language_mode",
+      "annotation_id": "f96efd8d",
+      "duration_seconds": 68.17224849999184,
+      "had_error": false,
+      "predicted_filepath": "utils.py",
+      "predicted_line_range": [
+        596,
+        635
+      ],
+      "ground_truth_filepaths": [
+        "finetune_gpt.ipynb"
+      ],
+      "num_predicted_snippets": 1,
+      "filepath_correct": false,
+      "filepath_hit_at_5": false,
+      "filepath_hit_rank": null,
+      "best_iou": null,
+      "matched_ground_truth_range": null,
+      "mean_iou_matching_filepaths": null,
+      "num_matching_filepath_snippets": 0,
+      "correct_class": null,
+      "correct_method": null,
+      "predicted_class": null,
+      "predicted_method": null,
+      "ground_truth_class": null,
+      "ground_truth_method": null
+    },
+    {
+      "paper_id": "inference_time_intervention_eliciting_truthful_answers_from_a_language_mode",
+      "annotation_id": "21c33a81",
+      "duration_seconds": 62.283017084002495,
+      "had_error": false,
+      "predicted_filepath": "utils.py",
+      "predicted_line_range": [
+        426,
+        462
+      ],
+      "ground_truth_filepaths": [
+        "utils.py"
+      ],
+      "num_predicted_snippets": 4,
+      "filepath_correct": true,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 1,
+      "best_iou": 0.9736842105263158,
+      "matched_ground_truth_range": [
+        426,
+        463
+      ],
+      "mean_iou_matching_filepaths": 0.9780701754385965,
+      "num_matching_filepath_snippets": 2,
+      "correct_class": "not_applicable",
+      "correct_method": true,
+      "predicted_class": null,
+      "predicted_method": "run_ce_loss",
+      "ground_truth_class": null,
+      "ground_truth_method": "run_ce_loss"
+    },
+    {
+      "paper_id": "inference_time_intervention_eliciting_truthful_answers_from_a_language_mode",
+      "annotation_id": "83870c9c",
+      "duration_seconds": 69.80396287501208,
+      "had_error": false,
+      "predicted_filepath": null,
+      "predicted_line_range": null,
+      "ground_truth_filepaths": [],
+      "num_predicted_snippets": 0,
+      "filepath_correct": false,
+      "filepath_hit_at_5": false,
+      "filepath_hit_rank": null,
+      "best_iou": null,
+      "matched_ground_truth_range": null,
+      "mean_iou_matching_filepaths": null,
+      "num_matching_filepath_snippets": 0,
+      "correct_class": null,
+      "correct_method": null,
+      "predicted_class": null,
+      "predicted_method": null,
+      "ground_truth_class": null,
+      "ground_truth_method": null
+    },
+    {
+      "paper_id": "inference_time_intervention_eliciting_truthful_answers_from_a_language_mode",
+      "annotation_id": "dbdd52d9",
+      "duration_seconds": 79.07994416699512,
+      "had_error": false,
+      "predicted_filepath": "utils.py",
+      "predicted_line_range": [
+        566,
+        580
+      ],
+      "ground_truth_filepaths": [
+        "utils.py"
+      ],
+      "num_predicted_snippets": 5,
+      "filepath_correct": true,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 1,
+      "best_iou": 0.09740259740259741,
+      "matched_ground_truth_range": [
+        499,
+        652
+      ],
+      "mean_iou_matching_filepaths": 0.03246753246753247,
+      "num_matching_filepath_snippets": 3,
+      "correct_class": "not_applicable",
+      "correct_method": false,
+      "predicted_class": null,
+      "predicted_method": "alt_tqa_evaluate",
+      "ground_truth_class": null,
+      "ground_truth_method": "run_kl_wrt_orig"
+    },
+    {
+      "paper_id": "inference_time_intervention_eliciting_truthful_answers_from_a_language_mode",
+      "annotation_id": "25766275",
+      "duration_seconds": 75.67626087501412,
+      "had_error": false,
+      "predicted_filepath": "utils.py",
+      "predicted_line_range": [
+        768,
+        782
+      ],
+      "ground_truth_filepaths": [],
+      "num_predicted_snippets": 3,
+      "filepath_correct": false,
+      "filepath_hit_at_5": false,
+      "filepath_hit_rank": null,
+      "best_iou": null,
+      "matched_ground_truth_range": null,
+      "mean_iou_matching_filepaths": null,
+      "num_matching_filepath_snippets": 0,
+      "correct_class": null,
+      "correct_method": null,
+      "predicted_class": null,
+      "predicted_method": null,
+      "ground_truth_class": null,
+      "ground_truth_method": null
+    },
+    {
+      "paper_id": "lora_low_rank_adaptation_of_large_lan_guage_models",
+      "annotation_id": "0f43fdd3",
+      "duration_seconds": 72.96325804200023,
+      "had_error": false,
+      "predicted_filepath": "loralib/layers.py",
+      "predicted_line_range": [
+        108,
+        117
+      ],
+      "ground_truth_filepaths": [
+        "loralib/layers.py"
+      ],
+      "num_predicted_snippets": 5,
+      "filepath_correct": true,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 1,
+      "best_iou": 0.6,
+      "matched_ground_truth_range": [
+        110,
+        115
+      ],
+      "mean_iou_matching_filepaths": 0.16142857142857142,
+      "num_matching_filepath_snippets": 5,
+      "correct_class": true,
+      "correct_method": true,
+      "predicted_class": "Linear",
+      "predicted_method": "Linear.__init__",
+      "ground_truth_class": "Linear",
+      "ground_truth_method": "Linear.__init__"
+    },
+    {
+      "paper_id": "lora_low_rank_adaptation_of_large_lan_guage_models",
+      "annotation_id": "8129b6c5",
+      "duration_seconds": 66.770703666989,
+      "had_error": false,
+      "predicted_filepath": "loralib/layers.py",
+      "predicted_line_range": [
+        144,
+        152
+      ],
+      "ground_truth_filepaths": [
+        "loralib/layers.py"
+      ],
+      "num_predicted_snippets": 4,
+      "filepath_correct": true,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 1,
+      "best_iou": 0.4444444444444444,
+      "matched_ground_truth_range": [
+        147,
+        150
+      ],
+      "mean_iou_matching_filepaths": 0.5889520202020202,
+      "num_matching_filepath_snippets": 4,
+      "correct_class": true,
+      "correct_method": true,
+      "predicted_class": "Linear",
+      "predicted_method": "Linear.forward",
+      "ground_truth_class": "Linear",
+      "ground_truth_method": "Linear.forward"
+    },
+    {
+      "paper_id": "lora_low_rank_adaptation_of_large_lan_guage_models",
+      "annotation_id": "bf8fadd6",
+      "duration_seconds": 61.560154166974826,
+      "had_error": false,
+      "predicted_filepath": "loralib/layers.py",
+      "predicted_line_range": [
+        108,
+        117
+      ],
+      "ground_truth_filepaths": [
+        "loralib/layers.py"
+      ],
+      "num_predicted_snippets": 5,
+      "filepath_correct": true,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 1,
+      "best_iou": 0.1,
+      "matched_ground_truth_range": [
+        112,
+        112
+      ],
+      "mean_iou_matching_filepaths": 0.05552631578947369,
+      "num_matching_filepath_snippets": 5,
+      "correct_class": true,
+      "correct_method": true,
+      "predicted_class": "Linear",
+      "predicted_method": "Linear.__init__",
+      "ground_truth_class": "Linear",
+      "ground_truth_method": "Linear.__init__"
+    },
+    {
+      "paper_id": "lora_low_rank_adaptation_of_large_lan_guage_models",
+      "annotation_id": "e27544c5",
+      "duration_seconds": 67.5722723750223,
+      "had_error": false,
+      "predicted_filepath": "loralib/layers.py",
+      "predicted_line_range": [
+        122,
+        125
+      ],
+      "ground_truth_filepaths": [
+        "loralib/layers.py"
+      ],
+      "num_predicted_snippets": 4,
+      "filepath_correct": true,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 1,
+      "best_iou": 0.8,
+      "matched_ground_truth_range": [
+        122,
+        126
+      ],
+      "mean_iou_matching_filepaths": 0.7625,
+      "num_matching_filepath_snippets": 4,
+      "correct_class": true,
+      "correct_method": true,
+      "predicted_class": "Linear",
+      "predicted_method": "Linear.reset_parameters",
+      "ground_truth_class": "Linear",
+      "ground_truth_method": "Linear.reset_parameters"
+    },
+    {
+      "paper_id": "lora_low_rank_adaptation_of_large_lan_guage_models",
+      "annotation_id": "cc6b6e9d",
+      "duration_seconds": 82.57772266698885,
+      "had_error": false,
+      "predicted_filepath": "loralib/utils.py",
+      "predicted_line_range": [
+        13,
+        30
+      ],
+      "ground_truth_filepaths": [
+        "examples/NLG/src/model.py"
+      ],
+      "num_predicted_snippets": 3,
+      "filepath_correct": false,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 2,
+      "best_iou": null,
+      "matched_ground_truth_range": null,
+      "mean_iou_matching_filepaths": 0.2631578947368421,
+      "num_matching_filepath_snippets": 2,
+      "correct_class": null,
+      "correct_method": null,
+      "predicted_class": null,
+      "predicted_method": null,
+      "ground_truth_class": null,
+      "ground_truth_method": null
+    },
+    {
+      "paper_id": "mistake_attribution_fine_grained_mistake_understanding_in_egocentric_videos",
+      "annotation_id": "ae92cf56",
+      "duration_seconds": 112.26672212500125,
+      "had_error": false,
+      "predicted_filepath": null,
+      "predicted_line_range": null,
+      "ground_truth_filepaths": [],
+      "num_predicted_snippets": 0,
+      "filepath_correct": false,
+      "filepath_hit_at_5": false,
+      "filepath_hit_rank": null,
+      "best_iou": null,
+      "matched_ground_truth_range": null,
+      "mean_iou_matching_filepaths": null,
+      "num_matching_filepath_snippets": 0,
+      "correct_class": null,
+      "correct_method": null,
+      "predicted_class": null,
+      "predicted_method": null,
+      "ground_truth_class": null,
+      "ground_truth_method": null
+    },
+    {
+      "paper_id": "mistake_attribution_fine_grained_mistake_understanding_in_egocentric_videos",
+      "annotation_id": "2fb213e9",
+      "duration_seconds": 89.83966587498435,
+      "had_error": false,
+      "predicted_filepath": null,
+      "predicted_line_range": null,
+      "ground_truth_filepaths": [
+        "misengine/ego4d/create_splits.py"
+      ],
+      "num_predicted_snippets": 0,
+      "filepath_correct": false,
+      "filepath_hit_at_5": false,
+      "filepath_hit_rank": null,
+      "best_iou": null,
+      "matched_ground_truth_range": null,
+      "mean_iou_matching_filepaths": null,
+      "num_matching_filepath_snippets": 0,
+      "correct_class": null,
+      "correct_method": null,
+      "predicted_class": null,
+      "predicted_method": null,
+      "ground_truth_class": null,
+      "ground_truth_method": null
+    },
+    {
+      "paper_id": "mistake_attribution_fine_grained_mistake_understanding_in_egocentric_videos",
+      "annotation_id": "3560fbd7",
+      "duration_seconds": 92.03843937499914,
+      "had_error": false,
+      "predicted_filepath": "misengine/epickitchens/augment.py",
+      "predicted_line_range": [
+        7,
+        18
+      ],
+      "ground_truth_filepaths": [
+        "misengine/ego4d/augment.py",
+        "misengine/epickitchens/augment.py",
+        "misengine/holoassist/augment.py"
+      ],
+      "num_predicted_snippets": 5,
+      "filepath_correct": true,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 1,
+      "best_iou": 0.9230769230769231,
+      "matched_ground_truth_range": [
+        7,
+        19
+      ],
+      "mean_iou_matching_filepaths": 0.9217948717948719,
+      "num_matching_filepath_snippets": 5,
+      "correct_class": "not_applicable",
+      "correct_method": true,
+      "predicted_class": null,
+      "predicted_method": "get_Misaligned_Noun",
+      "ground_truth_class": null,
+      "ground_truth_method": "get_Misaligned_Noun"
+    },
+    {
+      "paper_id": "mistake_attribution_fine_grained_mistake_understanding_in_egocentric_videos",
+      "annotation_id": "27e49a9c",
+      "duration_seconds": 706.7496152499807,
+      "had_error": false,
+      "predicted_filepath": "misengine/epickitchens/augment.py",
+      "predicted_line_range": [
+        7,
+        18
+      ],
+      "ground_truth_filepaths": [
+        "misengine/ego4d/augment.py",
+        "misengine/epickitchens/augment.py",
+        "misengine/holoassist/augment.py"
+      ],
+      "num_predicted_snippets": 5,
+      "filepath_correct": true,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 1,
+      "best_iou": 0.0,
+      "matched_ground_truth_range": [
+        97,
+        107
+      ],
+      "mean_iou_matching_filepaths": 0.0,
+      "num_matching_filepath_snippets": 5,
+      "correct_class": "not_applicable",
+      "correct_method": "not_applicable",
+      "predicted_class": null,
+      "predicted_method": "get_Misaligned_Noun",
+      "ground_truth_class": null,
+      "ground_truth_method": null
+    },
+    {
+      "paper_id": "mistake_attribution_fine_grained_mistake_understanding_in_egocentric_videos",
+      "annotation_id": "9b011fb5",
+      "duration_seconds": 99.95074300002307,
+      "had_error": false,
+      "predicted_filepath": "misengine/ego4d/augment.py",
+      "predicted_line_range": [
+        7,
+        18
+      ],
+      "ground_truth_filepaths": [
+        "misengine/ego4d/clips.py",
+        "misengine/epickitchens/augment.py",
+        "misengine/holoassist/df_fg.py"
+      ],
+      "num_predicted_snippets": 5,
+      "filepath_correct": false,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 4,
+      "best_iou": null,
+      "matched_ground_truth_range": null,
+      "mean_iou_matching_filepaths": 0.0,
+      "num_matching_filepath_snippets": 2,
+      "correct_class": null,
+      "correct_method": null,
+      "predicted_class": null,
+      "predicted_method": null,
+      "ground_truth_class": null,
+      "ground_truth_method": null
+    },
+    {
+      "paper_id": "mistake_attribution_fine_grained_mistake_understanding_in_egocentric_videos",
+      "annotation_id": "532c1c8c",
+      "duration_seconds": 101.37681112499558,
+      "had_error": false,
+      "predicted_filepath": "misformer/model/multimodal_transformer.py",
+      "predicted_line_range": [
+        13,
+        131
+      ],
+      "ground_truth_filepaths": [
+        "misformer/model/multimodal_transformer.py",
+        "misformer/training.py"
+      ],
+      "num_predicted_snippets": 5,
+      "filepath_correct": true,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 1,
+      "best_iou": 0.01680672268907563,
+      "matched_ground_truth_range": [
+        13,
+        14
+      ],
+      "mean_iou_matching_filepaths": 0.003361344537815126,
+      "num_matching_filepath_snippets": 5,
+      "correct_class": true,
+      "correct_method": "not_applicable",
+      "predicted_class": "MultiModal_Transformer",
+      "predicted_method": null,
+      "ground_truth_class": "MultiModal_Transformer",
+      "ground_truth_method": null
+    },
+    {
+      "paper_id": "mistake_attribution_fine_grained_mistake_understanding_in_egocentric_videos",
+      "annotation_id": "5d93421d",
+      "duration_seconds": 100.31959166700835,
+      "had_error": false,
+      "predicted_filepath": "misformer/model/multimodal_transformer.py",
+      "predicted_line_range": [
+        71,
+        73
+      ],
+      "ground_truth_filepaths": [],
+      "num_predicted_snippets": 2,
+      "filepath_correct": false,
+      "filepath_hit_at_5": false,
+      "filepath_hit_rank": null,
+      "best_iou": null,
+      "matched_ground_truth_range": null,
+      "mean_iou_matching_filepaths": null,
+      "num_matching_filepath_snippets": 0,
+      "correct_class": null,
+      "correct_method": null,
+      "predicted_class": null,
+      "predicted_method": null,
+      "ground_truth_class": null,
+      "ground_truth_method": null
+    },
+    {
+      "paper_id": "mistake_attribution_fine_grained_mistake_understanding_in_egocentric_videos",
+      "annotation_id": "172727b2",
+      "duration_seconds": 99.3484437079751,
+      "had_error": false,
+      "predicted_filepath": "misformer/model/custom_encoders.py",
+      "predicted_line_range": [
+        4,
+        18
+      ],
+      "ground_truth_filepaths": [
+        "misformer/model/multimodal_transformer.py"
+      ],
+      "num_predicted_snippets": 5,
+      "filepath_correct": false,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 3,
+      "best_iou": null,
+      "matched_ground_truth_range": null,
+      "mean_iou_matching_filepaths": 0.25912975912975916,
+      "num_matching_filepath_snippets": 3,
+      "correct_class": null,
+      "correct_method": null,
+      "predicted_class": null,
+      "predicted_method": null,
+      "ground_truth_class": null,
+      "ground_truth_method": null
+    },
+    {
+      "paper_id": "mistake_attribution_fine_grained_mistake_understanding_in_egocentric_videos",
+      "annotation_id": "a7fffb93",
+      "duration_seconds": 100.93123587500304,
+      "had_error": false,
+      "predicted_filepath": "misformer/model/multimodal_transformer.py",
+      "predicted_line_range": [
+        64,
+        66
+      ],
+      "ground_truth_filepaths": [
+        "misformer/model/multimodal_transformer.py"
+      ],
+      "num_predicted_snippets": 3,
+      "filepath_correct": true,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 1,
+      "best_iou": 0.42857142857142855,
+      "matched_ground_truth_range": [
+        64,
+        70
+      ],
+      "mean_iou_matching_filepaths": 0.4047619047619047,
+      "num_matching_filepath_snippets": 3,
+      "correct_class": true,
+      "correct_method": true,
+      "predicted_class": "MultiModal_Transformer",
+      "predicted_method": "MultiModal_Transformer.__init__",
+      "ground_truth_class": "MultiModal_Transformer",
+      "ground_truth_method": "MultiModal_Transformer.__init__"
+    },
+    {
+      "paper_id": "mistake_attribution_fine_grained_mistake_understanding_in_egocentric_videos",
+      "annotation_id": "45f894eb",
+      "duration_seconds": 97.05829904100392,
+      "had_error": false,
+      "predicted_filepath": "misformer/model/multimodal_transformer.py",
+      "predicted_line_range": [
+        71,
+        73
+      ],
+      "ground_truth_filepaths": [
+        "misformer/model/multimodal_transformer.py",
+        "misformer/training.py"
+      ],
+      "num_predicted_snippets": 2,
+      "filepath_correct": true,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 1,
+      "best_iou": 0.75,
+      "matched_ground_truth_range": [
+        71,
+        74
+      ],
+      "mean_iou_matching_filepaths": 0.4583333333333333,
+      "num_matching_filepath_snippets": 2,
+      "correct_class": true,
+      "correct_method": true,
+      "predicted_class": "MultiModal_Transformer",
+      "predicted_method": "MultiModal_Transformer.__init__",
+      "ground_truth_class": "MultiModal_Transformer",
+      "ground_truth_method": "MultiModal_Transformer.__init__"
+    },
+    {
+      "paper_id": "mistake_attribution_fine_grained_mistake_understanding_in_egocentric_videos",
+      "annotation_id": "5a190209",
+      "duration_seconds": 100.95445908402326,
+      "had_error": false,
+      "predicted_filepath": "misformer/model/multimodal_transformer.py",
+      "predicted_line_range": [
+        64,
+        66
+      ],
+      "ground_truth_filepaths": [],
+      "num_predicted_snippets": 3,
+      "filepath_correct": false,
+      "filepath_hit_at_5": false,
+      "filepath_hit_rank": null,
+      "best_iou": null,
+      "matched_ground_truth_range": null,
+      "mean_iou_matching_filepaths": null,
+      "num_matching_filepath_snippets": 0,
+      "correct_class": null,
+      "correct_method": null,
+      "predicted_class": null,
+      "predicted_method": null,
+      "ground_truth_class": null,
+      "ground_truth_method": null
+    },
+    {
+      "paper_id": "mistake_attribution_fine_grained_mistake_understanding_in_egocentric_videos",
+      "annotation_id": "b00b9283",
+      "duration_seconds": 94.52682708299835,
+      "had_error": false,
+      "predicted_filepath": null,
+      "predicted_line_range": null,
+      "ground_truth_filepaths": [],
+      "num_predicted_snippets": 0,
+      "filepath_correct": false,
+      "filepath_hit_at_5": false,
+      "filepath_hit_rank": null,
+      "best_iou": null,
+      "matched_ground_truth_range": null,
+      "mean_iou_matching_filepaths": null,
+      "num_matching_filepath_snippets": 0,
+      "correct_class": null,
+      "correct_method": null,
+      "predicted_class": null,
+      "predicted_method": null,
+      "ground_truth_class": null,
+      "ground_truth_method": null
+    },
+    {
+      "paper_id": "v_jepa_2_self_supervised_video_models_enable_understanding_prediction_and_planning",
+      "annotation_id": "b9e7a3c5",
+      "duration_seconds": 129.2503622499935,
+      "had_error": false,
+      "predicted_filepath": "app/vjepa_2_1/models/vision_transformer.py",
+      "predicted_line_range": [
+        20,
+        396
+      ],
+      "ground_truth_filepaths": [
+        "app/vjepa_2_1/train.py"
+      ],
+      "num_predicted_snippets": 5,
+      "filepath_correct": false,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 4,
+      "best_iou": null,
+      "matched_ground_truth_range": null,
+      "mean_iou_matching_filepaths": 0.288135593220339,
+      "num_matching_filepath_snippets": 2,
+      "correct_class": null,
+      "correct_method": null,
+      "predicted_class": null,
+      "predicted_method": null,
+      "ground_truth_class": null,
+      "ground_truth_method": null
+    },
+    {
+      "paper_id": "v_jepa_2_self_supervised_video_models_enable_understanding_prediction_and_planning",
+      "annotation_id": "a89ab20e",
+      "duration_seconds": 141.17413612498785,
+      "had_error": false,
+      "predicted_filepath": "app/vjepa_2_1/train.py",
+      "predicted_line_range": [
+        524,
+        675
+      ],
+      "ground_truth_filepaths": [
+        "app/vjepa_2_1/train.py"
+      ],
+      "num_predicted_snippets": 4,
+      "filepath_correct": true,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 1,
+      "best_iou": 0.30718954248366015,
+      "matched_ground_truth_range": [
+        629,
+        676
+      ],
+      "mean_iou_matching_filepaths": 0.15359477124183007,
+      "num_matching_filepath_snippets": 2,
+      "correct_class": "not_applicable",
+      "correct_method": false,
+      "predicted_class": null,
+      "predicted_method": "main",
+      "ground_truth_class": null,
+      "ground_truth_method": "loss_fn"
+    },
+    {
+      "paper_id": "v_jepa_2_self_supervised_video_models_enable_understanding_prediction_and_planning",
+      "annotation_id": "0a5d5b9a",
+      "duration_seconds": 127.40945412500878,
+      "had_error": false,
+      "predicted_filepath": "app/vjepa_2_1/models/vision_transformer.py",
+      "predicted_line_range": [
+        20,
+        396
+      ],
+      "ground_truth_filepaths": [
+        "app/vjepa_2_1/models/predictor.py",
+        "app/vjepa_2_1/models/vision_transformer.py",
+        "app/vjepa_2_1/utils.py"
+      ],
+      "num_predicted_snippets": 4,
+      "filepath_correct": true,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 1,
+      "best_iou": 0.007957559681697613,
+      "matched_ground_truth_range": [
+        20,
+        22
+      ],
+      "mean_iou_matching_filepaths": 0.009393942295722452,
+      "num_matching_filepath_snippets": 2,
+      "correct_class": true,
+      "correct_method": "not_applicable",
+      "predicted_class": "VisionTransformer",
+      "predicted_method": null,
+      "ground_truth_class": "VisionTransformer",
+      "ground_truth_method": null
+    },
+    {
+      "paper_id": "v_jepa_2_self_supervised_video_models_enable_understanding_prediction_and_planning",
+      "annotation_id": "5a05ba6e",
+      "duration_seconds": 130.53148283300106,
+      "had_error": false,
+      "predicted_filepath": "src/datasets/video_dataset.py",
+      "predicted_line_range": [
+        121,
+        389
+      ],
+      "ground_truth_filepaths": [
+        "configs/train_2_1/vitb16/pretrain-256px-16f.yaml",
+        "src/datasets/data_manager.py",
+        "src/datasets/video_dataset.py"
+      ],
+      "num_predicted_snippets": 4,
+      "filepath_correct": true,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 1,
+      "best_iou": 0.011152416356877323,
+      "matched_ground_truth_range": [
+        121,
+        123
+      ],
+      "mean_iou_matching_filepaths": 0.17120183960332658,
+      "num_matching_filepath_snippets": 3,
+      "correct_class": true,
+      "correct_method": "not_applicable",
+      "predicted_class": "VideoDataset",
+      "predicted_method": null,
+      "ground_truth_class": "VideoDataset",
+      "ground_truth_method": null
+    },
+    {
+      "paper_id": "v_jepa_2_self_supervised_video_models_enable_understanding_prediction_and_planning",
+      "annotation_id": "4bd04af7",
+      "duration_seconds": 130.31600545797846,
+      "had_error": false,
+      "predicted_filepath": "app/vjepa_2_1/train.py",
+      "predicted_line_range": [
+        736,
+        778
+      ],
+      "ground_truth_filepaths": [
+        "app/vjepa_2_1/train.py",
+        "configs/train_2_1/vitl16/pretrain-256px-16f.yaml"
+      ],
+      "num_predicted_snippets": 3,
+      "filepath_correct": true,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 1,
+      "best_iou": 0.3023255813953488,
+      "matched_ground_truth_range": [
+        736,
+        748
+      ],
+      "mean_iou_matching_filepaths": 0.11003445305770887,
+      "num_matching_filepath_snippets": 3,
+      "correct_class": "not_applicable",
+      "correct_method": true,
+      "predicted_class": null,
+      "predicted_method": "train_step",
+      "ground_truth_class": null,
+      "ground_truth_method": "train_step"
+    },
+    {
+      "paper_id": "v_jepa_2_self_supervised_video_models_enable_understanding_prediction_and_planning",
+      "annotation_id": "b34f227f",
+      "duration_seconds": 131.21194858298986,
+      "had_error": false,
+      "predicted_filepath": "app/vjepa_droid/droid.py",
+      "predicted_line_range": [
+        184,
+        186
+      ],
+      "ground_truth_filepaths": [
+        "app/vjepa_droid/droid.py"
+      ],
+      "num_predicted_snippets": 3,
+      "filepath_correct": true,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 1,
+      "best_iou": 0.058823529411764705,
+      "matched_ground_truth_range": [
+        186,
+        200
+      ],
+      "mean_iou_matching_filepaths": 0.0196078431372549,
+      "num_matching_filepath_snippets": 3,
+      "correct_class": true,
+      "correct_method": true,
+      "predicted_class": "DROIDVideoDataset",
+      "predicted_method": "DROIDVideoDataset.loadvideo_decord",
+      "ground_truth_class": "DROIDVideoDataset",
+      "ground_truth_method": "DROIDVideoDataset.loadvideo_decord"
+    },
+    {
+      "paper_id": "v_jepa_2_self_supervised_video_models_enable_understanding_prediction_and_planning",
+      "annotation_id": "2badd176",
+      "duration_seconds": 129.82356416698894,
+      "had_error": false,
+      "predicted_filepath": "app/vjepa_droid/droid.py",
+      "predicted_line_range": [
+        87,
+        232
+      ],
+      "ground_truth_filepaths": [
+        "app/vjepa_droid/droid.py",
+        "app/vjepa_droid/train.py"
+      ],
+      "num_predicted_snippets": 4,
+      "filepath_correct": true,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 1,
+      "best_iou": 0.02054794520547945,
+      "matched_ground_truth_range": [
+        87,
+        89
+      ],
+      "mean_iou_matching_filepaths": 0.2096824408468244,
+      "num_matching_filepath_snippets": 4,
+      "correct_class": true,
+      "correct_method": "not_applicable",
+      "predicted_class": "DROIDVideoDataset",
+      "predicted_method": null,
+      "ground_truth_class": "DROIDVideoDataset",
+      "ground_truth_method": null
+    },
+    {
+      "paper_id": "v_jepa_2_self_supervised_video_models_enable_understanding_prediction_and_planning",
+      "annotation_id": "47bd93c0",
+      "duration_seconds": 128.52058437498636,
+      "had_error": false,
+      "predicted_filepath": "app/vjepa_droid/droid.py",
+      "predicted_line_range": [
+        137,
+        147
+      ],
+      "ground_truth_filepaths": [
+        "app/vjepa_droid/droid.py"
+      ],
+      "num_predicted_snippets": 3,
+      "filepath_correct": true,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 1,
+      "best_iou": 0.9166666666666666,
+      "matched_ground_truth_range": [
+        137,
+        148
+      ],
+      "mean_iou_matching_filepaths": 0.4877450980392157,
+      "num_matching_filepath_snippets": 2,
+      "correct_class": true,
+      "correct_method": true,
+      "predicted_class": "DROIDVideoDataset",
+      "predicted_method": "DROIDVideoDataset.poses_to_diffs",
+      "ground_truth_class": "DROIDVideoDataset",
+      "ground_truth_method": "DROIDVideoDataset.poses_to_diffs"
+    },
+    {
+      "paper_id": "v_jepa_2_self_supervised_video_models_enable_understanding_prediction_and_planning",
+      "annotation_id": "1e8633d1",
+      "duration_seconds": 143.40364229198894,
+      "had_error": false,
+      "predicted_filepath": "src/models/ac_predictor.py",
+      "predicted_line_range": [
+        145,
+        156
+      ],
+      "ground_truth_filepaths": [
+        "src/models/ac_predictor.py"
+      ],
+      "num_predicted_snippets": 5,
+      "filepath_correct": true,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 1,
+      "best_iou": 0.8333333333333334,
+      "matched_ground_truth_range": [
+        145,
+        154
+      ],
+      "mean_iou_matching_filepaths": 0.589080459770115,
+      "num_matching_filepath_snippets": 3,
+      "correct_class": true,
+      "correct_method": true,
+      "predicted_class": "VisionTransformerPredictorAC",
+      "predicted_method": "VisionTransformerPredictorAC.forward",
+      "ground_truth_class": "VisionTransformerPredictorAC",
+      "ground_truth_method": "VisionTransformerPredictorAC.forward"
+    },
+    {
+      "paper_id": "v_jepa_2_self_supervised_video_models_enable_understanding_prediction_and_planning",
+      "annotation_id": "26f86805",
+      "duration_seconds": 127.7143617499969,
+      "had_error": false,
+      "predicted_filepath": "app/vjepa_droid/train.py",
+      "predicted_line_range": [
+        425,
+        427
+      ],
+      "ground_truth_filepaths": [
+        "app/vjepa_droid/train.py"
+      ],
+      "num_predicted_snippets": 3,
+      "filepath_correct": true,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 1,
+      "best_iou": 0.0,
+      "matched_ground_truth_range": [
+        439,
+        442
+      ],
+      "mean_iou_matching_filepaths": 0.4688644688644688,
+      "num_matching_filepath_snippets": 3,
+      "correct_class": "not_applicable",
+      "correct_method": false,
+      "predicted_class": null,
+      "predicted_method": "forward_predictions",
+      "ground_truth_class": null,
+      "ground_truth_method": "loss_fn"
+    },
+    {
+      "paper_id": "v_jepa_2_self_supervised_video_models_enable_understanding_prediction_and_planning",
+      "annotation_id": "1edf868b",
+      "duration_seconds": 142.33409508300247,
+      "had_error": false,
+      "predicted_filepath": "app/vjepa_droid/train.py",
+      "predicted_line_range": [
+        425,
+        427
+      ],
+      "ground_truth_filepaths": [
+        "app/vjepa_droid/train.py"
+      ],
+      "num_predicted_snippets": 5,
+      "filepath_correct": true,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 1,
+      "best_iou": 0.75,
+      "matched_ground_truth_range": [
+        425,
+        428
+      ],
+      "mean_iou_matching_filepaths": 0.5595238095238095,
+      "num_matching_filepath_snippets": 3,
+      "correct_class": "not_applicable",
+      "correct_method": true,
+      "predicted_class": null,
+      "predicted_method": "forward_predictions",
+      "ground_truth_class": null,
+      "ground_truth_method": "forward_predictions"
+    },
+    {
+      "paper_id": "v_jepa_2_self_supervised_video_models_enable_understanding_prediction_and_planning",
+      "annotation_id": "ddbc1e91",
+      "duration_seconds": 132.10609337501228,
+      "had_error": false,
+      "predicted_filepath": "app/vjepa_droid/train.py",
+      "predicted_line_range": [
+        443,
+        449
+      ],
+      "ground_truth_filepaths": [
+        "app/vjepa_droid/train.py"
+      ],
+      "num_predicted_snippets": 3,
+      "filepath_correct": true,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 1,
+      "best_iou": 0.375,
+      "matched_ground_truth_range": [
+        447,
+        450
+      ],
+      "mean_iou_matching_filepaths": 0.125,
+      "num_matching_filepath_snippets": 3,
+      "correct_class": "not_applicable",
+      "correct_method": true,
+      "predicted_class": null,
+      "predicted_method": "train_step",
+      "ground_truth_class": null,
+      "ground_truth_method": "train_step"
+    },
+    {
+      "paper_id": "v_jepa_2_self_supervised_video_models_enable_understanding_prediction_and_planning",
+      "annotation_id": "d8d0a317",
+      "duration_seconds": 124.57293120899703,
+      "had_error": false,
+      "predicted_filepath": "src/models/ac_predictor.py",
+      "predicted_line_range": [
+        52,
+        56
+      ],
+      "ground_truth_filepaths": [
+        "src/models/ac_predictor.py",
+        "src/models/utils/modules.py"
+      ],
+      "num_predicted_snippets": 2,
+      "filepath_correct": true,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 1,
+      "best_iou": 0.0,
+      "matched_ground_truth_range": [
+        17,
+        19
+      ],
+      "mean_iou_matching_filepaths": 0.0,
+      "num_matching_filepath_snippets": 2,
+      "correct_class": true,
+      "correct_method": "not_applicable",
+      "predicted_class": "VisionTransformerPredictorAC",
+      "predicted_method": "VisionTransformerPredictorAC.__init__",
+      "ground_truth_class": "VisionTransformerPredictorAC",
+      "ground_truth_method": null
+    }
+  ]
+}
