@@ -2,7 +2,9 @@ import hashlib
 import io
 import logging
 import os
+from datetime import UTC, datetime
 from pathlib import Path
+from uuid import uuid4
 
 from fastapi import FastAPI, File, HTTPException, UploadFile, Response, Form, Query
 from fastapi.responses import JSONResponse, PlainTextResponse
@@ -18,7 +20,8 @@ from src.celery_tasks import (
     test_task, 
     process_pdf_task, 
     map_content_to_code_task, 
-    map_code_to_content_task
+    map_code_to_content_task,
+    copilot_chat_task,
 )
 from src.db import (get_file_url, 
     upload_paper_to_storage, 
@@ -28,11 +31,24 @@ from src.db import (get_file_url,
     get_content_to_code_matches_by_paper_id, 
     get_code_to_content_matches_by_paper_id_and_filepath,
     get_user_by_username_db,
-    create_user_db
+    create_user_db,
+    ConversationConflictError,
+    append_conversation_message,
+    claim_conversation,
+    get_conversation_by_user_and_paper,
+    get_or_create_conversation,
+    set_conversation_failed,
 )
 
 from src.utils import download_file as download_file_from_url, get_file_content, get_repo_tree
-from src.types import PaperRecord, PaperContentBox, UserRecord
+from src.types import (
+    ConversationRecord,
+    CopilotMessage,
+    PaperRecord,
+    PaperContentBox,
+    SendCopilotMessageRequest,
+    UserRecord,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -126,7 +142,7 @@ def test():
 async def debug_env():
     anthropic_key = os.getenv("ANTHROPIC_API_KEY")
     db_url = os.getenv("SUPABASE_URL")
-    db_key = os.getenv("SUPABASE_KEY")
+    db_key = os.getenv("SUPABASE_SECRET_KEY") or os.getenv("SUPABASE_KEY")
     if anthropic_key and db_url and db_key:
         # Just show the first 4 characters to confirm it's there
         return {"status": "Loaded", "prefix": f"{anthropic_key[:4]}...", "db_url": f"{db_url[:4]}...", "db_key": f"{db_key[:4]}..."}
@@ -151,6 +167,146 @@ def get_user_by_username(username: str) -> dict:
         if user is None:
             raise HTTPException(status_code=500, detail="Failed to create user")
     return user.model_dump(mode="json")
+
+
+###################################
+##### Copilot Conversations #######
+###################################
+
+
+def _require_conversation_owner(
+    conversation: ConversationRecord,
+    user_id: int,
+) -> None:
+    """
+    Enforce ownership at the API boundary.
+
+    ``user_id`` is caller-supplied for the prototype. Once authentication is
+    introduced, resolve it from the authenticated principal here instead of
+    accepting it from the request.
+    """
+    if conversation.user_id != user_id:
+        raise HTTPException(status_code=403, detail="Conversation access denied")
+
+
+@app.get("/papers/{paper_id}/conversation")
+def get_copilot_conversation(
+    paper_id: str,
+    user_id: int = Query(..., gt=0),
+):
+    if get_paper_record_by_id(paper_id) is None:
+        raise HTTPException(status_code=404, detail="Unknown paper_id")
+
+    conversation = get_conversation_by_user_and_paper(
+        user_id=user_id,
+        paper_id=paper_id,
+    )
+    if conversation is None:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    _require_conversation_owner(conversation, user_id)
+    return {"conversation": conversation.model_dump(mode="json")}
+
+
+@app.post("/papers/{paper_id}/conversation/messages", status_code=202)
+def send_copilot_message(
+    paper_id: str,
+    request: SendCopilotMessageRequest,
+):
+    if get_paper_record_by_id(paper_id) is None:
+        raise HTTPException(status_code=404, detail="Unknown paper_id")
+
+    conversation = get_or_create_conversation(
+        paper_id=paper_id,
+        user_id=request.user_id,
+    )
+    _require_conversation_owner(conversation, request.user_id)
+
+    task_id = str(uuid4())
+    user_message = CopilotMessage(
+        id=uuid4(),
+        role="user",
+        content=request.content,
+        created_at=datetime.now(UTC),
+        # The message itself is durably accepted at this point; the
+        # conversation status tracks whether its assistant reply is pending.
+        status="complete",
+        context_refs=request.context_refs,
+    )
+    try:
+        claimed_conversation = claim_conversation(
+            conversation_id=conversation.id,
+            task_id=task_id,
+        )
+    except ConversationConflictError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail="Conversation is already processing a message",
+        ) from exc
+
+    try:
+        new_version = append_conversation_message(
+            conversation_id=conversation.id,
+            message=user_message,
+            expected_version=conversation.version,
+        )
+    except ConversationConflictError as exc:
+        try:
+            set_conversation_failed(
+                conversation_id=conversation.id,
+                task_id=task_id,
+            )
+        except Exception:
+            logger.exception(
+                "Failed to release Copilot claim after append conflict "
+                "conversation_id=%s task_id=%s",
+                conversation.id,
+                task_id,
+            )
+        raise HTTPException(
+            status_code=409,
+            detail="Conversation changed while sending the message; retry",
+        ) from exc
+
+    response_conversation = claimed_conversation.model_copy(
+        update={
+            "messages": [*claimed_conversation.messages, user_message],
+            "version": new_version,
+        }
+    )
+
+    try:
+        copilot_chat_task.apply_async(
+            args=[conversation.id, str(user_message.id)],
+            task_id=task_id,
+        )
+    except Exception as exc:
+        logger.exception(
+            "Failed to dispatch Copilot task conversation_id=%s task_id=%s",
+            conversation.id,
+            task_id,
+        )
+        try:
+            set_conversation_failed(
+                conversation_id=conversation.id,
+                task_id=task_id,
+            )
+        except Exception:
+            logger.exception(
+                "Failed to mark conversation failed conversation_id=%s task_id=%s",
+                conversation.id,
+                task_id,
+            )
+        raise HTTPException(
+            status_code=503,
+            detail="Copilot worker is unavailable; retry later",
+        ) from exc
+
+    return {
+        "conversation": response_conversation.model_dump(mode="json"),
+        "task_id": task_id,
+        "message_id": str(user_message.id),
+        "status": "PENDING",
+    }
 
 ###################################
 ##### Paper Content Upload ########

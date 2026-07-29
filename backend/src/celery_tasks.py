@@ -2,12 +2,17 @@ import asyncio
 import json
 import logging
 import time
+from datetime import UTC, datetime
+from uuid import UUID, uuid4
 
 from src.types import (
     CodeToContentInputs,
     CodeToContentResult,
     ContentToCodeInputs,
     ContentToCodeResult,
+    ConversationRecord,
+    CopilotMessage,
+    CopilotMessageMetadata,
     KeySectionsResult,
     PaperMappingRecord,
     PaperMageResult,
@@ -18,7 +23,17 @@ from pydantic import BaseModel
 from io import BytesIO
 
 from src.agent import Agent
-from src.db import get_paper_record_by_id, upsert_mapping_result, upsert_paper
+from src.db import (
+    ConversationConflictError,
+    append_conversation_message,
+    get_conversation_by_id,
+    get_paper_record_by_id,
+    set_conversation_failed,
+    set_conversation_idle,
+    update_conversation_summary,
+    upsert_mapping_result,
+    upsert_paper,
+)
 from src.config import REDIS_URL
 
 logger = logging.getLogger(__name__)
@@ -30,6 +45,14 @@ def _papermage_process(file_input) -> PaperMageResult:
 
     return papermage_process(file_input=file_input)
 
+
+def _new_copilot_agent():
+    """Keep Copilot-only dependencies out of unrelated Celery task startup."""
+    from src.copilot_agent import CopilotAgent
+
+    return CopilotAgent()
+
+
 celery = Celery(
     __name__,
     broker=REDIS_URL,
@@ -40,6 +63,198 @@ class AgentTaskResult(BaseModel):
     paper_title: str | None = None
     github_repo_url: str | None = None
     code_result: dict | None = None
+
+
+def _require_active_copilot_task(
+    conversation: ConversationRecord,
+    task_id: str,
+) -> None:
+    if (
+        conversation.status != "processing"
+        or conversation.active_task_id != task_id
+    ):
+        raise ConversationConflictError(
+            "Copilot worker no longer owns the conversation: "
+            f"conversation_id={conversation.id} task_id={task_id!r}"
+        )
+
+
+def _assistant_reply_for(
+    conversation: ConversationRecord,
+    user_message_id: UUID,
+) -> CopilotMessage | None:
+    return next(
+        (
+            message
+            for message in conversation.messages
+            if message.role == "assistant"
+            and message.status == "complete"
+            and message.in_reply_to == user_message_id
+        ),
+        None,
+    )
+
+
+def _copilot_result(
+    *,
+    conversation_id: int,
+    user_message_id: UUID,
+    assistant_message_id: UUID,
+    idempotent: bool,
+) -> dict[str, object]:
+    return {
+        "conversation_id": conversation_id,
+        "user_message_id": str(user_message_id),
+        "assistant_message_id": str(assistant_message_id),
+        "status": "complete",
+        "idempotent": idempotent,
+    }
+
+
+def _mark_copilot_failed(conversation_id: int, task_id: str) -> None:
+    try:
+        set_conversation_failed(conversation_id, task_id)
+    except Exception:
+        # Guarded updates deliberately reject stale workers. Preserve the
+        # original task failure while retaining that rejection in worker logs.
+        logger.warning(
+            "Could not mark Copilot conversation failed "
+            "conversation_id=%s task_id=%s",
+            conversation_id,
+            task_id,
+            exc_info=True,
+        )
+
+
+@celery.task(bind=True, name="copilot_chat")
+def copilot_chat_task(
+    self,
+    conversation_id: int,
+    user_message_id: str,
+) -> dict[str, object]:
+    """Answer one queued user message while holding the conversation claim."""
+    task_id = self.request.id
+    if not task_id:
+        raise RuntimeError("Copilot task requires a Celery task id")
+
+    try:
+        parsed_user_message_id = UUID(user_message_id)
+        conversation = get_conversation_by_id(conversation_id)
+        if conversation is None:
+            raise ValueError(f"No conversation found for id {conversation_id}.")
+
+        existing_reply = _assistant_reply_for(
+            conversation,
+            parsed_user_message_id,
+        )
+        if existing_reply is not None:
+            if (
+                conversation.status == "processing"
+                and conversation.active_task_id == task_id
+            ):
+                set_conversation_idle(conversation_id, task_id)
+            return _copilot_result(
+                conversation_id=conversation_id,
+                user_message_id=parsed_user_message_id,
+                assistant_message_id=existing_reply.id,
+                idempotent=True,
+            )
+
+        _require_active_copilot_task(conversation, task_id)
+
+        paper = get_paper_record_by_id(conversation.paper_id)
+        if paper is None:
+            raise ValueError(
+                f"No paper record found for id {conversation.paper_id}."
+            )
+
+        user_message = next(
+            (
+                message
+                for message in conversation.messages
+                if message.id == parsed_user_message_id
+                and message.role == "user"
+            ),
+            None,
+        )
+        if user_message is None:
+            raise ValueError(
+                "No user message found for Copilot task: "
+                f"conversation_id={conversation_id} "
+                f"message_id={parsed_user_message_id}"
+            )
+
+        answer = asyncio.run(
+            _new_copilot_agent().answer(paper, conversation, user_message)
+        )
+
+        # The agent call can be slow. Re-read before writing so a stale or
+        # duplicate delivery cannot append after ownership has changed.
+        latest = get_conversation_by_id(conversation_id)
+        if latest is None:
+            raise ValueError(f"No conversation found for id {conversation_id}.")
+        _require_active_copilot_task(latest, task_id)
+
+        existing_reply = _assistant_reply_for(
+            latest,
+            parsed_user_message_id,
+        )
+        if existing_reply is not None:
+            set_conversation_idle(conversation_id, task_id)
+            return _copilot_result(
+                conversation_id=conversation_id,
+                user_message_id=parsed_user_message_id,
+                assistant_message_id=existing_reply.id,
+                idempotent=True,
+            )
+
+        if (
+            answer.summary is not None
+            and answer.summarized_through_message_id is not None
+        ):
+            latest = update_conversation_summary(
+                conversation_id,
+                answer.summary,
+                str(answer.summarized_through_message_id),
+                task_id=task_id,
+            )
+
+        metadata = answer.metadata
+        if isinstance(metadata, BaseModel):
+            metadata_values = metadata.model_dump(exclude_none=True)
+        elif isinstance(metadata, dict):
+            metadata_values = dict(metadata)
+        elif metadata is None:
+            metadata_values = {}
+        else:
+            metadata_values = dict(metadata)
+        metadata_values["task_id"] = task_id
+
+        assistant_message = CopilotMessage(
+            id=uuid4(),
+            role="assistant",
+            content=answer.content,
+            created_at=datetime.now(UTC),
+            status="complete",
+            citations=answer.citations,
+            in_reply_to=parsed_user_message_id,
+            metadata=CopilotMessageMetadata.model_validate(metadata_values),
+        )
+        append_conversation_message(
+            conversation_id,
+            assistant_message,
+            expected_version=latest.version,
+        )
+        set_conversation_idle(conversation_id, task_id)
+        return _copilot_result(
+            conversation_id=conversation_id,
+            user_message_id=parsed_user_message_id,
+            assistant_message_id=assistant_message.id,
+            idempotent=False,
+        )
+    except Exception:
+        _mark_copilot_failed(conversation_id, task_id)
+        raise
     
 @celery.task(name="test_task")
 def test_task():
