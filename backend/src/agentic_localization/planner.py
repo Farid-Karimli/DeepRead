@@ -1,18 +1,10 @@
 """
 Planner: agent 1 of the two-agent localization pipeline.
 
-Mirrors `src.agent.Agent.map_content_to_code`, with one deliberate difference:
-the planner gets **no tools**. The repo map's minimal view is serialized into the
-prompt, so picking a file and an anchor symbol is a single Anthropic Messages
-API call instead of a Search / ReadFile crawl through the Claude Code harness.
-Line numbers come from the map's symbol table rather than from the model, so
-the planner cannot hallucinate a span.
+Generation (`get_candidates`): one Anthropic call over the minimal repo map.
+Resolution (`resolve_anchors`): map (filepath, anchor_symbol) → line spans.
 
-Output is `ContentToCodeResult`-shaped, so `src.evals.evaluate` scores it
-unchanged. Until the resolver (agent 2) lands, each prediction's span is the
-whole anchor symbol.
-
-    python -m src.agentic_localization.planner        # smoke test on one annotation
+    python -m src.agentic_localization.planner
 """
 
 from __future__ import annotations
@@ -41,12 +33,8 @@ logger.setLevel(logging.INFO)
 
 init_weave()
 
-# Snippet bodies are for the resolver and for eyeballing predictions; the metrics
-# only read line numbers, so there is no reason to carry a 600-line class.
 MAX_SNIPPET_LINES = 200
 
-# Claude Agent SDK accepts short aliases; the Messages API needs full model IDs.
-# Keep accepting both so `src.evals.run --model sonnet` stays unchanged.
 MODEL_ALIASES = {
     "sonnet": "claude-sonnet-4-5-20250929",
     "opus": "claude-opus-4-1-20250805",
@@ -81,9 +69,6 @@ def _usage_dict(usage: Any) -> dict[str, Any] | None:
 
 
 class Planner:
-    """Picks the file and anchor symbol for a piece of paper content, using a
-    serialized repo map instead of repository tool calls."""
-
     def __init__(
         self,
         model: str = "sonnet",
@@ -97,27 +82,17 @@ class Planner:
         self.temperature = temperature
         self._client = AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
 
-    @op
-    async def localize(
+    @op(name="planner_get_candidates")
+    async def get_candidates(
         self,
+        repo_map: RepoMap,
         content: str,
-        repo_url: str,
         context: str = "",
-        top_k: int = 5,
-    ) -> dict:
-        """Map one piece of paper content to anchor symbols in the repository.
-
-        Args:
-            content: A piece of text from the paper.
-            repo_url: The paper's GitHub repository.
-            context: Surrounding context (nearby text, abstract, section header).
-            top_k: Maximum number of candidates to keep.
-        """
+    ) -> dict[str, Any]:
+        """LLM step: file + anchor hypotheses from the minimal map (no line spans)."""
         started_at = time.perf_counter()
-
-        local_code_path = clone_repo_to_temp_dir(repo_url)
-        repo_map = load_or_build(local_code_path, repo_url=repo_url, cache_dir=self.cache_dir)
         blob = render_minimal_view(repo_map)
+        model_id = resolve_model(self.model)
 
         prompt = build_planner_prompt(
             content=content,
@@ -125,9 +100,8 @@ class Planner:
             repo_map_blob=blob,
             max_candidates=self.max_candidates,
         )
-        model_id = resolve_model(self.model)
         logger.info(
-            "localize: prompt prepared chars=%d repo_map_files=%d blob_tokens=~%d model=%s",
+            "get_candidates: chars=%d files=%d blob_tokens=~%d model=%s",
             len(prompt),
             len(repo_map.files),
             estimate_tokens(blob),
@@ -141,37 +115,111 @@ class Planner:
             system=PLANNER_SYSTEM_PROMPT,
             messages=[{"role": "user", "content": prompt}],
             output_config={
-                "format": {
-                    "type": "json_schema",
-                    "schema": planner_schema,
-                }
+                "format": {"type": "json_schema", "schema": planner_schema},
             },
         )
 
         raw_text = ""
         if isinstance(message.content, list) and message.content:
             raw_text = getattr(message.content[0], "text", "") or ""
-        parsed_result = _parse_json_result(raw_text)
-        if parsed_result is None and raw_text:
-            logger.warning("localize: failed to parse JSON result raw=%s", raw_text[:500])
-        if not isinstance(parsed_result, dict):
-            parsed_result = {}
+        parsed = _parse_json_result(raw_text)
+        if parsed is None and raw_text:
+            logger.warning("get_candidates: failed to parse JSON raw=%s", raw_text[:500])
+        if not isinstance(parsed, dict):
+            parsed = {}
 
         usage = _usage_dict(message.usage)
-        candidates = parsed_result.get("candidates")
+        candidates = parsed.get("candidates")
+        if not isinstance(candidates, list):
+            candidates = []
+
+        duration_s = round(time.perf_counter() - started_at, 3)
+        generate_metrics = {
+            "duration_s": duration_s,
+            "model": model_id,
+            "api": "anthropic",
+            "repo_map_files": len(repo_map.files),
+            "minimal_view_chars": len(blob),
+            "minimal_view_est_tokens": estimate_tokens(blob),
+            "usage": usage,
+            "num_candidates": len(candidates),
+            "verdict": parsed.get("verdict") or "",
+        }
+        log_summary("planner_generate", generate_metrics)
+        logger.info(
+            "get_candidates: done duration=%.2fs verdict=%s num_candidates=%s in=%s out=%s",
+            duration_s,
+            generate_metrics["verdict"],
+            len(candidates),
+            (usage or {}).get("input_tokens"),
+            (usage or {}).get("output_tokens"),
+        )
+
+        return {
+            "reasoning": parsed.get("reasoning") or "",
+            "verdict": parsed.get("verdict") or "",
+            "candidates": candidates,
+            "generate_metrics": generate_metrics,
+        }
+
+    @op(name="planner_resolve_anchors")
+    def resolve_anchors(
+        self,
+        candidates: list[Any],
+        repo_map: RepoMap,
+        repo_root: Path | str,
+        top_k: int = 5,
+    ) -> tuple[list[dict], dict[str, Any]]:
+        """Map step: anchor symbols → snippet line ranges (whole symbol for now)."""
+        started_at = time.perf_counter()
         snippets, resolution = self._resolve_candidates(
-            candidates if isinstance(candidates, list) else [],
+            candidates,
             repo_map,
-            Path(local_code_path),
+            Path(repo_root),
             top_k=top_k,
+        )
+        duration_s = round(time.perf_counter() - started_at, 3)
+        resolve_metrics = {
+            "duration_s": duration_s,
+            "num_snippets": len(snippets),
+            **resolution,
+        }
+        log_summary("planner_resolve", resolve_metrics)
+        logger.info(
+            "resolve_anchors: done duration=%.2fs snippets=%s unresolved_files=%s unresolved_anchors=%s",
+            duration_s,
+            len(snippets),
+            resolution["num_unresolved_files"],
+            resolution["num_unresolved_anchors"],
+        )
+        return snippets, resolve_metrics
+
+    @op(name="planner_localize")
+    async def localize(
+        self,
+        content: str,
+        repo_url: str,
+        context: str = "",
+        top_k: int = 5,
+    ) -> dict:
+        """Generate candidates, resolve anchors, return eval-shaped prediction."""
+        started_at = time.perf_counter()
+
+        local_code_path = clone_repo_to_temp_dir(repo_url)
+        repo_map = load_or_build(local_code_path, repo_url=repo_url, cache_dir=self.cache_dir)
+
+        gen = await self.get_candidates(repo_map, content, context)
+        snippets, resolve_metrics = self.resolve_anchors(
+            gen["candidates"], repo_map, local_code_path, top_k=top_k
         )
 
         final = ContentToCodeResult(
-            reasoning=parsed_result.get("reasoning") or "",
-            verdict=parsed_result.get("verdict") or "",
+            reasoning=gen["reasoning"],
+            verdict=gen["verdict"],
             code_snippets=snippets,
         )
 
+        generate_metrics = gen["generate_metrics"]
         duration_s = round(time.perf_counter() - started_at, 3)
         process_metrics = {
             "num_tool_calls": 0,
@@ -187,17 +235,19 @@ class Planner:
             "duration_s": duration_s,
             "num_errors": 0,
             "planner": True,
-            "api": "anthropic",
-            "model": model_id,
-            "repo_map_files": len(repo_map.files),
-            "minimal_view_chars": len(blob),
-            "minimal_view_est_tokens": estimate_tokens(blob),
-            "usage": usage,
-            **resolution,
+            "api": generate_metrics.get("api"),
+            "model": generate_metrics.get("model"),
+            "repo_map_files": generate_metrics.get("repo_map_files"),
+            "minimal_view_chars": generate_metrics.get("minimal_view_chars"),
+            "minimal_view_est_tokens": generate_metrics.get("minimal_view_est_tokens"),
+            "usage": generate_metrics.get("usage"),
+            "planner_generate_duration_s": generate_metrics.get("duration_s"),
+            "planner_resolve_duration_s": resolve_metrics.get("duration_s"),
+            **{k: v for k, v in resolve_metrics.items() if k != "duration_s"},
         }
 
         result = final.model_dump()
-        result["planner_candidates"] = candidates if isinstance(candidates, list) else []
+        result["planner_candidates"] = gen["candidates"]
         result["tool_trace"] = []
         result["process_metrics"] = process_metrics
 
@@ -215,15 +265,10 @@ class Planner:
             },
         )
         logger.info(
-            "localize: completed duration=%.2fs verdict=%s candidates=%s unresolved_files=%s "
-            "unresolved_anchors=%s input_tokens=%s output_tokens=%s",
+            "localize: done duration=%.2fs verdict=%s snippets=%s",
             duration_s,
             result.get("verdict"),
             len(result.get("code_snippets") or []),
-            resolution["num_unresolved_files"],
-            resolution["num_unresolved_anchors"],
-            (usage or {}).get("input_tokens"),
-            (usage or {}).get("output_tokens"),
         )
         return result
 
@@ -231,18 +276,12 @@ class Planner:
         self,
         content: str,
         repo_url: str,
-        context: str,
+        context: str = "",
         top_k: int = 5,
     ) -> dict:
-        """Same signature as `Agent.map_content_to_code`, so `src.evals.run` can
-        swap the planner in for the single-agent baseline."""
         return await self.localize(
             content=content, repo_url=repo_url, context=context, top_k=top_k
         )
-
-    # ----------------------------------------------------------------------- #
-    # anchor -> span
-    # ----------------------------------------------------------------------- #
 
     def _resolve_candidates(
         self,
@@ -251,9 +290,6 @@ class Planner:
         repo_root: Path,
         top_k: int,
     ) -> tuple[list[dict], dict[str, int]]:
-        """Turn (filepath, anchor_symbol) pairs into line ranges via the symbol
-        table. Unresolved anchors are counted rather than silently dropped —
-        they are the planner's hallucination rate."""
         snippets: list[dict] = []
         seen: set[tuple[str, int, int]] = set()
         unresolved_files = 0
@@ -299,8 +335,6 @@ class Planner:
 
 
 def _match_file(repo_map: RepoMap, filepath: str) -> FileRecord | None:
-    """Exact match, then a forgiving suffix/basename match, so a planner that
-    drops a leading directory is not scored as a miss."""
     filepath = (filepath or "").strip().lstrip("./")
     if not filepath:
         return None
@@ -320,8 +354,6 @@ def _match_file(repo_map: RepoMap, filepath: str) -> FileRecord | None:
 
 
 def _fallback_span(record: FileRecord) -> SymbolRecord | None:
-    """Span for a file the planner picked without a usable anchor: the largest
-    module scope for a script-style file, otherwise the whole file."""
     if record.module_scopes:
         return max(record.module_scopes, key=lambda s: s.end_line - s.start_line)
     if not record.loc:
@@ -354,7 +386,7 @@ if __name__ == "__main__":
 
     planner = Planner()
     prediction = asyncio.run(
-        planner.localize(
+        planner.map_content_to_code(
             content=annotation["claim_text"],
             repo_url=paper["repo_path"].rstrip(". "),
             context=f"Paper title: {paper.get('title', '')}\nSection: {annotation.get('section_ref', '')}",
