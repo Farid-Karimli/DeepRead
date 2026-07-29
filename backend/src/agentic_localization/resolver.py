@@ -16,9 +16,9 @@ from src.types import CodeSnippet, ContentToCodeResult
 from src.utils import clone_repo_to_temp_dir
 
 from .schema import CandidateSpan, FileRecord, RepoMap, SymbolRecord
-from .repo_map import DEFAULT_CACHE_DIR, load_or_build
+from .repo_map import DEFAULT_CACHE_DIR, estimate_tokens, load_or_build
 from .utils import resolve_model
-from .planner import Planner
+from .planner import Planner, _usage_dict
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -53,12 +53,14 @@ class Resolver:
         self.kind = kind
         self._client = AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
 
+    @op(name="resolver_resolve_spans")
     def resolve_spans(
         self,
         symbols: list[dict],
         repo_map: RepoMap,
         repo_root: Path,
     ) -> list[CodeSnippet]:
+        started_at = time.perf_counter()
         snippets = []
         for symbol in symbols or []:
             filepath = symbol["filepath"]
@@ -83,8 +85,25 @@ class Resolver:
                         "end_line": int(end),
                     }
                 )
+        duration_s = round(time.perf_counter() - started_at, 3)
+        num_symbols = len(symbols or [])
+        log_summary(
+            "resolver_resolve_spans",
+            {
+                "duration_s": duration_s,
+                "num_snippets": len(snippets),
+                "num_symbols": num_symbols,
+            },
+        )
+        logger.info(
+            "resolve_spans: done duration=%.2fs snippets=%s symbols=%s",
+            duration_s,
+            len(snippets),
+            num_symbols,
+        )
         return snippets
 
+    @op(name="resolver_resolve_menu")
     async def resolve(
         self,
         content: str,
@@ -93,8 +112,6 @@ class Resolver:
         repo_map: RepoMap,
         repo_root: Path,
     ):
-        started_at = time.perf_counter()
-
         if self.kind == "menu": 
             # Single API call. 
             # Get candidate_spans() from the Planner's output.candidates
@@ -119,7 +136,15 @@ class Resolver:
             )
 
             model_id = resolve_model(self.model)
+            logger.info(
+                "resolve_menu: chars=%d est_tokens=~%d planner_candidates=%d model=%s",
+                len(prompt),
+                estimate_tokens(prompt),
+                len(candidates.get("candidates", [])),
+                model_id,
+            )
 
+            started_at = time.perf_counter()
             message = await self._client.messages.create(
                 model=model_id,
                 max_tokens=4096,
@@ -136,16 +161,46 @@ class Resolver:
                 raw_text = getattr(message.content[0], "text", "") or ""
             parsed = _parse_json_result(raw_text)
             if parsed is None and raw_text:
-                logger.warning("get_candidates: failed to parse JSON raw=%s", raw_text[:500])
+                logger.warning("resolve_menu: failed to parse JSON raw=%s", raw_text[:500])
             if not isinstance(parsed, dict):
                 parsed = {}
 
+            usage = _usage_dict(message.usage)
             symbols = parsed.get("symbols")
+            if not isinstance(symbols, list):
+                symbols = []
+
+            llm_duration_s = round(time.perf_counter() - started_at, 3)
+            menu_metrics = {
+                "duration_s": llm_duration_s,
+                "model": model_id,
+                "api": "anthropic",
+                "kind": "menu",
+                "prompt_chars": len(prompt),
+                "prompt_est_tokens": estimate_tokens(prompt),
+                "usage": usage,
+                "num_symbols": len(symbols),
+                "planner_candidates": len(candidates.get("candidates", [])),
+            }
+            log_summary("resolver_resolve_menu", menu_metrics)
+            logger.info(
+                "resolve_menu: done duration=%.2fs symbols=%s in=%s out=%s",
+                llm_duration_s,
+                len(symbols),
+                (usage or {}).get("input_tokens"),
+                (usage or {}).get("output_tokens"),
+            )
+
             snippets = self.resolve_spans(symbols, repo_map=repo_map, repo_root=repo_root)
 
-            duration = time.perf_counter() - started_at
-            log_summary("resolver_resolve_menu", {"duration_s": round(duration, 3)})
-            logger.info("resolver_resolve_menu: duration=%.3fs snippets=%s", duration, len(snippets))
+            log_summary(
+                "prediction_summary",
+                {
+                    "num_snippets": len(snippets),
+                    "top_filepath": snippets[0]["filepath"] if snippets else None,
+                },
+            )
+            logger.info("resolve: done snippets=%s", len(snippets))
 
             return snippets
 
