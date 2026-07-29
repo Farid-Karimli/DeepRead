@@ -398,6 +398,45 @@ def build_resolver_menu_prompt(
         empty list.
     """
 
+def build_resolver_crawl_prompt(
+    content: str,
+    context: str,
+    planner_output: dict,
+    max_snippets: int,
+) -> str:
+    """Agent 2 (kind=guided-crawl): planner-informed repo investigation via repo-map tools."""
+    return f"""
+        Narrow down where a piece of content from a scientific paper is implemented in its
+        code repository.
+
+        A Planner has already proposed files and anchor symbols (see below). Your job is a
+        short, deliberate investigation: start from those candidates, use lookup_symbol and
+        read_lines to confirm the right method/block, and only use search_code when you must
+        pivot. Do not re-discover the repository from scratch.
+
+        ## Content ##
+        {content}
+        ## End Content ##
+
+        ## Context ##
+        {context}
+        ## End Context ##
+
+        ## Planner output ##
+        {planner_output}
+        ## End Planner output ##
+
+        ## Procedure ##
+        1. For each promising planner candidate, call lookup_symbol with the same filepath
+        and anchor_symbol, then read_lines around the symbol or a candidate_span.
+        2. Pick up to {max_snippets} symbol+span answers (span indices from lookup_symbol).
+        3. When you are ready, you will be asked for final JSON (reasoning + symbols).
+
+        ## Final JSON rules ##
+        - `filepath` and `name` must match the repo map (use lookup_symbol results).
+        - `spans` lists candidate_span indices; use -1 for the whole symbol when no blocks exist.
+    """
+
 def build_code_to_content_mapping_prompt(
     code: str, # a single piece of code
     papermage_result_path: Path,

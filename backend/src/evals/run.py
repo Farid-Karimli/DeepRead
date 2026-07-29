@@ -23,7 +23,7 @@ import traceback
 from tqdm import tqdm
 
 from src.agent import Agent
-from src.agentic_localization.planner import Planner
+from src.agentic_localization.pipeline import PlanResolvePipeline, PipelineKind
 from src.observability import attributes, init_weave, is_active, op
 from src.utils import delete_temp_dir, normalize_github_repo_url
 
@@ -46,7 +46,12 @@ def build_context(paper: dict, annotation: dict) -> str:
 
 
 @op(name="eval_run_annotation")
-async def run_annotation(agent: Agent | Planner, paper: dict, annotation: dict, repo_url: str) -> dict:
+async def run_annotation(
+    agent: Agent | PlanResolvePipeline,
+    paper: dict,
+    annotation: dict,
+    repo_url: str,
+) -> dict:
     record = {
         "paper_id": paper.get("paper_id"),
         "annotation_id": annotation.get("annotation_id"),
@@ -98,7 +103,7 @@ async def run(
     limit: int | None = None,
     model: str = "sonnet",
     paper_index: int | None = None,
-    planner: bool = False,
+    pipeline: PipelineKind | None = None,
 ) -> None:
     init_weave()
     print(f"Weave tracing active={is_active()}")
@@ -127,9 +132,10 @@ async def run(
     if limit is not None:
         tasks = tasks[:limit]
 
-    # The planner exposes the same map_content_to_code signature as Agent, so the
-    # two-agent pipeline is measured through this harness unchanged.
-    agent = Planner(model=model) if planner else Agent(model=model)
+    if pipeline:
+        agent = PlanResolvePipeline(model=model, kind=pipeline)
+    else:
+        agent = Agent(model=model)
     results = []
     processed_repo_urls = set()
 
@@ -182,12 +188,28 @@ def main() -> None:
     parser.add_argument(
         "--planner",
         action="store_true",
-        help="Use the repo-map planner (src.agentic_localization) instead of the single-agent baseline",
+        help="Use the repo-map planner only (same as --pipeline planner_only)",
+    )
+    parser.add_argument(
+        "--pipeline",
+        choices=["planner_only", "planner_menu", "planner_crawl"],
+        default=None,
+        help="Two-agent pipeline: planner_only | planner_menu | planner_crawl",
     )
     args = parser.parse_args()
+    pipeline = args.pipeline
+    if pipeline is None and args.planner:
+        pipeline = "planner_only"
 
     asyncio.run(
-        run(args.annotations, args.output, args.limit, args.model, args.paper, args.planner)
+        run(
+            args.annotations,
+            args.output,
+            args.limit,
+            args.model,
+            args.paper,
+            pipeline=pipeline,
+        )
     )
 
 
