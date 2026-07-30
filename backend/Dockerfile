@@ -2,6 +2,7 @@ FROM python:3.11-slim-bookworm
 
 # PaperMage/OpenCV needs the X11/GL libraries. pdf2image needs Poppler.
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
     ca-certificates \
     git \
     libglib2.0-0 \
@@ -30,7 +31,10 @@ COPY src ./src
 # metadata names `deepread`, so install dependencies without building that
 # project wheel.
 RUN uv sync --frozen --no-dev --no-install-project \
-    && rm -rf /root/.cache/uv
+    && rm -rf /root/.cache/uv \
+    && apt-get update \
+    && apt-get purge -y --auto-remove build-essential \
+    && rm -rf /var/lib/apt/lists/*
 
 ENV PATH="/app/.venv/bin:$PATH"
 
