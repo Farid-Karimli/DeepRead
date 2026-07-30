@@ -1,0 +1,400 @@
+{
+  "summary": {
+    "total_annotations": 12,
+    "num_errored": 0,
+    "num_with_prediction": 11,
+    "num_filepath_correct": 8,
+    "filepath_accuracy": 0.6666666666666666,
+    "num_filepath_hit_at_5": 11,
+    "filepath_hit_at_5_rate": 0.9166666666666666,
+    "mean_iou_given_correct_filepath": 0.19378373819163294,
+    "num_annotations_with_iou": 8,
+    "mean_iou_matching_filepaths": 0.21740328865803213,
+    "num_annotations_with_matching_filepath_iou": 11,
+    "class_accuracy_given_applicable": 1.0,
+    "num_class_correct": 6,
+    "num_class_applicable": 6,
+    "method_accuracy_given_applicable": 0.5714285714285714,
+    "num_method_correct": 4,
+    "num_method_applicable": 7,
+    "mean_duration_seconds": 33.69996352425127,
+    "by_paper": {
+      "investigating_pre_training_objectives_for_generalization_in_vision_based_reinforcement_learning": {
+        "total_annotations": 12,
+        "filepath_accuracy": 0.6666666666666666,
+        "filepath_hit_at_5_rate": 0.9166666666666666,
+        "mean_iou_given_correct_filepath": 0.19378373819163294,
+        "mean_iou_matching_filepaths": 0.21740328865803213,
+        "num_annotations_with_matching_filepath_iou": 11,
+        "class_accuracy_given_applicable": 1.0,
+        "num_class_applicable": 6,
+        "method_accuracy_given_applicable": 0.5714285714285714,
+        "num_method_applicable": 7
+      }
+    }
+  },
+  "annotations": [
+    {
+      "paper_id": "investigating_pre_training_objectives_for_generalization_in_vision_based_reinforcement_learning",
+      "annotation_id": "61fc660b",
+      "duration_seconds": 46.48087141700671,
+      "had_error": false,
+      "predicted_filepath": "src/common/losses.py",
+      "predicted_line_range": [
+        49,
+        79
+      ],
+      "ground_truth_filepaths": [
+        "src/trainers/curl.py"
+      ],
+      "num_predicted_snippets": 3,
+      "filepath_correct": false,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 2,
+      "best_iou": null,
+      "matched_ground_truth_range": null,
+      "mean_iou_matching_filepaths": 0.2,
+      "num_matching_filepath_snippets": 1,
+      "correct_class": null,
+      "correct_method": null,
+      "predicted_class": null,
+      "predicted_method": null,
+      "ground_truth_class": null,
+      "ground_truth_method": null
+    },
+    {
+      "paper_id": "investigating_pre_training_objectives_for_generalization_in_vision_based_reinforcement_learning",
+      "annotation_id": "5d48d1f7",
+      "duration_seconds": 32.44333462501527,
+      "had_error": false,
+      "predicted_filepath": "src/models/heads/mae_head.py",
+      "predicted_line_range": [
+        83,
+        124
+      ],
+      "ground_truth_filepaths": [
+        "src/models/heads/mae_head.py",
+        "src/models/necks/mae_neck.py",
+        "src/trainers/mae.py"
+      ],
+      "num_predicted_snippets": 5,
+      "filepath_correct": true,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 1,
+      "best_iou": 0.0,
+      "matched_ground_truth_range": [
+        52,
+        54
+      ],
+      "mean_iou_matching_filepaths": 0.12260765550239233,
+      "num_matching_filepath_snippets": 4,
+      "correct_class": true,
+      "correct_method": false,
+      "predicted_class": "MAEHead",
+      "predicted_method": "MAEHead.forward",
+      "ground_truth_class": "MAEHead",
+      "ground_truth_method": "MAEHead.__init__"
+    },
+    {
+      "paper_id": "investigating_pre_training_objectives_for_generalization_in_vision_based_reinforcement_learning",
+      "annotation_id": "89b38c78",
+      "duration_seconds": 33.040105209016474,
+      "had_error": false,
+      "predicted_filepath": "src/trainers/atc.py",
+      "predicted_line_range": [
+        53,
+        108
+      ],
+      "ground_truth_filepaths": [
+        "src/trainers/atc.py"
+      ],
+      "num_predicted_snippets": 2,
+      "filepath_correct": true,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 1,
+      "best_iou": 0.21052631578947367,
+      "matched_ground_truth_range": [
+        97,
+        109
+      ],
+      "mean_iou_matching_filepaths": 0.10526315789473684,
+      "num_matching_filepath_snippets": 2,
+      "correct_class": true,
+      "correct_method": true,
+      "predicted_class": "ATCTrainer",
+      "predicted_method": "ATCTrainer.compute_loss",
+      "ground_truth_class": "ATCTrainer",
+      "ground_truth_method": "ATCTrainer.compute_loss"
+    },
+    {
+      "paper_id": "investigating_pre_training_objectives_for_generalization_in_vision_based_reinforcement_learning",
+      "annotation_id": "efa2457a",
+      "duration_seconds": 28.76943770798971,
+      "had_error": false,
+      "predicted_filepath": "src/models/necks/siammae_neck.py",
+      "predicted_line_range": [
+        10,
+        19
+      ],
+      "ground_truth_filepaths": [
+        "src/models/necks/siammae_neck.py",
+        "src/trainers/siammae.py"
+      ],
+      "num_predicted_snippets": 4,
+      "filepath_correct": true,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 1,
+      "best_iou": 0.0,
+      "matched_ground_truth_range": [
+        91,
+        100
+      ],
+      "mean_iou_matching_filepaths": 0.13840996168582376,
+      "num_matching_filepath_snippets": 4,
+      "correct_class": true,
+      "correct_method": false,
+      "predicted_class": "SiamMAENeck",
+      "predicted_method": null,
+      "ground_truth_class": "SiamMAENeck",
+      "ground_truth_method": "SiamMAENeck.forward"
+    },
+    {
+      "paper_id": "investigating_pre_training_objectives_for_generalization_in_vision_based_reinforcement_learning",
+      "annotation_id": "0a45a8c4",
+      "duration_seconds": 21.04939345800085,
+      "had_error": false,
+      "predicted_filepath": "src/trainers/spr.py",
+      "predicted_line_range": [
+        78,
+        85
+      ],
+      "ground_truth_filepaths": [
+        "src/models/heads/spr_head.py",
+        "src/trainers/spr.py"
+      ],
+      "num_predicted_snippets": 5,
+      "filepath_correct": true,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 1,
+      "best_iou": 0.4166666666666667,
+      "matched_ground_truth_range": [
+        74,
+        82
+      ],
+      "mean_iou_matching_filepaths": 0.25833333333333336,
+      "num_matching_filepath_snippets": 5,
+      "correct_class": true,
+      "correct_method": true,
+      "predicted_class": "SPRTrainer",
+      "predicted_method": "SPRTrainer.compute_loss",
+      "ground_truth_class": "SPRTrainer",
+      "ground_truth_method": "SPRTrainer.compute_loss"
+    },
+    {
+      "paper_id": "investigating_pre_training_objectives_for_generalization_in_vision_based_reinforcement_learning",
+      "annotation_id": "5475f170",
+      "duration_seconds": 35.00295858300524,
+      "had_error": false,
+      "predicted_filepath": "src/models/heads/spr_idm_head.py",
+      "predicted_line_range": [
+        77,
+        90
+      ],
+      "ground_truth_filepaths": [
+        "src/trainers/idm.py"
+      ],
+      "num_predicted_snippets": 3,
+      "filepath_correct": false,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 3,
+      "best_iou": null,
+      "matched_ground_truth_range": null,
+      "mean_iou_matching_filepaths": 0.21212121212121213,
+      "num_matching_filepath_snippets": 1,
+      "correct_class": null,
+      "correct_method": null,
+      "predicted_class": null,
+      "predicted_method": null,
+      "ground_truth_class": null,
+      "ground_truth_method": null
+    },
+    {
+      "paper_id": "investigating_pre_training_objectives_for_generalization_in_vision_based_reinforcement_learning",
+      "annotation_id": "e7c20af5",
+      "duration_seconds": 24.895926458004396,
+      "had_error": false,
+      "predicted_filepath": "src/trainers/cql.py",
+      "predicted_line_range": [
+        128,
+        139
+      ],
+      "ground_truth_filepaths": [
+        "src/trainers/cql.py"
+      ],
+      "num_predicted_snippets": 1,
+      "filepath_correct": true,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 1,
+      "best_iou": 0.9230769230769231,
+      "matched_ground_truth_range": [
+        128,
+        140
+      ],
+      "mean_iou_matching_filepaths": 0.9230769230769231,
+      "num_matching_filepath_snippets": 1,
+      "correct_class": true,
+      "correct_method": true,
+      "predicted_class": "CQLTrainer",
+      "predicted_method": "CQLTrainer.compute_loss",
+      "ground_truth_class": "CQLTrainer",
+      "ground_truth_method": "CQLTrainer.compute_loss"
+    },
+    {
+      "paper_id": "investigating_pre_training_objectives_for_generalization_in_vision_based_reinforcement_learning",
+      "annotation_id": "d8974e2c",
+      "duration_seconds": 45.89839874999598,
+      "had_error": false,
+      "predicted_filepath": "src/models/necks/dt_neck.py",
+      "predicted_line_range": [
+        56,
+        87
+      ],
+      "ground_truth_filepaths": [
+        "src/models/necks/dt_neck.py",
+        "src/trainers/dt.py"
+      ],
+      "num_predicted_snippets": 4,
+      "filepath_correct": true,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 1,
+      "best_iou": 0.0,
+      "matched_ground_truth_range": [
+        93,
+        102
+      ],
+      "mean_iou_matching_filepaths": 0.2777777777777778,
+      "num_matching_filepath_snippets": 4,
+      "correct_class": true,
+      "correct_method": true,
+      "predicted_class": "DTNeck",
+      "predicted_method": "DTNeck.forward",
+      "ground_truth_class": "DTNeck",
+      "ground_truth_method": "DTNeck.forward"
+    },
+    {
+      "paper_id": "investigating_pre_training_objectives_for_generalization_in_vision_based_reinforcement_learning",
+      "annotation_id": "893e1818",
+      "duration_seconds": 26.01149937498849,
+      "had_error": false,
+      "predicted_filepath": null,
+      "predicted_line_range": null,
+      "ground_truth_filepaths": [
+        "src/models/backbones/resnet.py"
+      ],
+      "num_predicted_snippets": 0,
+      "filepath_correct": false,
+      "filepath_hit_at_5": false,
+      "filepath_hit_rank": null,
+      "best_iou": null,
+      "matched_ground_truth_range": null,
+      "mean_iou_matching_filepaths": null,
+      "num_matching_filepath_snippets": 0,
+      "correct_class": null,
+      "correct_method": null,
+      "predicted_class": null,
+      "predicted_method": null,
+      "ground_truth_class": null,
+      "ground_truth_method": null
+    },
+    {
+      "paper_id": "investigating_pre_training_objectives_for_generalization_in_vision_based_reinforcement_learning",
+      "annotation_id": "ff93a88d",
+      "duration_seconds": 23.950472500000615,
+      "had_error": false,
+      "predicted_filepath": "src/common/dataset_utils.py",
+      "predicted_line_range": [
+        14,
+        29
+      ],
+      "ground_truth_filepaths": [
+        "src/common/dataset_utils.py",
+        "src/dataloaders/__init__.py"
+      ],
+      "num_predicted_snippets": 2,
+      "filepath_correct": true,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 1,
+      "best_iou": 0.0,
+      "matched_ground_truth_range": [
+        134,
+        145
+      ],
+      "mean_iou_matching_filepaths": 0.15384615384615385,
+      "num_matching_filepath_snippets": 2,
+      "correct_class": "not_applicable",
+      "correct_method": false,
+      "predicted_class": null,
+      "predicted_method": "prepare_ataripb_dataset",
+      "ground_truth_class": null,
+      "ground_truth_method": "load_replay_dataset"
+    },
+    {
+      "paper_id": "investigating_pre_training_objectives_for_generalization_in_vision_based_reinforcement_learning",
+      "annotation_id": "d0cf1fff",
+      "duration_seconds": 40.359324374992866,
+      "had_error": false,
+      "predicted_filepath": "run_offline_bc.py",
+      "predicted_line_range": [
+        109,
+        167
+      ],
+      "ground_truth_filepaths": [
+        "run_offline_bc.py"
+      ],
+      "num_predicted_snippets": 4,
+      "filepath_correct": true,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 1,
+      "best_iou": 0.0,
+      "matched_ground_truth_range": null,
+      "mean_iou_matching_filepaths": 0.0,
+      "num_matching_filepath_snippets": 1,
+      "correct_class": null,
+      "correct_method": null,
+      "predicted_class": null,
+      "predicted_method": null,
+      "ground_truth_class": null,
+      "ground_truth_method": null
+    },
+    {
+      "paper_id": "investigating_pre_training_objectives_for_generalization_in_vision_based_reinforcement_learning",
+      "annotation_id": "c58f2e9b",
+      "duration_seconds": 46.49783983299858,
+      "had_error": false,
+      "predicted_filepath": "src/agents/base.py",
+      "predicted_line_range": [
+        96,
+        202
+      ],
+      "ground_truth_filepaths": [
+        "configs/online_rl.yaml",
+        "run_online_rl.py",
+        "src/agents/rainbow.py"
+      ],
+      "num_predicted_snippets": 3,
+      "filepath_correct": false,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 3,
+      "best_iou": null,
+      "matched_ground_truth_range": null,
+      "mean_iou_matching_filepaths": 0.0,
+      "num_matching_filepath_snippets": 1,
+      "correct_class": null,
+      "correct_method": null,
+      "predicted_class": null,
+      "predicted_method": null,
+      "ground_truth_class": null,
+      "ground_truth_method": null
+    }
+  ]
+}

@@ -1,5 +1,11 @@
 import { useContext, useEffect, useMemo, useRef, useState } from 'react';
-import type { codeToContentMatch, githubRepoTreeResponse, PaperContentMatch } from '../api/types.ts';
+import type {
+    CodeRangeRef,
+    MappingRef,
+    codeToContentMatch,
+    githubRepoTreeResponse,
+    PaperContentMatch,
+} from '../api/types.ts';
 import { getGithubFileFromBlobUrl, mapCodeToContent, getCodeToContentMatches } from '../api/main';
 import { dedupeRanges } from '../utils/dedupeRanges.ts';
 import { VscFolder, VscFile } from 'react-icons/vsc';
@@ -12,13 +18,21 @@ import { useCeleryTaskStatus } from '../hooks/useCeleryTaskStatus.ts';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { UserContext } from '../context/UserContext.tsx';
+import { useCopilotContext } from '../context/CopilotContext.tsx';
+import { logStudyEvent } from '../utils/studyLog.ts';
+import MappingTaskBanner from './MappingTaskBanner.tsx';
+
+export type ContextualPaperContentMatch = PaperContentMatch & {
+    sourceMappingRef?: MappingRef;
+};
 
 interface RepoViewProps {
     tree: githubRepoTreeResponse;
     paperId: string;
     code?: string,
     filepath?: string,
-    setPaperContentMatches: (matches: PaperContentMatch[]) => void
+    setPaperContentMatches: (matches: ContextualPaperContentMatch[]) => void;
+    showPaperPage: (pageIndex: number) => void;
 }
 
 const CONTENT_MATCH_VERDICT_TO_COLOR: Record<string, string> = {
@@ -59,8 +73,51 @@ const readStoredCodeMatchFilter = (): CodeMatchFilter => {
     return DEFAULT_CODE_MATCH_FILTER;
 };
 
-const RepoView = ({ tree, paperId, setPaperContentMatches }: RepoViewProps) => {
+/**
+ * File/range controls for the open match. Keeping these beside the code viewer
+ * makes the reasoning read first and the snippet choices act as view controls.
+ */
+function CandidateSnippetPills() {
+    const { codeInfo, selectCandidate } = useSidePanel();
+    const candidates = codeInfo?.candidates ?? [];
+
+    if (candidates.length < 2) {
+        return null;
+    }
+
+    return (
+        <div
+            className="candidate-pill-list candidate-pill-list--match-detail"
+            role="tablist"
+            aria-label="Matched code snippets"
+        >
+            {candidates.map((candidate, index) => {
+                const basename = candidate.filePath.split('/').pop() ?? candidate.filePath;
+                const isActive = index === codeInfo?.activeCandidateIndex;
+                const sameFileAsPrev =
+                    index > 0 && candidates[index - 1].filePath === candidate.filePath;
+
+                return (
+                    <button
+                        key={`${candidate.filePath}-${candidate.startLine}-${candidate.endLine}-${index}`}
+                        type="button"
+                        role="tab"
+                        aria-selected={isActive}
+                        title={candidate.filePath}
+                        className={`candidate-pill-list__pill${isActive ? ' candidate-pill-list__pill--active' : ''}${sameFileAsPrev ? ' candidate-pill-list__pill--grouped' : ''}`}
+                        onClick={() => selectCandidate(index)}
+                    >
+                        {basename}:{candidate.startLine}-{candidate.endLine}
+                    </button>
+                );
+            })}
+        </div>
+    );
+}
+
+const RepoView = ({ tree, paperId, setPaperContentMatches, showPaperPage }: RepoViewProps) => {
     const {currentUser} = useContext(UserContext);
+    const { addContext } = useCopilotContext();
     const [currentPath, setCurrentPath] = useState(() => "");
     const [currentFileContent, setCurrentFileContent] = useState<string | null>(null);
     const [scrollFocusRange, setScrollFocusRange] = useState<{ start: number; end: number } | null>(null);
@@ -77,7 +134,6 @@ const RepoView = ({ tree, paperId, setPaperContentMatches }: RepoViewProps) => {
         rect: DOMRect;
         range: Range;
     } | null>(null);
-    const [codeMappingLoading, setCodeMappingLoading] = useState(false);
     const [codeMatchingTaskId, setCodeMatchingTaskId] = useState<string | null>(null);
 
     const queryClient = useQueryClient();
@@ -118,6 +174,7 @@ const RepoView = ({ tree, paperId, setPaperContentMatches }: RepoViewProps) => {
 
     useEffect(() => {
         window.localStorage.setItem(CODE_MATCH_FILTER_STORAGE_KEY, codeMatchFilter);
+        logStudyEvent('ui', 'code_match_filter_change', { code_match_filter: codeMatchFilter });
     }, [codeMatchFilter]);
 
     useEffect(() => {
@@ -161,16 +218,48 @@ const RepoView = ({ tree, paperId, setPaperContentMatches }: RepoViewProps) => {
     usePDFTextSelection(codeViewerRef, setPendingCodeSelection);
 
     const handleShowInPaper = (range: { start: number; end: number }) => {
+        const isOriginatingRange =
+            codeInfo?.filePath === currentPath &&
+            codeInfo.codeRanges.some(
+                (codeRange) =>
+                    codeRange.startLine === range.start &&
+                    codeRange.endLine === range.end,
+            );
+        if (isOriginatingRange && codeInfo.paperPageIndex != null) {
+            logStudyEvent('navigation', 'scroll_to_paper_page', {
+                page_index: codeInfo.paperPageIndex,
+                source: 'code_match_originating',
+            });
+            showPaperPage(codeInfo.paperPageIndex);
+            return;
+        }
+
         const match = (codeToContentMatchesQuery.data ?? []).find(
             (m: codeToContentMatch) => m.inputs.start === range.start && m.inputs.end === range.end,
         );
         if (match?.outputs.matches) {
-            setPaperContentMatches(match.outputs.matches);
+            const sourceMappingRef: MappingRef | undefined = match.cache_key
+                ? {
+                    type: 'mapping',
+                    mapping_type: 'code_to_content',
+                    cache_key: match.cache_key,
+                    filepath: match.inputs.filepath,
+                    start_line: match.inputs.start,
+                    end_line: match.inputs.end,
+                    label: `Code-to-paper match ${match.cache_key}`,
+                }
+                : undefined;
+            setPaperContentMatches(
+                match.outputs.matches.map((paperMatch) => ({
+                    ...paperMatch,
+                    sourceMappingRef,
+                })),
+            );
         }
     };
 
     const getFileURLByPath = (path: string) => {
-        return tree.tree.find((obj, _) => obj.path === path)?.url;
+        return tree.tree.find((obj) => obj.path === path)?.url;
     };
 
     useEffect(() => {
@@ -186,7 +275,6 @@ const RepoView = ({ tree, paperId, setPaperContentMatches }: RepoViewProps) => {
 
         if (codeMatchingTaskQuery.data?.status === 'FAILURE') {
             console.error('Code mapping failed');
-            setCodeMappingLoading(false);
             setCodeMatchingTaskId(null);
             setPendingCodeSelection(null);
         }
@@ -233,6 +321,9 @@ const RepoView = ({ tree, paperId, setPaperContentMatches }: RepoViewProps) => {
     }
 
     const onEntryClick = (filepath: string, url: string, isFile: boolean) => {
+        logStudyEvent('navigation', isFile ? 'file_open' : 'directory_open', {
+            path: filepath,
+        });
         setScrollFocusRange(null);
         setCurrentCodeDescription(null);
         hideCode();
@@ -253,6 +344,11 @@ const RepoView = ({ tree, paperId, setPaperContentMatches }: RepoViewProps) => {
     const backButtonClick = () => {
         const parts = currentPath.split('/').filter(Boolean);
         const parentDir = parts.slice(0, -1).join('/');
+        logStudyEvent('navigation', 'repo_navigate_back', {
+            from_path: currentPath,
+            to_path: parentDir,
+            had_file_open: Boolean(currentFileContent),
+        });
         if (currentFileContent) {
             setCurrentFileContent(null);
             setScrollFocusRange(null);
@@ -305,13 +401,44 @@ const RepoView = ({ tree, paperId, setPaperContentMatches }: RepoViewProps) => {
             filepath: currentPath,
             user_id: currentUser?.id ?? 1,
         }
+        logStudyEvent('mapping', 'code_to_content_ui_submit', {
+            code: pendingCodeSelection.text,
+            filepath: currentPath,
+            start: lineRange.start,
+            end: lineRange.end,
+        });
         codeMatchingMutation.mutate(input);
     }
+
+    const handleAddSelectionToChat = () => {
+        if (!pendingCodeSelection || !currentFileContent || !currentPath) return;
+
+        const lineRange = lineRangeFromRange(currentFileContent, pendingCodeSelection.range);
+        const contextRef: CodeRangeRef = {
+            type: 'code_range',
+            filepath: currentPath,
+            start_line: lineRange.start,
+            end_line: lineRange.end,
+            label: `${currentPath}:${lineRange.start}-${lineRange.end}`,
+        };
+        addContext(contextRef);
+        logStudyEvent('copilot', 'context_attach', { context_ref: contextRef, source: 'code_selection' });
+        setPendingCodeSelection(null);
+        window.getSelection()?.removeAllRanges();
+    };
 
     const isMapping = codeMatchingMutation.isPending || codeMatchingTaskId !== null;    
 
     return (
         <div className="repo-tree">
+            <MappingTaskBanner
+                visible={isMapping}
+                status={codeMatchingTaskQuery.data?.status}
+                submitting={
+                    codeMatchingMutation.isPending && codeMatchingTaskId === null
+                }
+                direction="code_to_content"
+            />
             <h3 className="repo-tree__heading">Repo View</h3>
             <div className="repo-tree__header">
                 <div className="repo-tree__header-row">
@@ -375,6 +502,7 @@ const RepoView = ({ tree, paperId, setPaperContentMatches }: RepoViewProps) => {
                     </div>
                 )}
             </div>
+            <CandidateSnippetPills />
             {currentFileContent ? <CodeViewer
                 ref={codeViewerRef}
                 code={currentFileContent}
@@ -413,6 +541,13 @@ const RepoView = ({ tree, paperId, setPaperContentMatches }: RepoViewProps) => {
                             disabled={isMapping}
                         >
                             {isMapping ? 'Mapping...' : 'Map to paper content'}
+                        </button>
+                        <button
+                            type="button"
+                            className="pdf-selection-popover__btn pdf-selection-popover__btn--ghost"
+                            onClick={handleAddSelectionToChat}
+                        >
+                            Add to chat
                         </button>
                         <button
                             type="button"

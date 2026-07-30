@@ -18,6 +18,8 @@ export type CodeInfo = {
   codeRanges: CodeRange[];
   /** If set, scroll this range into view (still highlights all `codeRanges`). */
   scrollToRange?: CodeRange;
+  /** Zero-based PDF page that opened this code match. */
+  paperPageIndex?: number;
   description: string;
   /** All candidate snippets for the current match (may span multiple files), for the segmented pill switcher. */
   candidates?: CodeCandidate[];

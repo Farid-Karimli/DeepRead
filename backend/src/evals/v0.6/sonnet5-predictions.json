@@ -1,0 +1,320 @@
+[
+  {
+    "paper_id": "investigating_pre_training_objectives_for_generalization_in_vision_based_reinforcement_learning",
+    "annotation_id": "61fc660b",
+    "claim_text": "CURL: Contrastive Unsupervised Reinforcement Learning\n(Laskin et al., 2020b) learns the spatial feature of images\nusing augmentation functions and InfoNCE loss.",
+    "section_ref": "4.2. Learning from Image",
+    "ground_truth_verdict": "implemented",
+    "ground_truth_locations": [
+      {
+        "filepath": "src/trainers/curl.py",
+        "line_range": [
+          13,
+          25
+        ]
+      },
+      {
+        "filepath": "src/trainers/curl.py",
+        "line_range": [
+          89,
+          97
+        ]
+      },
+      {
+        "filepath": "src/trainers/curl.py",
+        "line_range": [
+          59,
+          65
+        ]
+      }
+    ],
+    "prediction": {
+      "reasoning": "The content describes CURL (Contrastive Unsupervised Reinforcement Learning) by Laskin et al. 2020, which learns spatial features using augmentation functions and InfoNCE loss. I searched the repository and found: (1) src/trainers/curl.py containing the CURLTrainer implementation, (2) src/common/augmentation.py containing augmentation functions, and (3) src/common/losses.py containing the CURLLoss. The key implementation is in curl.py where augmentation is applied (lines 59-65) to create two views (x_q and x_k), features are extracted through backbone and neck networks (lines 67-77), and InfoNCE loss is computed using cross-entropy on the similarity matrix (lines 89-96). This matches the paper's description of learning spatial features through contrastive learning with augmented views. The InfoNCE loss is implemented as a cross-entropy loss over the similarity matrix between query and key representations, which is the standard formulation of InfoNCE.",
+      "verdict": "implemented",
+      "code_snippets": [
+        {
+          "content": "        # augmentation\n        n, t, f, c, h, w = x.shape\n        x = rearrange(x, 'n t f c h w -> n (t f c) h w')\n        x_q = self.aug_func(x) # two views\n        x_k = self.aug_func(x)\n        x_q = rearrange(x_q, 'n (t f c) h w -> n t f c h w', t=t, f=f, c=c)\n        x_k = rearrange(x_k, 'n (t f c) h w -> n t f c h w', t=t, f=f, c=c)\n\n        # online backbone/neck/head\n        x_q, _ = self.model.backbone(x_q)\n        x_q, _ = self.model.neck(x_q, game_id) # game-wise spatial embedding\n        pred_x, _ = self.model.head(x_q, game_id)\n        pred_x = rearrange(pred_x, 'n t d -> (n t) d')\n\n        # momentum backbone/neck\n        with torch.no_grad():\n            x_k, _ = self.target_backbone(x_k)\n            x_k, _ = self.target_neck(x_k, game_id)\n            target_x = rearrange(x_k, 'n t d -> (n t) d')",
+          "filepath": "src/trainers/curl.py",
+          "start_line": 59,
+          "end_line": 77
+        },
+        {
+          "content": "class Augmentation(nn.Module):\n    def __init__(self, obs_shape, aug_types=[], mask_ratio=None):\n        super().__init__()\n        self.layers = []\n        for aug_type in aug_types:\n            # kornia random crop is 20x slower than default (2023.02.27)\n            # https://github.com/kornia/kornia/issues/1559\n            if aug_type == 'random_shift_kornia':\n                _, _, W, H = obs_shape\n                self.layers.append(nn.ReplicationPad2d(4))\n                self.layers.append(aug.RandomCrop((W, H)))\n\n            elif aug_type == 'random_shift':\n                _, _, W, H = obs_shape\n                self.layers.append(RandomShiftsAug(pad=4))\n\n            elif aug_type == 'cutout':\n                self.layers.append(aug.RandomErasing(p=0.5))\n            \n            elif aug_type == 'h_flip':\n                self.layers.append(aug.RandomHorizontalFlip(p=0.1))\n\n            elif aug_type == 'v_flip':\n                self.layers.append(aug.RandomVerticalFlip(p=0.1))\n\n            elif aug_type == 'rotate':\n                self.layers.append(aug.RandomRotation(degrees=5.0))\n\n            elif aug_type == 'intensity':\n                self.layers.append(Intensity(scale=0.05))\n\n            elif aug_type == 'spatial_mask':\n                if mask_ratio is None:\n                    mask_ratio = 0.25\n                self.layers.append(RandomSpatialMaskAug(mask_ratio))\n\n            else:\n                raise ValueError\n\n        self.layers = nn.ModuleList(self.layers)\n\n    def forward(self, x):\n        for layer in self.layers:\n            x = layer(x)\n        return x",
+          "filepath": "src/common/augmentation.py",
+          "start_line": 92,
+          "end_line": 136
+        },
+        {
+          "content": "        # similarity\n        similarity = pred_x @ target_x.t()\n        similarity = similarity / self.cfg.temperature # temperature\n\n        # loss & acc\n        gt_label = torch.arange(similarity.shape[0]).to(self.device)\n        criterion = nn.CrossEntropyLoss()\n        loss = criterion(similarity, gt_label)\n        self_pred_acc = torch.mean((torch.argmax(similarity, axis=1)==gt_label).float())",
+          "filepath": "src/trainers/curl.py",
+          "start_line": 89,
+          "end_line": 97
+        }
+      ]
+    },
+    "tool_trace": [
+      {
+        "step": 1,
+        "kind": "tool_use",
+        "t_offset_s": 6.037,
+        "tool_use_id": "toolu_015uHdJqFeiKpEHEcdCfeFQe",
+        "tool": "Bash",
+        "input": {
+          "command": "find . -type f -name \"*.py\" | head -20",
+          "description": "List Python files in the repository",
+          "tool": "Bash"
+        },
+        "result_preview": "./run_zeroshot.py\n./run_online_rl.py\n./run_pretrain.py\n./__init__.py\n./run_offline_bc.py\n./src/dataloaders/random_future_state.py\n./src/dataloaders/__init__.py\n./src/dataloaders/two_random_future_states.py\n./src/dataloaders/default.py\n./src/dataloaders/base.py\n./src/__init__.py\n./src/agents/buffers/__init__.py\n./src/agents/buffers/per_buffer.py\n./src/agents/buffers/base.py\n./src/agents/__init__.py\n./src/agents/base.py\n./src/agents/rainbow.py\n./src/models/necks/mae_neck.py\n./src/models/necks/line\u2026 (+36 chars)",
+        "result_chars": 536,
+        "is_error": false,
+        "result_t_offset_s": 6.47
+      },
+      {
+        "step": 2,
+        "kind": "tool_result_summary",
+        "t_offset_s": 6.47,
+        "result_keys": [
+          "interrupted",
+          "isImage",
+          "stderr",
+          "stdout"
+        ],
+        "preview": "{'stdout': './run_zeroshot.py\\n./run_online_rl.py\\n./run_pretrain.py\\n./__init__.py\\n./run_offline_bc.py\\n./src/dataloaders/random_future_state.py\\n./src/dataloaders/__init__.py\\n./src/dataloaders/two_random_future_states.py\\n./src/dataloaders/default.py\\n./src/dataloaders/base.py\\n./src/__init__.py\\n./src/agents/buffers/__init__.py\\n./src/agents/buffers/per_buffer.py\\n./src/agents/buffers/base.py\\n./src/agents/__init__.py\\n./src/agents/base.py\\n./src/agents/rainbow.py\\n./src/models/necks/mae_ne\u2026 (+123 chars)"
+      },
+      {
+        "step": 3,
+        "kind": "tool_use",
+        "t_offset_s": 6.983,
+        "tool_use_id": "toolu_01XaWqXK8UVLJnFT34arU6ZZ",
+        "tool": "Grep",
+        "input": {
+          "pattern": "CURL|curl",
+          "path": "/Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/Atari-PB",
+          "output_mode": "files_with_matches",
+          "extra": {
+            "-i": true
+          },
+          "tool": "Grep"
+        },
+        "result_preview": "Found 4 files\nsrc/trainers/curl.py\nsrc/common/losses.py\nscripts/pretrain/curl.sh\nreadme.md",
+        "result_chars": 90,
+        "is_error": false,
+        "result_t_offset_s": 7.287
+      },
+      {
+        "step": 4,
+        "kind": "tool_result_summary",
+        "t_offset_s": 7.287,
+        "result_keys": [
+          "filenames",
+          "mode",
+          "numFiles"
+        ],
+        "preview": "{'mode': 'files_with_matches', 'filenames': ['src/trainers/curl.py', 'src/common/losses.py', 'scripts/pretrain/curl.sh', 'readme.md'], 'numFiles': 4}"
+      },
+      {
+        "step": 5,
+        "kind": "tool_use",
+        "t_offset_s": 10.165,
+        "tool_use_id": "toolu_013bPRYYiK8JxgvrDwXwF9Qm",
+        "tool": "Read",
+        "input": {
+          "file_path": "/Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/Atari-PB/src/trainers/curl.py",
+          "path": "/Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/Atari-PB/src/trainers/curl.py",
+          "tool": "Read"
+        },
+        "result_preview": "     1\u2192import torch\n     2\u2192import torch.nn as nn\n     3\u2192import torch.nn.functional as F\n     4\u2192import torch.distributed as dist\n     5\u2192import numpy as np\n     6\u2192import copy\n     7\u2192from einops import rearrange\n     8\u2192from .base import BaseTrainer\n     9\u2192from src.common.logger import AgentLogger\n    10\u2192from src.common.schedulers import LinearScheduler\n    11\u2192\n    12\u2192\n    13\u2192class CURLTrainer(BaseTrainer):\n    14\u2192    name = 'curl'\n    15\u2192    def __init__(self,\n    16\u2192                 cfg,\n    17\u2192  \u2026 (+6963 chars)",
+        "result_chars": 7463,
+        "is_error": false,
+        "result_t_offset_s": 10.173
+      },
+      {
+        "step": 6,
+        "kind": "tool_result_summary",
+        "t_offset_s": 10.173,
+        "result_keys": [
+          "file",
+          "type"
+        ],
+        "preview": "{'type': 'text', 'file': {'filePath': '/Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/Atari-PB/src/trainers/curl.py', 'content': \"import torch\\nimport torch.nn as nn\\nimport torch.nn.functional as F\\nimport torch.distributed as dist\\nimport numpy as np\\nimport copy\\nfrom einops import rearrange\\nfrom .base import BaseTrainer\\nfrom src.common.logger import AgentLogger\\nfrom src.common.schedulers import LinearScheduler\\n\\n\\nclass CURLTrainer(BaseTrainer):\\n    name = 'curl'\\\u2026 (+5912 chars)"
+      },
+      {
+        "step": 7,
+        "kind": "tool_use",
+        "t_offset_s": 10.335,
+        "tool_use_id": "toolu_014yjLX1qLX35y9MxduCEhNB",
+        "tool": "Read",
+        "input": {
+          "file_path": "/Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/Atari-PB/src/common/losses.py",
+          "path": "/Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/Atari-PB/src/common/losses.py",
+          "tool": "Read"
+        },
+        "result_preview": "     1\u2192import torch\n     2\u2192import torch.nn as nn\n     3\u2192import torch.nn.functional as F\n     4\u2192\n     5\u2192\n     6\u2192###########################################\n     7\u2192# loss function for SSL\n     8\u2192INF = 1e9\n     9\u2192\n    10\u2192class ContrastiveLoss(nn.Module):\n    11\u2192    def __init__(self, temperature, reduction='mean'):\n    12\u2192        super().__init__()\n    13\u2192        self.temperature = temperature\n    14\u2192        self.reduction = reduction\n    15\u2192        \n    16\u2192    def forward(self, z):\n    17\u2192        \u2026 (+8297 chars)",
+        "result_chars": 8797,
+        "is_error": false,
+        "result_t_offset_s": 10.341
+      },
+      {
+        "step": 8,
+        "kind": "tool_result_summary",
+        "t_offset_s": 10.341,
+        "result_keys": [
+          "file",
+          "type"
+        ],
+        "preview": "{'type': 'text', 'file': {'filePath': '/Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/Atari-PB/src/common/losses.py', 'content': 'import torch\\nimport torch.nn as nn\\nimport torch.nn.functional as F\\n\\n\\n###########################################\\n# loss function for SSL\\nINF = 1e9\\n\\nclass ContrastiveLoss(nn.Module):\\n    def __init__(self, temperature, reduction=\\'mean\\'):\\n        super().__init__()\\n        self.temperature = temperature\\n        self.reduction = redu\u2026 (+6918 chars)"
+      },
+      {
+        "step": 9,
+        "kind": "tool_use",
+        "t_offset_s": 15.115,
+        "tool_use_id": "toolu_01THnUdwh6eC3vR9r3PMJmMV",
+        "tool": "Grep",
+        "input": {
+          "pattern": "aug_func|augmentation",
+          "path": "/Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/Atari-PB",
+          "output_mode": "files_with_matches",
+          "extra": {
+            "-i": true
+          },
+          "tool": "Grep"
+        },
+        "result_preview": "Found 17 files\nsrc/trainers/spr_idm.py\nsrc/trainers/spr.py\nsrc/trainers/atc.py\nsrc/trainers/base.py\nsrc/trainers/bc.py\nsrc/trainers/cql.py\nsrc/trainers/curl.py\nsrc/trainers/dt.py\nsrc/trainers/idm.py\nsrc/trainers/mae.py\nsrc/trainers/r3m.py\nsrc/trainers/siammae.py\nsrc/trainers/__init__.py\nsrc/agents/__init__.py\nsrc/agents/base.py\nsrc/agents/rainbow.py\nsrc/common/augmentation.py",
+        "result_chars": 378,
+        "is_error": false,
+        "result_t_offset_s": 15.42
+      },
+      {
+        "step": 10,
+        "kind": "tool_result_summary",
+        "t_offset_s": 15.42,
+        "result_keys": [
+          "filenames",
+          "mode",
+          "numFiles"
+        ],
+        "preview": "{'mode': 'files_with_matches', 'filenames': ['src/trainers/spr_idm.py', 'src/trainers/spr.py', 'src/trainers/atc.py', 'src/trainers/base.py', 'src/trainers/bc.py', 'src/trainers/cql.py', 'src/trainers/curl.py', 'src/trainers/dt.py', 'src/trainers/idm.py', 'src/trainers/mae.py', 'src/trainers/r3m.py', 'src/trainers/siammae.py', 'src/trainers/__init__.py', 'src/agents/__init__.py', 'src/agents/base.py', 'src/agents/rainbow.py', 'src/common/augmentation.py'], 'numFiles': 17}"
+      },
+      {
+        "step": 11,
+        "kind": "tool_use",
+        "t_offset_s": 17.722,
+        "tool_use_id": "toolu_01Fq9aySweuiQ79MejiW7S9h",
+        "tool": "Read",
+        "input": {
+          "file_path": "/Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/Atari-PB/src/common/augmentation.py",
+          "path": "/Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/Atari-PB/src/common/augmentation.py",
+          "tool": "Read"
+        },
+        "result_preview": "     1\u2192import torch\n     2\u2192import torch.nn as nn\n     3\u2192import torch.nn.functional as F\n     4\u2192import kornia.augmentation as aug\n     5\u2192\n     6\u2192\n     7\u2192class Intensity(nn.Module):\n     8\u2192    def __init__(self, scale):\n     9\u2192        super().__init__()\n    10\u2192        self.scale = scale\n    11\u2192\n    12\u2192    def forward(self, x):\n    13\u2192        r = torch.randn((x.size(0), 1, 1, 1), device=x.device)\n    14\u2192        noise = 1.0 + (self.scale * r.clamp(-2.0, 2.0))\n    15\u2192        return x * noise\n    16\u2192\n\u2026 (+6293 chars)",
+        "result_chars": 6793,
+        "is_error": false,
+        "result_t_offset_s": 17.735
+      },
+      {
+        "step": 12,
+        "kind": "tool_result_summary",
+        "t_offset_s": 17.735,
+        "result_keys": [
+          "file",
+          "type"
+        ],
+        "preview": "{'type': 'text', 'file': {'filePath': '/Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/Atari-PB/src/common/augmentation.py', 'content': \"import torch\\nimport torch.nn as nn\\nimport torch.nn.functional as F\\nimport kornia.augmentation as aug\\n\\n\\nclass Intensity(nn.Module):\\n    def __init__(self, scale):\\n        super().__init__()\\n        self.scale = scale\\n\\n    def forward(self, x):\\n        r = torch.randn((x.size(0), 1, 1, 1), device=x.device)\\n        noise = 1.0 + \u2026 (+5140 chars)"
+      },
+      {
+        "step": 13,
+        "kind": "tool_use",
+        "t_offset_s": 22.102,
+        "tool_use_id": "toolu_017s6AGSoY7cJLKS27efsCiK",
+        "tool": "Grep",
+        "input": {
+          "pattern": "InfoNCE|infonce",
+          "path": "/Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/Atari-PB",
+          "output_mode": "content",
+          "extra": {
+            "-i": true
+          },
+          "tool": "Grep"
+        },
+        "result_preview": "No matches found",
+        "result_chars": 16,
+        "is_error": false,
+        "result_t_offset_s": 22.403
+      },
+      {
+        "step": 14,
+        "kind": "tool_result_summary",
+        "t_offset_s": 22.403,
+        "result_keys": [
+          "content",
+          "filenames",
+          "mode",
+          "numFiles",
+          "numLines"
+        ],
+        "preview": "{'mode': 'content', 'numFiles': 0, 'filenames': [], 'content': '', 'numLines': 0}"
+      },
+      {
+        "step": 15,
+        "kind": "tool_use",
+        "t_offset_s": 27.769,
+        "tool_use_id": "toolu_015nV1VvmdsJzspceRzRyG5e",
+        "tool": "Bash",
+        "input": {
+          "command": "grep -i \"curl\\|laskin\" /Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/Atari-PB/readme.md | head -20",
+          "description": "Check README for CURL references",
+          "tool": "Bash"
+        },
+        "result_preview": "| CURL      | [Laskin et al.](https://arxiv.org/abs/2004.04136)          | `./scripts/pretrain/curl.sh`    |",
+        "result_chars": 108,
+        "is_error": false,
+        "result_t_offset_s": 27.841
+      },
+      {
+        "step": 16,
+        "kind": "tool_result_summary",
+        "t_offset_s": 27.841,
+        "result_keys": [
+          "interrupted",
+          "isImage",
+          "stderr",
+          "stdout"
+        ],
+        "preview": "{'stdout': '| CURL      | [Laskin et al.](https://arxiv.org/abs/2004.04136)          | `./scripts/pretrain/curl.sh`    |', 'stderr': '', 'interrupted': False, 'isImage': False}"
+      }
+    ],
+    "process_metrics": {
+      "num_tool_calls": 8,
+      "tool_sequence": [
+        "Bash",
+        "Grep",
+        "Read",
+        "Read",
+        "Grep",
+        "Read",
+        "Grep",
+        "Bash"
+      ],
+      "num_searches": 5,
+      "num_reads": 3,
+      "num_unique_files_read": 3,
+      "files_read": [
+        "/Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/Atari-PB/src/trainers/curl.py",
+        "/Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/Atari-PB/src/common/losses.py",
+        "/Users/faridkarimli/Desktop/Programming/PhD/DeepRead/backend/src/temp/Atari-PB/src/common/augmentation.py"
+      ],
+      "search_patterns": [
+        "CURL|curl",
+        "aug_func|augmentation",
+        "InfoNCE|infonce"
+      ],
+      "first_search_step": 1,
+      "first_read_step": 5,
+      "search_before_read": true,
+      "duration_s": 51.42,
+      "num_errors": 0
+    },
+    "error": null,
+    "duration_seconds": 51.89042591699399
+  }
+]

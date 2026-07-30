@@ -18,5 +18,11 @@ papers
 
 *.json
 
+src/tests
 src/evals
+src/temp
+src/agentic_localization/cache
+src/papermage/docs
+src/papermage/examples
+src/papermage/tests
 src/vectorize

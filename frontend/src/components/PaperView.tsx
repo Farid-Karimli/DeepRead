@@ -14,16 +14,17 @@ import { Group, Panel, Separator } from "react-resizable-panels";
 import { useQuery, useMutation, useQueryClient} from '@tanstack/react-query';
 
 import { mapContentToCode, getContentToCodeMatches } from '../api/main.ts';
-import type { codeMatchesResult, githubRepoTreeResponse, processPDFResult, paperContentToCodeMatch, paperContentBox, PaperContentMatch } from '../api/types.ts';
+import type { codeMatchesResult, githubRepoTreeResponse, processPDFResult, paperContentToCodeMatch, paperContentBox } from '../api/types.ts';
 import { resolvePaperMageEntity } from '../utils/resolvePaperMageEntity.ts';
 import { HighlightOverlayDemo, type BoundingBoxWithTooltip } from './CodeOverlay.tsx';
-import RepoView from './RepoView.tsx';
+import RepoView, { type ContextualPaperContentMatch } from './RepoView.tsx';
 import { captureSelectionHighlightsFromRange } from '../utils/selectionRangeToPageBox.ts';
 import { usePDFTextSelection } from '../hooks/useTextSelection.tsx';
 import { useCeleryTaskStatus } from '../hooks/useCeleryTaskStatus.ts';
 import { UserContext } from '../context/UserContext.tsx';
-import { useSidePanel } from '../context/SidePanelContext.tsx';
 import ThemeToggle from './ThemeToggle';
+import MappingTaskBanner from './MappingTaskBanner.tsx';
+import { logStudyEvent } from '../utils/studyLog.ts';
 
 interface PaperViewProps {
     analysisResult: codeMatchesResult;
@@ -106,7 +107,7 @@ function PdfPageList({
 }: {
     analysisResult: codeMatchesResult;
     processResult: processPDFResult;
-    paperContentMatches: PaperContentMatch[];
+    paperContentMatches: ContextualPaperContentMatch[];
     scrollRef: React.RefObject<HTMLDivElement | null>;
     codeMatches: paperContentToCodeMatch[];
 }) {
@@ -138,7 +139,7 @@ function PdfPageList({
             return;
         }
         let cancelled = false;
-        let boxes: BoundingBoxWithTooltip[] = [];
+        const boxes: BoundingBoxWithTooltip[] = [];
 
         const contentToBBoxPaperMage = async () => {
             const aiMatches = analysisResult.matches ?? [];
@@ -165,6 +166,7 @@ function PdfPageList({
 
                 const scaleX = pageDimensions.width / viewport.width;
                 const scaleY = pageDimensions.height / viewport.height;
+                const primarySnippet = analyzedMatch.code_snippets[0];
     
                 boxes.push({
                     page:   box.page,
@@ -175,9 +177,21 @@ function PdfPageList({
                     hitKey: `p${box.page}-h${i}`,
                     file_infos: analyzedMatch.code_snippets.map((snippet) => `${snippet.filepath}:${snippet.start_line}-${snippet.end_line}`),
                     code_snippets: analyzedMatch.code_snippets,
-                    description: analyzedMatch.description || analyzedMatch.content,
+                    description:
+                        analyzedMatch.reasoning?.trim() ||
+                        analyzedMatch.description?.trim() ||
+                        'No correspondence explanation is available for this cached match.',
                     content_type: analyzedMatch.content_type,
                     color: CODE_MATCH_VERDICT_TO_COLOR.ai,
+                    contextRef: {
+                        type: 'mapping',
+                        mapping_type: 'initial_analysis',
+                        entity_id: analyzedMatch.entity_id,
+                        filepath: primarySnippet.filepath,
+                        start_line: primarySnippet.start_line,
+                        end_line: primarySnippet.end_line,
+                        label: `AI match for ${analyzedMatch.entity_id}`,
+                    },
                 })
             }
 
@@ -212,6 +226,7 @@ function PdfPageList({
                     description: match.description,
                     variant: 'underline',
                     color: CODE_TO_CONTENT_HIGHLIGHT_COLOR,
+                    contextRef: match.sourceMappingRef,
                 });
             }
 
@@ -247,6 +262,14 @@ function PdfPageList({
                     description: codeMatch.outputs.reasoning,
                     variant: 'overlay',
                     color: CODE_MATCH_VERDICT_TO_COLOR[codeMatch.outputs.verdict] ?? CODE_MATCH_VERDICT_TO_COLOR.not_implemented,
+                    contextRef: codeMatch.cache_key
+                        ? {
+                            type: 'mapping',
+                            mapping_type: 'content_to_code',
+                            cache_key: codeMatch.cache_key,
+                            label: `Paper-to-code match ${codeMatch.cache_key}`,
+                        }
+                        : undefined,
                 });
             }
 
@@ -294,43 +317,6 @@ function PdfPageList({
     );
 }
 
-/**
- * Flat segmented pill list for jumping directly between all snippet candidates of the
- * currently open match. Adjacent pills sharing a filepath are visually grouped. Renders
- * nothing when there's nothing to switch between.
- */
-function CandidateSnippetPills() {
-    const { codeInfo, selectCandidate } = useSidePanel();
-    const candidates = codeInfo?.candidates ?? [];
-
-    if (candidates.length < 2) {
-        return null;
-    }
-
-    return (
-        <div className="candidate-pill-list" role="tablist" aria-label="Matched code snippets">
-            {candidates.map((candidate, index) => {
-                const basename = candidate.filePath.split('/').pop() ?? candidate.filePath;
-                const isActive = index === codeInfo?.activeCandidateIndex;
-                const sameFileAsPrev = index > 0 && candidates[index - 1].filePath === candidate.filePath;
-                return (
-                    <button
-                        key={`${candidate.filePath}-${candidate.startLine}-${candidate.endLine}-${index}`}
-                        type="button"
-                        role="tab"
-                        aria-selected={isActive}
-                        title={candidate.filePath}
-                        className={`candidate-pill-list__pill${isActive ? ' candidate-pill-list__pill--active' : ''}${sameFileAsPrev ? ' candidate-pill-list__pill--grouped' : ''}`}
-                        onClick={() => selectCandidate(index)}
-                    >
-                        {basename}:{candidate.startLine}-{candidate.endLine}
-                    </button>
-                );
-            })}
-        </div>
-    );
-}
-
 export default function PaperView({ analysisResult, processResult, clearEnvironment, paperFile, tree, githubRepoUrl, paperId }: PaperViewProps) {
     const pdfContentRef = useRef<HTMLDivElement>(null);
     const pdfScrollableRef = useRef<HTMLDivElement>(null);
@@ -338,7 +324,7 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
     const {currentUser} = useContext(UserContext);
 
     const [matchingTaskId, setMatchingTaskId] = useState<string | null>(null);
-    const [paperContentMatches, setPaperContentMatches] = useState<PaperContentMatch[]>([]);
+    const [paperContentMatches, setPaperContentMatches] = useState<ContextualPaperContentMatch[]>([]);
     const [contentToCodeMatches, setContentToCodeMatches] = useState<paperContentToCodeMatch[]>([]);
     const [isMatchFilterOpen, setIsMatchFilterOpen] = useState(false);
     const [matchFilter, setMatchFilter] = useState<MatchFilter>(readStoredMatchFilter);
@@ -367,10 +353,12 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
 
     useEffect(() => {
         window.localStorage.setItem(MATCH_FILTER_STORAGE_KEY, matchFilter);
+        logStudyEvent('ui', 'match_filter_change', { match_filter: matchFilter });
     }, [matchFilter])
 
     useEffect(() => {
         window.localStorage.setItem(SHOW_MATCHES_FROM_CODE_STORAGE_KEY, String(showMatchesFromCode));
+        logStudyEvent('ui', 'show_matches_from_code_change', { enabled: showMatchesFromCode });
     }, [showMatchesFromCode])
 
     useEffect(() => {
@@ -410,6 +398,11 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
         if (matchTaskQuery.data?.status === "SUCCESS") {
             queryClient.invalidateQueries({queryKey: ['matches', paperId]});
             setMatchingTaskId(null);
+            setPendingSelection(null);
+        }
+        if (matchTaskQuery.data?.status === "FAILURE") {
+            setMatchingTaskId(null);
+            setPendingSelection(null);
         }
     }, [matchTaskQuery.data, paperId, queryClient])
 
@@ -442,6 +435,12 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
                 pageNumber: selectionHighlight.page,
                 user_id: currentUser?.id ?? 1,
             }
+
+            logStudyEvent('mapping', 'content_to_code_ui_submit', {
+                content: pendingSelection.text,
+                page_number: selectionHighlight.page,
+                box: selectionHighlight.box,
+            });
             
             contentToCodeMutation.mutate(matchTaskInput);
     };
@@ -481,6 +480,16 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
 
     return ( 
         <div className="paper-view-layout">
+            <MappingTaskBanner
+                visible={
+                    contentToCodeMutation.isPending || matchingTaskId !== null
+                }
+                status={matchTaskQuery.data?.status}
+                submitting={
+                    contentToCodeMutation.isPending && matchingTaskId === null
+                }
+                direction="content_to_code"
+            />
             <Group orientation="horizontal" className="paper-view-layout__group">
             <Panel defaultSize={53} minSize={15}>
             <section id="paper-viewer" className="paper-view-layout__pdf-panel">
@@ -497,6 +506,7 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
                             type="button"
                             className="outline-action-btn temp-action-btn"
                             onClick={() => {
+                                logStudyEvent('ui', 'clear_paper_highlights', {});
                                 setPaperContentMatches([]);
                             }}
                         >
@@ -578,14 +588,16 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
             <Panel defaultSize={47} minSize={15}>
             {tree && (
                 <aside className="paper-view-layout__code-panel">
-                    <div className="paper-view-layout__code-toolbar">
-                        {/* <button type="button" className="outline-action-btn" onClick={hideCode}>
-                            Close
-                        </button> */}
-                        <CandidateSnippetPills />
-                    </div>
                     <div className="paper-view-layout__code-scroll">
-                        {<RepoView tree={tree} paperId={paperId} setPaperContentMatches={setPaperContentMatches} />}
+                        {<RepoView
+                            tree={tree}
+                            paperId={paperId}
+                            setPaperContentMatches={setPaperContentMatches}
+                            showPaperPage={(pageIndex) => {
+                                const page = pdfScrollableRef.current?.children.item(pageIndex);
+                                page?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }}
+                        />}
                     </div>
                 </aside>
             )}

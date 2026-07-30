@@ -1,4 +1,5 @@
 import type { User } from '../context/UserContext';
+import { getActiveStudySessionId } from '../utils/studyLog.ts';
 import type { 
     paperSubmitResponse, 
     paperAnalysisStatusResponse, 
@@ -11,6 +12,11 @@ import type {
     paperContentToCodeMatch,
     paperContentBox,
     codeToContentMatch,
+    CopilotConversation,
+    CopilotContextRef,
+    GetCopilotConversationResponse,
+    SendCopilotMessageRequest,
+    SendCopilotMessageResponse,
 } from './types.ts';
 
 const API_URL: string =
@@ -108,6 +114,10 @@ const mapContentToCode = async (content: string | Blob, repoUrl: string, context
     formData.append("box", JSON.stringify(box));
     formData.append("page_number", String(pageNumber));
     formData.append("user_id", String(user_id));
+    const studySessionId = getActiveStudySessionId();
+    if (studySessionId) {
+        formData.append("study_session_id", studySessionId);
+    }
     
     const response: Response = await fetch(`${API_URL}/map_content_to_code`, {
         method: "POST",
@@ -147,7 +157,10 @@ const mapCodeToContent = async (code: string, paperId: string, start: number, en
     formData.append("end", String(end));
     formData.append("filepath", filepath);
     formData.append("user_id", String(user_id));
-    console.log(formData);
+    const studySessionId = getActiveStudySessionId();
+    if (studySessionId) {
+        formData.append("study_session_id", studySessionId);
+    }
     const response: Response = await fetch(`${API_URL}/map_code_to_content`, {
         method: "POST",
         body: formData,
@@ -179,6 +192,55 @@ const getUserByUsername = async (username: string): Promise<User | null> => {
     return response.json();
 }
 
+const getCopilotConversation = async (
+    paperId: string,
+    userId: number,
+): Promise<CopilotConversation | null> => {
+    const response = await fetch(
+        `${API_URL}/papers/${encodeURIComponent(paperId)}/conversation?user_id=${encodeURIComponent(String(userId))}`,
+    );
+    // A conversation is created lazily with the first message.
+    if (response.status === 404) return null;
+    if (!response.ok) {
+        throw new Error(`Failed to get Copilot conversation (${response.status})`);
+    }
+    const result: GetCopilotConversationResponse = await response.json();
+    return result.conversation;
+};
+
+const sendCopilotMessage = async (
+    paperId: string,
+    userId: number,
+    content: string,
+    contextRefs: CopilotContextRef[] = [],
+): Promise<SendCopilotMessageResponse> => {
+    const request: SendCopilotMessageRequest = {
+        user_id: userId,
+        content,
+        context_refs: contextRefs,
+        study_session_id: getActiveStudySessionId() ?? undefined,
+    };
+    const response = await fetch(
+        `${API_URL}/papers/${encodeURIComponent(paperId)}/conversation/messages`,
+        {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(request),
+        },
+    );
+    if (!response.ok) {
+        let detail = `Failed to send Copilot message (${response.status})`;
+        try {
+            const body: { detail?: string } = await response.json();
+            if (body.detail) detail = body.detail;
+        } catch {
+            // Keep the status-based fallback when the response is not JSON.
+        }
+        throw new Error(detail);
+    }
+    return response.json();
+};
+
 export {
     submitPaperAnalysis,
     getPaperAnalysisStatus,
@@ -194,5 +256,7 @@ export {
     getCodeMappingStatus,
     getContentToCodeMatches,
     getCodeToContentMatches,
-    getUserByUsername
+    getUserByUsername,
+    getCopilotConversation,
+    sendCopilotMessage,
 };

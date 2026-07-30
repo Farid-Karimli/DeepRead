@@ -1,5 +1,5 @@
 """
-Scores predictions produced by `run_manual_v1.py` against the ground-truth
+Scores predictions produced by `run.py` against the ground-truth
 locations in `annotations/manual_v1.json`.
 
 For each annotation, the agent's top-ranked predicted code snippet (the first
@@ -34,11 +34,14 @@ granularity:
   snippets share a filepath with any ground-truth location.
 
 Reading source files for the class/method check requires the paper's
-GitHub repo to be cloned locally (same as `run_manual_v1.py`); repos are
+GitHub repo to be cloned locally (same as `run.py`); repos are
 cloned on demand and cleaned up when the script finishes.
 
+Alongside the JSON output, a markdown summary (`.md`, same basename) is
+also written with an overall metrics table and a by-paper breakdown table.
+
 Usage:
-    python -m src.evals.evaluate_manual_v1 [--predictions PATH] [--annotations PATH] [--output PATH]
+    python -m src.evals.evaluate [--predictions PATH] [--annotations PATH] [--output PATH]
 """
 
 import argparse
@@ -365,6 +368,44 @@ def _accuracy_over_applicable(values: list[bool | str]) -> tuple[float | None, i
     return accuracy, num_correct, len(applicable)
 
 
+def _rollup_run_stats(predictions: list[dict]) -> dict:
+    """Aggregate timing, tool use, and token/cost fields from run.py records."""
+    durations: list[float] = []
+    tool_calls: list[int] = []
+    costs: list[float] = []
+    input_tokens: list[int] = []
+    output_tokens: list[int] = []
+
+    for record in predictions:
+        if isinstance(record.get("duration_seconds"), (int, float)):
+            durations.append(float(record["duration_seconds"]))
+        pm = record.get("process_metrics")
+        if not isinstance(pm, dict):
+            continue
+        if isinstance(pm.get("num_tool_calls"), int):
+            tool_calls.append(pm["num_tool_calls"])
+        if isinstance(pm.get("total_cost_usd"), (int, float)):
+            costs.append(float(pm["total_cost_usd"]))
+        usage = pm.get("usage")
+        if isinstance(usage, dict):
+            if isinstance(usage.get("input_tokens"), int):
+                input_tokens.append(usage["input_tokens"])
+            if isinstance(usage.get("output_tokens"), int):
+                output_tokens.append(usage["output_tokens"])
+
+    def _mean(vals: list[float | int]) -> float | None:
+        return sum(vals) / len(vals) if vals else None
+
+    return {
+        "mean_duration_seconds": _mean(durations),
+        "mean_num_tool_calls": _mean(tool_calls),
+        "total_cost_usd": sum(costs) if costs else None,
+        "mean_input_tokens": _mean(input_tokens),
+        "mean_output_tokens": _mean(output_tokens),
+        "num_records": len(predictions),
+    }
+
+
 def summarize(per_annotation: list[dict]) -> dict:
     total = len(per_annotation)
     num_errored = sum(1 for r in per_annotation if r["had_error"])
@@ -460,6 +501,122 @@ def summarize(per_annotation: list[dict]) -> dict:
     }
 
 
+def _fmt_rate(rate: float | None, numerator: int, denominator: int) -> str:
+    if rate is None:
+        return "N/A"
+    return f"{rate * 100:.2f}% ({numerator}/{denominator})"
+
+
+def _fmt_pct(rate: float | None, n: int | None = None) -> str:
+    if rate is None:
+        return "N/A"
+    suffix = f" (n={n})" if n is not None else ""
+    return f"{rate * 100:.2f}%{suffix}"
+
+
+def _fmt_float(value: float | None, n: int | None = None) -> str:
+    if value is None:
+        return "N/A"
+    suffix = f" (n={n})" if n is not None else ""
+    return f"{value:.3f}{suffix}"
+
+
+def render_markdown_summary(summary: dict, json_filename: str) -> str:
+    """Renders the evaluation summary (overall + by-paper) as a markdown
+    document, mirroring the tables previously produced by hand from the
+    JSON output."""
+    lines = [f"Results for `{json_filename}`.", "", "## Overall", "", "| Metric | Value |", "| --- | --- |"]
+    lines.append(f"| Total annotations | {summary['total_annotations']} |")
+    lines.append(f"| Errored | {summary['num_errored']} |")
+    lines.append(f"| With prediction | {summary['num_with_prediction']} |")
+    lines.append(
+        "| Filepath accuracy (top-1) | "
+        + _fmt_rate(summary["filepath_accuracy"], summary["num_filepath_correct"], summary["total_annotations"])
+        + " |"
+    )
+    lines.append(
+        "| Filepath hit@5 | "
+        + _fmt_rate(summary["filepath_hit_at_5_rate"], summary["num_filepath_hit_at_5"], summary["total_annotations"])
+        + " |"
+    )
+    lines.append(
+        "| Mean IoU (given correct filepath, top-1) | "
+        + _fmt_float(summary["mean_iou_given_correct_filepath"], summary["num_annotations_with_iou"])
+        + " |"
+    )
+    lines.append(
+        "| Mean IoU (across all matching-filepath snippets) | "
+        + _fmt_float(summary["mean_iou_matching_filepaths"], summary["num_annotations_with_matching_filepath_iou"])
+        + " |"
+    )
+    lines.append(
+        "| Class accuracy (given applicable) | "
+        + _fmt_rate(summary["class_accuracy_given_applicable"], summary["num_class_correct"], summary["num_class_applicable"])
+        + " |"
+    )
+    lines.append(
+        "| Method accuracy (given applicable) | "
+        + _fmt_rate(summary["method_accuracy_given_applicable"], summary["num_method_correct"], summary["num_method_applicable"])
+        + " |"
+    )
+    mean_duration = summary["mean_duration_seconds"]
+    lines.append(f"| Mean duration (s) | {mean_duration:.2f} |" if mean_duration is not None else "| Mean duration (s) | N/A |")
+
+    run_stats = summary.get("run_stats") or {}
+    mean_tools = run_stats.get("mean_num_tool_calls")
+    lines.append(
+        f"| Mean tool calls | {mean_tools:.2f} |"
+        if isinstance(mean_tools, (int, float))
+        else "| Mean tool calls | N/A |"
+    )
+    total_cost = run_stats.get("total_cost_usd")
+    lines.append(
+        f"| Total cost (USD) | {total_cost:.4f} |"
+        if isinstance(total_cost, (int, float))
+        else "| Total cost (USD) | N/A |"
+    )
+    mean_in = run_stats.get("mean_input_tokens")
+    mean_out = run_stats.get("mean_output_tokens")
+    lines.append(
+        f"| Mean input tokens | {mean_in:.0f} |"
+        if isinstance(mean_in, (int, float))
+        else "| Mean input tokens | N/A |"
+    )
+    lines.append(
+        f"| Mean output tokens | {mean_out:.0f} |"
+        if isinstance(mean_out, (int, float))
+        else "| Mean output tokens | N/A |"
+    )
+
+    lines += [
+        "",
+        "## By paper",
+        "",
+        "| Paper | Annotations | Filepath accuracy | Filepath hit@5 | Mean IoU (correct filepath, top-1) | "
+        "Mean IoU (matching filepaths) | Class accuracy (n applicable) | Method accuracy (n applicable) |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- |",
+    ]
+    for paper_id, bucket in summary["by_paper"].items():
+        lines.append(
+            "| "
+            + " | ".join(
+                [
+                    paper_id,
+                    str(bucket["total_annotations"]),
+                    _fmt_pct(bucket["filepath_accuracy"]),
+                    _fmt_pct(bucket["filepath_hit_at_5_rate"]),
+                    _fmt_float(bucket["mean_iou_given_correct_filepath"]),
+                    _fmt_float(bucket["mean_iou_matching_filepaths"], bucket["num_annotations_with_matching_filepath_iou"]),
+                    _fmt_pct(bucket["class_accuracy_given_applicable"], bucket["num_class_applicable"]),
+                    _fmt_pct(bucket["method_accuracy_given_applicable"], bucket["num_method_applicable"]),
+                ]
+            )
+            + " |"
+        )
+
+    return "\n".join(lines) + "\n"
+
+
 def evaluate(predictions_path: str, annotations_path: str, output_path: str) -> dict:
     with open(predictions_path, "r") as f:
         predictions = json.load(f)
@@ -473,14 +630,20 @@ def evaluate(predictions_path: str, annotations_path: str, output_path: str) -> 
         source_cache.cleanup()
 
     summary = summarize(per_annotation)
+    summary["run_stats"] = _rollup_run_stats(predictions)
 
     output = {"summary": summary, "annotations": per_annotation}
 
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     with open(output_path, "w") as f:
         json.dump(output, f, indent=2)
-
     print(f"Wrote evaluation results to {output_path}")
+
+    markdown_path = os.path.splitext(output_path)[0] + ".md"
+    with open(markdown_path, "w") as f:
+        f.write(render_markdown_summary(summary, os.path.basename(output_path)))
+    print(f"Wrote evaluation summary to {markdown_path}")
+
     print(json.dumps(summary, indent=2))
 
     return output
@@ -488,7 +651,7 @@ def evaluate(predictions_path: str, annotations_path: str, output_path: str) -> 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--predictions", default=DEFAULT_PREDICTIONS_PATH, help="Path to predictions JSON produced by run_manual_v1.py")
+    parser.add_argument("--predictions", default=DEFAULT_PREDICTIONS_PATH, help="Path to predictions JSON produced by run.py")
     parser.add_argument("--annotations", default=DEFAULT_ANNOTATIONS_PATH, help="Path to the annotations JSON file (used to resolve each paper's repo for the class/method check)")
     parser.add_argument("--output", default=DEFAULT_OUTPUT_PATH, help="Path to write evaluation metrics JSON to")
     args = parser.parse_args()

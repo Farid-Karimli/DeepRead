@@ -1,26 +1,42 @@
+x-backend-build: &backend-build
+  context: ./backend
+  dockerfile: Dockerfile
+
+x-backend-environment: &backend-environment
+  REDIS_URL: redis://redis:6379/0
+  ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+  SUPABASE_URL: ${SUPABASE_URL:-}
+  SUPABASE_SECRET_KEY: ${SUPABASE_SECRET_KEY:-}
+  # Compatibility fallback for projects still using a legacy service-role key.
+  SUPABASE_KEY: ${SUPABASE_KEY:-}
+  BRAVE_SEARCH_API_KEY: ${BRAVE_SEARCH_API_KEY:-}
+  BRAVE_ANSWERS_API_KEY: ${BRAVE_ANSWERS_API_KEY:-}
+  COHERE_API_KEY: ${COHERE_API_KEY:-}
+  WANDB_API_KEY: ${WANDB_API_KEY:-}
+  WEAVE_PROJECT: ${WEAVE_PROJECT:-gardoslab/deepread}
+  WEAVE_DISABLED: ${WEAVE_DISABLED:-true}
+
 services:
   redis:
-    image: redis:7-alpine
+    image: redis:7.4-alpine
+    command: ["redis-server", "--appendonly", "yes"]
     restart: unless-stopped
+    volumes:
+      - redis-data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 3s
-      retries: 5
+      retries: 10
 
   api:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    ports:
-      - "8000:8000"
+    image: deepread-backend:local
+    build: *backend-build
+    init: true
     environment:
-      REDIS_URL: redis://redis:6379/0
-      CORS_ORIGINS: http://localhost:8080,http://127.0.0.1:8080,http://localhost:5173,http://127.0.0.1:5173
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      SUPABASE_URL: ${SUPABASE_URL:-}
-      SUPABASE_KEY: ${SUPABASE_KEY:-}
-      WANDB_API_KEY: ${WANDB_API_KEY:-}
+      <<: *backend-environment
+    expose:
+      - "8000"
     depends_on:
       redis:
         condition: service_healthy
@@ -30,46 +46,73 @@ services:
         "python",
         "-m",
         "uvicorn",
-        "deepread.server:app",
+        "src.server:app",
         "--host",
         "0.0.0.0",
         "--port",
         "8000",
+        "--root-path",
+        "/api",
       ]
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/', timeout=3)",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
 
   worker:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    image: deepread-backend:local
+    build: *backend-build
+    init: true
     environment:
-      REDIS_URL: redis://redis:6379/0
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      SUPABASE_URL: ${SUPABASE_URL:-}
-      SUPABASE_KEY: ${SUPABASE_KEY:-}
-      WANDB_API_KEY: ${WANDB_API_KEY:-}
+      <<: *backend-environment
     depends_on:
       redis:
         condition: service_healthy
     restart: unless-stopped
+    volumes:
+      - worker-repositories:/app/src/temp
+      - worker-repo-maps:/app/src/agentic_localization/cache
     command:
       [
         "python",
         "-m",
         "celery",
         "-A",
-        "deepread.server.celery",
+        "src.server.celery",
         "worker",
         "--loglevel=info",
+        "--pool=solo",
+        "--concurrency=1",
       ]
+    stop_grace_period: 30s
 
   web:
     build:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        VITE_API_URL: http://127.0.0.1:8000
+        VITE_API_URL: /api
     ports:
-      - "8080:80"
+      - "${APP_PORT:-8080}:80"
     depends_on:
-      - api
+      api:
+        condition: service_healthy
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  redis-data:
+  worker-repositories:
+  worker-repo-maps:

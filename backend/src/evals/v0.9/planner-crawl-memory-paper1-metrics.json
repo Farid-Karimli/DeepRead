@@ -1,0 +1,420 @@
+{
+  "summary": {
+    "total_annotations": 12,
+    "num_errored": 0,
+    "num_with_prediction": 12,
+    "num_filepath_correct": 12,
+    "filepath_accuracy": 1.0,
+    "num_filepath_hit_at_5": 12,
+    "filepath_hit_at_5_rate": 1.0,
+    "mean_iou_given_correct_filepath": 0.3009132892197408,
+    "num_annotations_with_iou": 12,
+    "mean_iou_matching_filepaths": 0.19685790943871428,
+    "num_annotations_with_matching_filepath_iou": 12,
+    "class_accuracy_given_applicable": 1.0,
+    "num_class_correct": 9,
+    "num_class_applicable": 9,
+    "method_accuracy_given_applicable": 0.7,
+    "num_method_correct": 7,
+    "num_method_applicable": 10,
+    "mean_duration_seconds": 52.35528972924658,
+    "by_paper": {
+      "investigating_pre_training_objectives_for_generalization_in_vision_based_reinforcement_learning": {
+        "total_annotations": 12,
+        "filepath_accuracy": 1.0,
+        "filepath_hit_at_5_rate": 1.0,
+        "mean_iou_given_correct_filepath": 0.3009132892197408,
+        "mean_iou_matching_filepaths": 0.19685790943871428,
+        "num_annotations_with_matching_filepath_iou": 12,
+        "class_accuracy_given_applicable": 1.0,
+        "num_class_applicable": 9,
+        "method_accuracy_given_applicable": 0.7,
+        "num_method_applicable": 10
+      }
+    },
+    "run_stats": {
+      "mean_duration_seconds": 52.35528972924658,
+      "mean_num_tool_calls": 11.25,
+      "total_cost_usd": null,
+      "mean_input_tokens": 8431.75,
+      "mean_output_tokens": 412.4166666666667,
+      "num_records": 12
+    }
+  },
+  "annotations": [
+    {
+      "paper_id": "investigating_pre_training_objectives_for_generalization_in_vision_based_reinforcement_learning",
+      "annotation_id": "61fc660b",
+      "duration_seconds": 46.01120712500415,
+      "had_error": false,
+      "predicted_filepath": "src/trainers/curl.py",
+      "predicted_line_range": [
+        59,
+        65
+      ],
+      "ground_truth_filepaths": [
+        "src/trainers/curl.py"
+      ],
+      "num_predicted_snippets": 5,
+      "filepath_correct": true,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 1,
+      "best_iou": 1.0,
+      "matched_ground_truth_range": [
+        59,
+        65
+      ],
+      "mean_iou_matching_filepaths": 0.37777777777777777,
+      "num_matching_filepath_snippets": 5,
+      "correct_class": true,
+      "correct_method": true,
+      "predicted_class": "CURLTrainer",
+      "predicted_method": "CURLTrainer.compute_loss",
+      "ground_truth_class": "CURLTrainer",
+      "ground_truth_method": "CURLTrainer.compute_loss"
+    },
+    {
+      "paper_id": "investigating_pre_training_objectives_for_generalization_in_vision_based_reinforcement_learning",
+      "annotation_id": "5d48d1f7",
+      "duration_seconds": 55.042550584010314,
+      "had_error": false,
+      "predicted_filepath": "src/trainers/mae.py",
+      "predicted_line_range": [
+        47,
+        59
+      ],
+      "ground_truth_filepaths": [
+        "src/models/heads/mae_head.py",
+        "src/models/necks/mae_neck.py",
+        "src/trainers/mae.py"
+      ],
+      "num_predicted_snippets": 5,
+      "filepath_correct": true,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 1,
+      "best_iou": 0.38461538461538464,
+      "matched_ground_truth_range": [
+        53,
+        57
+      ],
+      "mean_iou_matching_filepaths": 0.12995337995337997,
+      "num_matching_filepath_snippets": 5,
+      "correct_class": true,
+      "correct_method": true,
+      "predicted_class": "MAETrainer",
+      "predicted_method": "MAETrainer.compute_loss",
+      "ground_truth_class": "MAETrainer",
+      "ground_truth_method": "MAETrainer.compute_loss"
+    },
+    {
+      "paper_id": "investigating_pre_training_objectives_for_generalization_in_vision_based_reinforcement_learning",
+      "annotation_id": "89b38c78",
+      "duration_seconds": 63.691343124984996,
+      "had_error": false,
+      "predicted_filepath": "src/trainers/atc.py",
+      "predicted_line_range": [
+        53,
+        114
+      ],
+      "ground_truth_filepaths": [
+        "src/trainers/atc.py"
+      ],
+      "num_predicted_snippets": 2,
+      "filepath_correct": true,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 1,
+      "best_iou": 0.20967741935483872,
+      "matched_ground_truth_range": [
+        97,
+        109
+      ],
+      "mean_iou_matching_filepaths": 0.1476018675721562,
+      "num_matching_filepath_snippets": 2,
+      "correct_class": true,
+      "correct_method": true,
+      "predicted_class": "ATCTrainer",
+      "predicted_method": "ATCTrainer.compute_loss",
+      "ground_truth_class": "ATCTrainer",
+      "ground_truth_method": "ATCTrainer.compute_loss"
+    },
+    {
+      "paper_id": "investigating_pre_training_objectives_for_generalization_in_vision_based_reinforcement_learning",
+      "annotation_id": "efa2457a",
+      "duration_seconds": 58.35453012501239,
+      "had_error": false,
+      "predicted_filepath": "src/trainers/siammae.py",
+      "predicted_line_range": [
+        59,
+        65
+      ],
+      "ground_truth_filepaths": [
+        "src/models/necks/siammae_neck.py",
+        "src/trainers/siammae.py"
+      ],
+      "num_predicted_snippets": 5,
+      "filepath_correct": true,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 1,
+      "best_iou": 0.875,
+      "matched_ground_truth_range": [
+        59,
+        66
+      ],
+      "mean_iou_matching_filepaths": 0.5017377398720682,
+      "num_matching_filepath_snippets": 5,
+      "correct_class": true,
+      "correct_method": true,
+      "predicted_class": "SiamMAETrainer",
+      "predicted_method": "SiamMAETrainer.compute_loss",
+      "ground_truth_class": "SiamMAETrainer",
+      "ground_truth_method": "SiamMAETrainer.compute_loss"
+    },
+    {
+      "paper_id": "investigating_pre_training_objectives_for_generalization_in_vision_based_reinforcement_learning",
+      "annotation_id": "0a45a8c4",
+      "duration_seconds": 61.65674224999384,
+      "had_error": false,
+      "predicted_filepath": "src/models/heads/spr_head.py",
+      "predicted_line_range": [
+        57,
+        58
+      ],
+      "ground_truth_filepaths": [
+        "src/models/heads/spr_head.py",
+        "src/trainers/spr.py"
+      ],
+      "num_predicted_snippets": 5,
+      "filepath_correct": true,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 1,
+      "best_iou": 0.0,
+      "matched_ground_truth_range": [
+        23,
+        30
+      ],
+      "mean_iou_matching_filepaths": 0.28928571428571426,
+      "num_matching_filepath_snippets": 5,
+      "correct_class": true,
+      "correct_method": false,
+      "predicted_class": "SPRHead",
+      "predicted_method": "SPRHead.forward",
+      "ground_truth_class": "SPRHead",
+      "ground_truth_method": "SPRHead.__init__"
+    },
+    {
+      "paper_id": "investigating_pre_training_objectives_for_generalization_in_vision_based_reinforcement_learning",
+      "annotation_id": "5475f170",
+      "duration_seconds": 32.32759433297906,
+      "had_error": false,
+      "predicted_filepath": "src/trainers/idm.py",
+      "predicted_line_range": [
+        48,
+        71
+      ],
+      "ground_truth_filepaths": [
+        "src/trainers/idm.py"
+      ],
+      "num_predicted_snippets": 2,
+      "filepath_correct": true,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 1,
+      "best_iou": 0.2916666666666667,
+      "matched_ground_truth_range": [
+        56,
+        62
+      ],
+      "mean_iou_matching_filepaths": 0.1937785388127854,
+      "num_matching_filepath_snippets": 2,
+      "correct_class": true,
+      "correct_method": true,
+      "predicted_class": "IDMTrainer",
+      "predicted_method": "IDMTrainer.compute_loss",
+      "ground_truth_class": "IDMTrainer",
+      "ground_truth_method": "IDMTrainer.compute_loss"
+    },
+    {
+      "paper_id": "investigating_pre_training_objectives_for_generalization_in_vision_based_reinforcement_learning",
+      "annotation_id": "e7c20af5",
+      "duration_seconds": 42.56834225001512,
+      "had_error": false,
+      "predicted_filepath": "src/trainers/cql.py",
+      "predicted_line_range": [
+        134,
+        147
+      ],
+      "ground_truth_filepaths": [
+        "src/trainers/cql.py"
+      ],
+      "num_predicted_snippets": 3,
+      "filepath_correct": true,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 1,
+      "best_iou": 0.35,
+      "matched_ground_truth_range": [
+        128,
+        140
+      ],
+      "mean_iou_matching_filepaths": 0.3506666666666667,
+      "num_matching_filepath_snippets": 3,
+      "correct_class": true,
+      "correct_method": true,
+      "predicted_class": "CQLTrainer",
+      "predicted_method": "CQLTrainer.compute_loss",
+      "ground_truth_class": "CQLTrainer",
+      "ground_truth_method": "CQLTrainer.compute_loss"
+    },
+    {
+      "paper_id": "investigating_pre_training_objectives_for_generalization_in_vision_based_reinforcement_learning",
+      "annotation_id": "d8974e2c",
+      "duration_seconds": 50.465202249994036,
+      "had_error": false,
+      "predicted_filepath": "src/trainers/dt.py",
+      "predicted_line_range": [
+        58,
+        91
+      ],
+      "ground_truth_filepaths": [
+        "src/models/necks/dt_neck.py",
+        "src/trainers/dt.py"
+      ],
+      "num_predicted_snippets": 5,
+      "filepath_correct": true,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 1,
+      "best_iou": 0.35294117647058826,
+      "matched_ground_truth_range": [
+        73,
+        84
+      ],
+      "mean_iou_matching_filepaths": 0.09058823529411766,
+      "num_matching_filepath_snippets": 5,
+      "correct_class": true,
+      "correct_method": true,
+      "predicted_class": "DTTrainer",
+      "predicted_method": "DTTrainer.compute_loss",
+      "ground_truth_class": "DTTrainer",
+      "ground_truth_method": "DTTrainer.compute_loss"
+    },
+    {
+      "paper_id": "investigating_pre_training_objectives_for_generalization_in_vision_based_reinforcement_learning",
+      "annotation_id": "893e1818",
+      "duration_seconds": 41.38419949999661,
+      "had_error": false,
+      "predicted_filepath": "src/models/backbones/resnet.py",
+      "predicted_line_range": [
+        81,
+        148
+      ],
+      "ground_truth_filepaths": [
+        "src/models/backbones/resnet.py"
+      ],
+      "num_predicted_snippets": 4,
+      "filepath_correct": true,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 1,
+      "best_iou": 0.14705882352941177,
+      "matched_ground_truth_range": [
+        137,
+        146
+      ],
+      "mean_iou_matching_filepaths": 0.2504171881518565,
+      "num_matching_filepath_snippets": 4,
+      "correct_class": true,
+      "correct_method": false,
+      "predicted_class": "ResNet",
+      "predicted_method": null,
+      "ground_truth_class": "ResNet",
+      "ground_truth_method": "ResNet.forward"
+    },
+    {
+      "paper_id": "investigating_pre_training_objectives_for_generalization_in_vision_based_reinforcement_learning",
+      "annotation_id": "ff93a88d",
+      "duration_seconds": 59.839793749997625,
+      "had_error": false,
+      "predicted_filepath": "src/common/dataset_utils.py",
+      "predicted_line_range": [
+        14,
+        65
+      ],
+      "ground_truth_filepaths": [
+        "src/common/dataset_utils.py",
+        "src/dataloaders/__init__.py"
+      ],
+      "num_predicted_snippets": 3,
+      "filepath_correct": true,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 1,
+      "best_iou": 0.0,
+      "matched_ground_truth_range": [
+        134,
+        145
+      ],
+      "mean_iou_matching_filepaths": 0.024390243902439022,
+      "num_matching_filepath_snippets": 3,
+      "correct_class": "not_applicable",
+      "correct_method": false,
+      "predicted_class": null,
+      "predicted_method": "prepare_ataripb_dataset",
+      "ground_truth_class": null,
+      "ground_truth_method": "load_replay_dataset"
+    },
+    {
+      "paper_id": "investigating_pre_training_objectives_for_generalization_in_vision_based_reinforcement_learning",
+      "annotation_id": "d0cf1fff",
+      "duration_seconds": 54.37345029198332,
+      "had_error": false,
+      "predicted_filepath": "run_offline_bc.py",
+      "predicted_line_range": [
+        118,
+        120
+      ],
+      "ground_truth_filepaths": [
+        "run_offline_bc.py"
+      ],
+      "num_predicted_snippets": 5,
+      "filepath_correct": true,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 1,
+      "best_iou": 0.0,
+      "matched_ground_truth_range": null,
+      "mean_iou_matching_filepaths": 0.0,
+      "num_matching_filepath_snippets": 3,
+      "correct_class": null,
+      "correct_method": null,
+      "predicted_class": null,
+      "predicted_method": null,
+      "ground_truth_class": null,
+      "ground_truth_method": null
+    },
+    {
+      "paper_id": "investigating_pre_training_objectives_for_generalization_in_vision_based_reinforcement_learning",
+      "annotation_id": "c58f2e9b",
+      "duration_seconds": 62.548521166987484,
+      "had_error": false,
+      "predicted_filepath": "run_online_rl.py",
+      "predicted_line_range": [
+        162,
+        174
+      ],
+      "ground_truth_filepaths": [
+        "configs/online_rl.yaml",
+        "run_online_rl.py",
+        "src/agents/rainbow.py"
+      ],
+      "num_predicted_snippets": 5,
+      "filepath_correct": true,
+      "filepath_hit_at_5": true,
+      "filepath_hit_rank": 1,
+      "best_iou": 0.0,
+      "matched_ground_truth_range": null,
+      "mean_iou_matching_filepaths": 0.0060975609756097554,
+      "num_matching_filepath_snippets": 3,
+      "correct_class": null,
+      "correct_method": null,
+      "predicted_class": null,
+      "predicted_method": null,
+      "ground_truth_class": null,
+      "ground_truth_method": null
+    }
+  ]
+}

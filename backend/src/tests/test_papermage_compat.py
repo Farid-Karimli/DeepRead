@@ -5,6 +5,7 @@ import pytest
 
 from src.agent_utils import (
     _merge_entities_into_matches,
+    code_matches_schema,
     normalize_code_mapping_result,
     normalize_code_result_for_frontend,
     normalize_identify_result,
@@ -154,6 +155,13 @@ def test_normalize_identify_result_legacy_sections():
     assert out["entities"][0]["content"] == "Core method"
 
 
+def test_code_match_contract_requires_correspondence_reasoning():
+    match_schema = code_matches_schema["properties"]["matches"]["items"]
+
+    assert "reasoning" in match_schema["properties"]
+    assert "reasoning" in match_schema["required"]
+
+
 def test_normalize_code_mapping_result_legacy_sections():
     raw = {
         "paper_title": "Paper",
@@ -161,6 +169,7 @@ def test_normalize_code_mapping_result_legacy_sections():
             {
                 "section_id": "sec_1",
                 "section_header": "Method",
+                "section_description": "Legacy correspondence explanation",
                 "code_snippets": [
                     {
                         "content": "x = 1",
@@ -177,7 +186,30 @@ def test_normalize_code_mapping_result_legacy_sections():
     assert len(out["matches"]) == 1
     assert out["matches"][0]["entity_id"] == "sec_1"
     assert out["matches"][0]["content_type"] == "section"
+    assert out["matches"][0]["description"] == "Legacy correspondence explanation"
     assert len(out["matches"][0]["code_snippets"]) == 1
+
+
+def test_normalize_code_mapping_result_preserves_explanations():
+    raw = {
+        "matches": [
+            {
+                "entity_id": "sen_1",
+                "content_type": "sentence",
+                "content": "We use ResNet.",
+                "reasoning": "The constructor instantiates the paper's backbone.",
+                "description": "Legacy explanation",
+                "code_snippets": [],
+            }
+        ]
+    }
+
+    out = normalize_code_mapping_result(raw)
+
+    assert out["matches"][0]["reasoning"] == (
+        "The constructor instantiates the paper's backbone."
+    )
+    assert out["matches"][0]["description"] == "Legacy explanation"
 
 
 def test_normalize_code_result_for_frontend_alias():
@@ -213,6 +245,7 @@ def test_merge_entities_into_matches():
                 "entity_id": "sen_1",
                 "content_type": "sentence",
                 "content": "We use ResNet.",
+                "reasoning": "The model constructor instantiates ResNet50.",
                 "code_snippets": [
                     {
                         "content": "ResNet50()",
@@ -228,6 +261,7 @@ def test_merge_entities_into_matches():
     assert merged["paper_title"] == "Atari-PB"
     assert len(merged["matches"]) == 1
     row = merged["matches"][0]
+    assert row["reasoning"] == "The model constructor instantiates ResNet50."
     assert row["description"] == "Architecture choice"
     assert row["section_id"] == "sec_2"
     assert len(row["code_snippets"]) == 1

@@ -1,0 +1,700 @@
+[
+  {
+    "paper_id": "investigating_pre_training_objectives_for_generalization_in_vision_based_reinforcement_learning",
+    "annotation_id": "61fc660b",
+    "claim_text": "CURL: Contrastive Unsupervised Reinforcement Learning\n(Laskin et al., 2020b) learns the spatial feature of images\nusing augmentation functions and InfoNCE loss.",
+    "section_ref": "4.2. Learning from Image",
+    "ground_truth_verdict": "implemented",
+    "ground_truth_locations": [
+      {
+        "filepath": "src/trainers/curl.py",
+        "line_range": [
+          13,
+          25
+        ]
+      },
+      {
+        "filepath": "src/trainers/curl.py",
+        "line_range": [
+          89,
+          97
+        ]
+      },
+      {
+        "filepath": "src/trainers/curl.py",
+        "line_range": [
+          59,
+          65
+        ]
+      }
+    ],
+    "prediction": {
+      "reasoning": "The content describes CURL (Contrastive Unsupervised Reinforcement Learning), which learns spatial features using augmentation functions and InfoNCE loss. I searched the repository for CURL implementation and found: (1) A complete CURL trainer implementation in 'src/trainers/curl.py' that implements the contrastive learning approach with augmentation (lines 62-65 apply augmentation to create two views), momentum encoders (target_backbone and target_neck), and contrastive loss via cross-entropy (lines 90-96 compute similarity and loss, which is mathematically equivalent to InfoNCE). (2) The CURLLoss class in 'src/common/losses.py' (lines 49-79) implements a contrastive loss function. (3) Augmentation functions in 'src/common/augmentation.py' that provide various image augmentations (random shifts, intensity changes, etc.). (4) Configuration in 'configs/trainer/base.yaml' (line 29) specifying aug_types=['random_shift', 'intensity']. (5) A training script 'scripts/pretrain/curl.sh'. The CURL implementation genuinely matches the paper description: it uses augmentation to create two views of images (x_q and x_k), processes them through online and momentum encoders, and optimizes using a contrastive loss (InfoNCE) via cross-entropy on the similarity matrix.",
+      "verdict": "implemented",
+      "code_snippets": [
+        {
+          "content": "class CURLLoss(nn.Module):\n    def __init__(self, temperature, reduction='mean'):\n        super().__init__()\n        self.temperature = temperature\n        self.reduction = reduction\n        \n    def forward(self, p, z):\n        \"\"\"\n        [params] p: torch.Tensor (n, d)\n        [params] z: torch.Tensor (n, d)\n        \"\"\"\n        # cosine_sim: identical to matmul in l2-normalized space\n        logits = F.cosine_similarity(p.unsqueeze(1), z.unsqueeze(0), dim=-1)\n        logits = logits / self.temperature\n        \n        # compute log-likelihood \n        exp_logits = torch.exp(logits)\n        log_probs = logits - torch.log(torch.sum(exp_logits, 1, keepdim=True))\n        \n        # get log-likelihood of an augmented view\n        aug_idx = torch.eye(p.shape[0], device=p.device)\n        log_probs = aug_idx * log_probs\n        \n        # compute loss\n        mean_log_prob = torch.sum(log_probs, 1) / torch.sum(aug_idx,1)\n        loss = -mean_log_prob\n        \n        if self.reduction == 'mean':\n            return torch.mean(loss)\n        else:\n            return loss",
+          "filepath": "src/common/losses.py",
+          "start_line": 49,
+          "end_line": 79
+        },
+        {
+          "content": "    def compute_loss(self, batch):\n\n        # forward\n        x = batch['obs']\n        game_id = batch['game_id']\n        \n        # augmentation\n        n, t, f, c, h, w = x.shape\n        x = rearrange(x, 'n t f c h w -> n (t f c) h w')\n        x_q = self.aug_func(x) # two views\n        x_k = self.aug_func(x)\n        x_q = rearrange(x_q, 'n (t f c) h w -> n t f c h w', t=t, f=f, c=c)\n        x_k = rearrange(x_k, 'n (t f c) h w -> n t f c h w', t=t, f=f, c=c)\n\n        # online backbone/neck/head\n        x_q, _ = self.model.backbone(x_q)\n        x_q, _ = self.model.neck(x_q, game_id) # game-wise spatial embedding\n        pred_x, _ = self.model.head(x_q, game_id)\n        pred_x = rearrange(pred_x, 'n t d -> (n t) d')\n\n        # momentum backbone/neck\n        with torch.no_grad():\n            x_k, _ = self.target_backbone(x_k)\n            x_k, _ = self.target_neck(x_k, game_id)\n            target_x = rearrange(x_k, 'n t d -> (n t) d')\n\n        # DDP gather\n        if self.cfg.distributed:\n            pred_x_list = [torch.empty_like(pred_x) for _ in range(self.cfg.num_gpus)]\n            target_x_list = [torch.empty_like(target_x) for _ in range(self.cfg.num_gpus)]\n            dist.all_gather(tensor=pred_x, tensor_list=pred_x_list)\n            dist.all_gather(tensor=target_x, tensor_list=target_x_list)\n            pred_x_list[self.logger.rank] = pred_x # overwrite with your own\n            pred_x = torch.cat(pred_x_list, dim=0).requires_grad_()\n            target_x = torch.cat(target_x_list, dim=0)\n\n        # similarity\n        similarity = pred_x @ target_x.t()\n        similarity = similarity / self.cfg.temperature # temperature\n\n        # loss & acc\n        gt_label = torch.arange(similarity.shape[0]).to(self.device)\n        criterion = nn.CrossEntropyLoss()\n        loss = criterion(similarity, gt_label)\n        self_pred_acc = torch.mean((torch.argmax(similarity, axis=1)==gt_label).float())\n\n        # logs      \n        log_data = {'loss': loss.item(),\n                    'self_pred_acc': self_pred_acc.item()}\n\n        return loss, log_data",
+          "filepath": "src/trainers/curl.py",
+          "start_line": 53,
+          "end_line": 103
+        },
+        {
+          "content": "class Augmentation(nn.Module):\n    def __init__(self, obs_shape, aug_types=[], mask_ratio=None):\n        super().__init__()\n        self.layers = []\n        for aug_type in aug_types:\n            # kornia random crop is 20x slower than default (2023.02.27)\n            # https://github.com/kornia/kornia/issues/1559\n            if aug_type == 'random_shift_kornia':\n                _, _, W, H = obs_shape\n                self.layers.append(nn.ReplicationPad2d(4))\n                self.layers.append(aug.RandomCrop((W, H)))\n\n            elif aug_type == 'random_shift':\n                _, _, W, H = obs_shape\n                self.layers.append(RandomShiftsAug(pad=4))\n\n            elif aug_type == 'cutout':\n                self.layers.append(aug.RandomErasing(p=0.5))\n            \n            elif aug_type == 'h_flip':\n                self.layers.append(aug.RandomHorizontalFlip(p=0.1))\n\n            elif aug_type == 'v_flip':\n                self.layers.append(aug.RandomVerticalFlip(p=0.1))\n\n            elif aug_type == 'rotate':\n                self.layers.append(aug.RandomRotation(degrees=5.0))\n\n            elif aug_type == 'intensity':\n                self.layers.append(Intensity(scale=0.05))\n\n            elif aug_type == 'spatial_mask':\n                if mask_ratio is None:\n                    mask_ratio = 0.25\n                self.layers.append(RandomSpatialMaskAug(mask_ratio))\n\n            else:\n                raise ValueError\n\n        self.layers = nn.ModuleList(self.layers)\n\n    def forward(self, x):\n        for layer in self.layers:\n            x = layer(x)\n        return x",
+          "filepath": "src/common/augmentation.py",
+          "start_line": 92,
+          "end_line": 136
+        }
+      ]
+    },
+    "error": null,
+    "duration_seconds": 76.90625450000516
+  },
+  {
+    "paper_id": "investigating_pre_training_objectives_for_generalization_in_vision_based_reinforcement_learning",
+    "annotation_id": "5d48d1f7",
+    "claim_text": "MAE: Masked Autoencoder (He et al., 2022) learns the\nspatial structure of images by reconstructing masked images\nwith transformer encoder-decoder architecture.",
+    "section_ref": "4.2. Learning from Image",
+    "ground_truth_verdict": "implemented",
+    "ground_truth_locations": [
+      {
+        "filepath": "src/trainers/mae.py",
+        "line_range": [
+          13,
+          14
+        ]
+      },
+      {
+        "filepath": "src/trainers/mae.py",
+        "line_range": [
+          53,
+          57
+        ]
+      },
+      {
+        "filepath": "src/models/necks/mae_neck.py",
+        "line_range": [
+          44,
+          45
+        ]
+      },
+      {
+        "filepath": "src/models/necks/mae_neck.py",
+        "line_range": [
+          46,
+          50
+        ]
+      },
+      {
+        "filepath": "src/models/heads/mae_head.py",
+        "line_range": [
+          52,
+          54
+        ]
+      }
+    ],
+    "prediction": {
+      "reasoning": "The content describes MAE (Masked Autoencoder) by He et al., 2022, which learns spatial structure by reconstructing masked images with a transformer encoder-decoder architecture. I searched the repository for MAE implementations and found: (1) src/trainers/mae.py - the MAE training logic that computes MSE loss between reconstructed and original images (lines 41-66), (2) src/models/necks/mae_neck.py - the encoder component that implements random token masking (lines 46-67), spatial embeddings, MLP projection, positional embeddings (lines 27-34), and a transformer encoder (line 44), (3) src/models/heads/mae_head.py - the decoder component that reverses the masking operation (lines 61-81), uses a transformer decoder (line 53), and reconstructs the original image patches (lines 83-128). The implementation includes all key MAE components: masking with configurable mask_ratio, transformer encoder-decoder architecture (using the Transformer class from src/models/layers.py, lines 107-126), sinusoidal positional embeddings (get_2d_sincos_pos_embed), and reconstruction via MSE loss. This is a genuine implementation of the MAE method described in the paper content.",
+      "verdict": "implemented",
+      "code_snippets": [
+        {
+          "content": "        # Transformer\n        x = self.embed_linear(x)\n        x = self.nekot_ksam(x, recover_idx) # reverse mask_token operation\n        x = x + self.pos_embed\n        x, _ = self.transformer_decoder(x)\n        x = self.norm(x)",
+          "filepath": "src/models/heads/mae_head.py",
+          "start_line": 108,
+          "end_line": 113
+        },
+        {
+          "content": "    def compute_loss(self, batch):\n\n        x_origin = batch['obs']\n        game_id = batch['game_id']\n        n, t, f, c, h, w = x_origin.shape\n\n        # Augmentation\n        x = copy.deepcopy(x_origin)\n        x = rearrange(x, 'n t f c h w -> n (t f c) h w')\n        x = self.aug_func(x)\n        x = rearrange(x, 'n (t f c) h w -> n t f c h w', t=t, f=f, c=c)\n\n        # Forward\n        x, _ = self.model.backbone(x)\n        x, mask_info = self.model.neck(x, game_id) # game-wise spatial embedding\n        x_recon, _ = self.model.head(x, game_id, mask_info) # game-wise prediction head\n        \n        # MSE loss\n        loss = torch.mean((x_recon - x_origin) ** 2)\n\n        # logs        \n        log_data = {'loss': loss.item(),\n                    'x': wandb.Image(x_origin[0,0,0]),\n                    'x_recon': wandb.Image(x_recon[0,0,0])}\n        \n        return loss, log_data",
+          "filepath": "src/trainers/mae.py",
+          "start_line": 41,
+          "end_line": 66
+        },
+        {
+          "content": "        # Transformer\n        x = x + self.pos_embed # Position embedding\n        x, recover_idx = self.mask_token(x, mask_ratio) # mask\n        x = torch.cat((self.cls_token.expand(x.shape[0], -1, -1), x), dim=1) # CLS token\n        x, _ = self.transformer_encoder(x) # transformer\n        x = self.norm(x) # normalization layer\n        x = rearrange(x, '(n t) p d -> n t p d', n=n, t=t)",
+          "filepath": "src/models/necks/mae_neck.py",
+          "start_line": 91,
+          "end_line": 97
+        },
+        {
+          "content": "    def mask_token(self, x, mask_ratio):\n        # Randomly mask tokens. Each image is left with L*(1-mask_ratio) tokens.\n        N, L, D = x.shape\n        num_kept = int(L * (1.0-mask_ratio))\n\n        diceroll = torch.rand(N,L)\n        _, shuffled_idx = diceroll.sort(dim=-1)\n\n        if num_kept == L:\n            # do not shuffle when no tokens are masked,\n            # since they won't be unshuffled if it was eval mode\n            shuffled_idx, _ = shuffled_idx.sort(dim=-1)\n\n        keep_idx = shuffled_idx[:,:num_kept] # index of kept tokens\n        _, recover_idx = shuffled_idx.sort(dim=-1) # used to put tokens back to original index\n        \n        row_idx = torch.arange(N).unsqueeze(1)\n        x = x[row_idx, keep_idx]\n        # mask = torch.zeros(N,L).bool()\n        # mask[row_idx, keep_idx] = True\n        \n        return x, recover_idx",
+          "filepath": "src/models/necks/mae_neck.py",
+          "start_line": 46,
+          "end_line": 67
+        },
+        {
+          "content": "    def nekot_ksam(self, x, recover_idx):\n        # Inverse function of mask_token in neck (...sort of)\n        # Put tokens back to its original index (before masking),\n        # and fill masked (erased) indexes with mask tokens.\n        # x: (n p+1 d), p tokens & CLS token\n        # recover_idx: (n P), P = # tokens before masking\n        # out: (n P+1 d)\n        \n        # slice CLS token\n        cls_token = x[:,:1,:]\n        x = x[:,1:,:]\n\n        n, p, d = x.shape\n        masks = self.mask_token.expand(n, self.num_patches-p, -1)\n        x = torch.cat([x, masks], dim=1)\n        row_idx = torch.arange(n).unsqueeze(1)\n        x = x[row_idx, recover_idx] # unshuffle\n\n        # reattach CLS token\n        x = torch.cat((cls_token, x), dim=1)\n        return x",
+          "filepath": "src/models/heads/mae_head.py",
+          "start_line": 61,
+          "end_line": 81
+        }
+      ]
+    },
+    "error": null,
+    "duration_seconds": 49.42094750000979
+  },
+  {
+    "paper_id": "investigating_pre_training_objectives_for_generalization_in_vision_based_reinforcement_learning",
+    "annotation_id": "89b38c78",
+    "claim_text": "ATC: Augmented Temporal Contrast (Stooke et al., 2021)\nlearns the temporal dynamics of videos using InfoNCE loss.",
+    "section_ref": "4.3. Learning from Video",
+    "ground_truth_verdict": "implemented",
+    "ground_truth_locations": [
+      {
+        "filepath": "src/trainers/atc.py",
+        "line_range": [
+          13,
+          15
+        ]
+      },
+      {
+        "filepath": "src/trainers/atc.py",
+        "line_range": [
+          97,
+          109
+        ]
+      }
+    ],
+    "prediction": {
+      "reasoning": "I searched the repository for ATC (Augmented Temporal Contrast) implementation. Found the complete implementation in src/trainers/atc.py. The method learns temporal dynamics by: (1) Taking current observations (x) and next observations (target_x) from video sequences, (2) Passing x through online backbone/neck/head and target_x through momentum (target) backbone/neck, (3) Computing dot product similarity between predictions and targets (line 98), (4) Applying temperature scaling (line 99), (5) Using CrossEntropyLoss with diagonal labels (lines 102-106), which is equivalent to InfoNCE loss. The implementation matches the paper description: it uses contrastive learning to predict future states, employs momentum encoders (EMA update on lines 118-122), and the loss formulation (dot product + temperature + cross-entropy with positive pairs on diagonal) is the standard InfoNCE formulation. The config file confirms ATC uses multiple heads (60, one per game) with hidden dimensions [512, 512]. The README also lists ATC with reference to Stooke et al. 2021.",
+      "verdict": "implemented",
+      "code_snippets": [
+        {
+          "content": "    def compute_loss(self, batch):\n        # forward\n        x = batch['obs']\n        target_x = batch['next_obs']\n        game_id = batch['game_id']\n        done = batch['done'].contiguous()\n\n        # augmentation\n        n, t, f, c, h, w = x.shape\n        x = rearrange(x, 'n t f c h w -> n (t f c) h w')\n        x = self.aug_func(x)\n        x = rearrange(x, 'n (t f c) h w -> n t f c h w', t=t, f=f, c=c)\n        target_x = rearrange(target_x, 'n t f c h w -> n (t f c) h w')\n        target_x = self.aug_func(target_x)\n        target_x = rearrange(target_x, 'n (t f c) h w -> n t f c h w', t=t, f=f, c=c)\n\n        # online backbone/neck/head\n        x, _ = self.model.backbone(x)\n        x, _ = self.model.neck(x, game_id) # game-wise spatial embedding\n        pred_x, _ = self.model.head(x, game_id)\n        pred_x = rearrange(pred_x, 'n t d -> (n t) d')\n\n        # momentum backbone/neck\n        with torch.no_grad():\n            target_x, _ = self.target_backbone(target_x)\n            target_x, _ = self.target_neck(target_x, game_id)\n            target_x = rearrange(target_x, 'n t d -> (n t) d')\n\n        # DDP gather\n        if self.cfg.distributed:\n            pred_x_list = [torch.empty_like(pred_x) for _ in range(self.cfg.num_gpus)]\n            target_x_list = [torch.empty_like(target_x) for _ in range(self.cfg.num_gpus)]\n            done_list = [torch.empty_like(done) for _ in range(self.cfg.num_gpus)]\n            # Share variables for loss computation across all GPUs\n            dist.all_gather(tensor=pred_x, tensor_list=pred_x_list)\n            dist.all_gather(tensor=target_x, tensor_list=target_x_list)\n            dist.all_gather(tensor=done, tensor_list=done_list)\n            # all_gather() purely copies the value, and the resulting tensor will have no computational graph.\n            # To maintain the gradient graph, each GPU must plaster their own tensor (with computational graph) in the corresponding place.\n            pred_x_list[self.logger.rank] = pred_x\n            pred_x = torch.cat(pred_x_list, dim=0).requires_grad_()\n            target_x = torch.cat(target_x_list, dim=0)\n            done = torch.cat(done_list, dim=0)\n\n        # dot product similarity\n        similarity = pred_x @ target_x.t()\n        similarity = similarity / self.cfg.temperature # temperature\n        \n        # loss & acc\n        gt_label = torch.arange(similarity.shape[0]).to(self.device)\n        invalid_data = torch.any(done, dim=1) # check done validity\n        gt_label[invalid_data] = -100 # assign ignore_index to invalid ones\n        criterion = nn.CrossEntropyLoss()\n        loss = criterion(similarity, gt_label)\n        self_pred_cnt = (torch.argmax(similarity, axis=1)==gt_label).float().sum()\n        self_pred_acc = self_pred_cnt / float(similarity.shape[0] - invalid_data.sum().item())\n        \n        # logs      \n        log_data = {'loss': loss.item(),\n                    'self_pred_acc': self_pred_acc.item()}\n\n        return loss, log_data",
+          "filepath": "src/trainers/atc.py",
+          "start_line": 53,
+          "end_line": 114
+        },
+        {
+          "content": "    def update(self, batch, step):\n        # EMA\n        tau = self.tau_scheduler.get_value(step)\n        for online, target in zip(self.model.backbone.parameters(), self.target_backbone.parameters()):\n            target.data = tau*target.data + (1-tau)*online.data\n        for online, target in zip(self.model.neck.parameters(), self.target_neck.parameters()):\n            target.data = tau*target.data + (1-tau)*online.data",
+          "filepath": "src/trainers/atc.py",
+          "start_line": 116,
+          "end_line": 122
+        }
+      ]
+    },
+    "error": null,
+    "duration_seconds": 68.76939012500225
+  },
+  {
+    "paper_id": "investigating_pre_training_objectives_for_generalization_in_vision_based_reinforcement_learning",
+    "annotation_id": "efa2457a",
+    "claim_text": "Siamese Masked Autoencoder (Gupta et al.,\n2023) is an extension of MAE to videos. This variant uses a\nSiamese architecture and an asymmetric masking strategy\nfor temporal information extractio",
+    "section_ref": "4.3. Learning from Video",
+    "ground_truth_verdict": "implemented",
+    "ground_truth_locations": [
+      {
+        "filepath": "src/trainers/siammae.py",
+        "line_range": [
+          12,
+          14
+        ]
+      },
+      {
+        "filepath": "src/trainers/siammae.py",
+        "line_range": [
+          59,
+          66
+        ]
+      },
+      {
+        "filepath": "src/models/necks/siammae_neck.py",
+        "line_range": [
+          91,
+          100
+        ]
+      }
+    ],
+    "prediction": {
+      "reasoning": "I searched for implementation of Siamese Masked Autoencoder (SiamMAE) in the repository. The content describes SiamMAE as 'an extension of MAE to videos' that 'uses a Siamese architecture and an asymmetric masking strategy for temporal information extraction'. I found extensive implementation across multiple files: (1) src/trainers/siammae.py - the main training logic implementing the Siamese architecture where two frames (current obs x and next_obs target_x) are concatenated, passed through the backbone together, then split apart (lines 60-62: 'xtx = torch.cat((x,target_x))' followed by 'x, target_x = xtx.chunk(2)'). This is the core Siamese pattern. (2) src/models/necks/siammae_neck.py - implements the asymmetric masking strategy where masking is only applied to the target frame when is_target=True (lines 93-95: 'if is_target: x, recover_idx = self.mask_token(x, self.mask_ratio)'). The neck also implements positional embeddings and transformer encoder for temporal information extraction. (3) src/models/heads/siammae_head.py - implements the decoder with cross-attention transformer to reconstruct the masked target from the unmasked source. (4) Additional files including configs and shell scripts confirm this is a complete implementation. The Siamese architecture is evident in the forward pass (same backbone weights for both inputs), and the asymmetric masking (only target is masked) matches the paper description. The video aspect is handled through the temporal dimension in tensors (n, t, c, h, w) and the dataloader providing sequential frames (obs and next_obs).",
+      "verdict": "implemented",
+      "code_snippets": [
+        {
+          "content": "    def forward(self, x, target_x, idx=None, target_mask_info=None):\n        \"\"\"\n        [params] x (torch.Tensor: (n, t, p, d))\n        [params] target_x (torch.Tensor: (n, t, p', d)) masked\n        [params] idx (torch.Tensor: (n, t)) idx of linear prediction to utilize\n        [params] recover_idx (torch.Tensor: (n, p)) idx of tokens before masking\n        [returns] pred_x (torch.Tensor: (n, t, c, h, w)) reconstruction of target before masking\n        \"\"\"\n\n        # get shape variables\n        n, t, p, d = x.shape\n        f, c, h, w = self.obs_shape\n        np = int(self.num_patches ** 0.5) # num patches in one side\n        ph = h // np # patch height, width\n        pw = w // np\n        assert (h % np == 0) and (w % np == 0)\n\n        if idx is None:\n            idx = torch.zeros((n, t), device=x.device).long()\n        if target_mask_info is None:\n            recover_idx = torch.arange(self.num_patches).repeat(n*t).reshape(n*t,self.num_patches)\n        else:\n            recover_idx = target_mask_info['recover_idx'] \n\n        x = rearrange(x, 'n t p d -> (n t) p d')\n        x = self.embed_linear(x)\n        x = x + self.pos_embed\n\n        target_x = rearrange(target_x, 'n t p d -> (n t) p d')\n        target_x = self.embed_linear(target_x)\n        target_x = self.nekot_ksam(target_x, recover_idx) # undo mask_token operation\n        target_x = target_x + self.pos_embed\n        \n        x, _ = self.transformer_decoder(target_x, k=x, v=x) # Cross attention\n        x = self.norm(x)\n\n        # Game-wise linear\n        recon_w = rearrange(self.recon_w(idx), 'n t (d1 d2) -> (n t) d1 d2', d1=self.in_dim, d2=self.patch_size)\n        recon_b = rearrange(self.recon_b(idx), 'n t d -> (n t) 1 d')\n        x = torch.bmm(x, recon_w) + recon_b\n        x = x[:,1:,:] # Remove CLS\n        x = F.sigmoid(x)\n\n        # Unpachify\n        x = rearrange(x, \"n p (f c ph pw) -> n p f c ph pw\", f=f, c=c, ph=ph, pw=pw)\n        x = rearrange(x, \"(n t) (p1 p2) f c ph pw -> n t f c (p1 ph) (p2 pw)\", n=n, t=t, p1=np, p2=np)\n        info = {}\n        \n        return x, info",
+          "filepath": "src/models/heads/siammae_head.py",
+          "start_line": 83,
+          "end_line": 131
+        },
+        {
+          "content": "    def mask_token(self, x, mask_ratio):\n        # Randomly mask tokens. Each image is left with L*(1-mask_ratio) tokens.\n        N, L, D = x.shape\n        num_kept = int(L * (1.0-mask_ratio))\n\n        diceroll = torch.rand(N,L)\n        _, shuffled_idx = diceroll.sort(dim=-1)\n\n        if num_kept == L:\n            # do not shuffle when no tokens are masked,\n            # since they won't be unshuffled if it was eval mode\n            shuffled_idx, _ = shuffled_idx.sort(dim=-1)\n\n        keep_idx = shuffled_idx[:,:num_kept] # index of kept tokens\n        _, recover_idx = shuffled_idx.sort(dim=-1) # used to put tokens back to original index\n        \n        row_idx = torch.arange(N).unsqueeze(1)\n        x = x[row_idx, keep_idx]\n        # mask = torch.zeros(N,L).bool()\n        # mask[row_idx, keep_idx] = True\n        \n        return x, recover_idx",
+          "filepath": "src/models/necks/siammae_neck.py",
+          "start_line": 46,
+          "end_line": 67
+        },
+        {
+          "content": "    def forward(self, x, idx=None, is_target=False):\n        \"\"\"\n        [params] x (torch.Tensor: (n, t, c, h, w))\n        [params] idx (torch.Tensor: (n, t)) idx of the spatial embedding\n        [params] is_target (bool) mask on only when this is true\n        [returns] x (torch.Tensor: (n*t, p, d)), p = h*w*(1-mask_ratio)\n\n        \"\"\"\n\n        n, t, c, h, w = x.shape\n        x = rearrange(x, 'n t c h w -> (n t) c h w')\n        if idx is None:\n            idx = torch.zeros((n, t), device=x.device).long()\n        info = {}\n\n        # MLP\n        spatial_embed = self.spatial_embed(idx) # Gamewise spatial embedding\n        spatial_embed = rearrange(spatial_embed, 'n t (c h w) -> (n t) c h w', c=c, h=h, w=w)\n        x = x * spatial_embed\n        x = rearrange(x, 'n c h w -> n (h w) c') # Flatten\n        x = self.mlp(x)\n        \n        # Transformer\n        x = x + self.pos_embed # Position embedding\n        if is_target:\n            x, recover_idx = self.mask_token(x, self.mask_ratio) # mask\n            info['recover_idx'] = recover_idx\n        x = torch.cat((self.cls_token.expand(x.shape[0], -1, -1), x), dim=1) # CLS token\n        x, _ = self.transformer_encoder(x) # transformer\n        x = self.norm(x) # normalization layer\n        x = rearrange(x, '(n t) p d -> n t p d', n=n, t=t)\n\n        if not self.training:\n            x = x[:,:,0,:] # CLS token as output\n\n        return x, info",
+          "filepath": "src/models/necks/siammae_neck.py",
+          "start_line": 69,
+          "end_line": 104
+        },
+        {
+          "content": "    def compute_loss(self, batch):\n\n        x = batch['obs']\n        target_x_origin = batch['next_obs']\n        game_id = batch['game_id']\n        n, t, f, c, h, w = x.shape\n\n        image_log_data = {'x': wandb.Image(x[0,0,0]),\n                          'target_x': wandb.Image(target_x_origin[0,0,0])}\n\n        # Augmentation\n        x = rearrange(x, 'n t f c h w -> n (t f c) h w')\n        x = self.aug_func(x)\n        x = rearrange(x, 'n (t f c) h w -> n t f c h w', t=t, f=f, c=c)\n        target_x = copy.deepcopy(target_x_origin)\n        target_x = rearrange(target_x, 'n t f c h w -> n (t f c) h w')\n        target_x = self.aug_func(target_x)\n        target_x = rearrange(target_x, 'n (t f c) h w -> n t f c h w', t=t, f=f, c=c)\n\n        # Forward\n        xtx = torch.cat((x,target_x))\n        xtx, _ = self.model.backbone(xtx)\n        x, target_x = xtx.chunk(2)\n        x, _ = self.model.neck(x, game_id, is_target=False)\n        target_x, mask_info = self.model.neck(target_x, game_id, is_target=True)\n        recon_x, _ = self.model.head(x, target_x, game_id, mask_info)\n\n        # MSE loss\n        loss = torch.mean((recon_x - target_x_origin) ** 2)\n        \n        # logs        \n        log_data = {'loss': loss.item(),\n                    'recon_x': wandb.Image(recon_x[0,0,0])}\n        log_data.update(image_log_data)\n        \n        return loss, log_data",
+          "filepath": "src/trainers/siammae.py",
+          "start_line": 40,
+          "end_line": 75
+        }
+      ]
+    },
+    "error": null,
+    "duration_seconds": 73.46904724999331
+  },
+  {
+    "paper_id": "investigating_pre_training_objectives_for_generalization_in_vision_based_reinforcement_learning",
+    "annotation_id": "0a45a8c4",
+    "claim_text": "Self-Predictive Representations (Schwarzer et al.,\n2020b) learn the dynamics of environments by recursively\npredicting future observations in a latent space. We em-\nploy a recurrent neural network for future prediction and a\nmomentum network for encoding target observations.",
+    "section_ref": "4.4. Learning from Demonstration",
+    "ground_truth_verdict": "implemented",
+    "ground_truth_locations": [
+      {
+        "filepath": "src/trainers/spr.py",
+        "line_range": [
+          12,
+          15
+        ]
+      },
+      {
+        "filepath": "src/trainers/spr.py",
+        "line_range": [
+          74,
+          82
+        ]
+      },
+      {
+        "filepath": "src/models/heads/spr_head.py",
+        "line_range": [
+          23,
+          30
+        ]
+      }
+    ],
+    "prediction": {
+      "reasoning": "The content describes Self-Predictive Representations (SPR) which learns dynamics by recursively predicting future observations in latent space using a recurrent neural network and a momentum network. I searched the repository and found a complete implementation in src/trainers/spr.py and src/models/heads/spr_head.py. The spr_head.py file implements the recurrent prediction component using nn.RNN (line 25) for the transition model that predicts future latent states. The spr.py trainer implements the momentum network (target_backbone and target_neck at lines 27-28) which encodes target observations and is updated via exponential moving average (EMA) as shown in the update() method (lines 124-128). The compute_loss() method (lines 52-120) shows the complete pipeline: encoding observations with the online encoder (lines 68-69), recursively predicting future states with the RNN head (line 75), and encoding targets with the momentum encoder (lines 80-81). This matches the description in the paper.",
+      "verdict": "implemented",
+      "code_snippets": [
+        {
+          "content": "class SPRHead(BaseHead):\n    name = 'spr_head'\n    def __init__(self,\n                 in_shape,\n                 action_size,\n                 num_heads,\n                 num_predictions,\n                 num_actions):\n\n        super().__init__(in_shape, action_size)\n        self.in_dim = in_shape[0]\n        self.num_heads = num_heads\n        self.num_predictions = num_predictions\n        self.num_actions = num_actions\n\n        # Transition model\n        self.action_embed = nn.Embedding(num_heads*num_actions, num_actions) # Gamewise action embedding\n        self.transition = nn.RNN(input_size=num_actions,\n                                 hidden_size=self.in_dim,\n                                 num_layers=1,\n                                 bias=True,\n                                 batch_first=True)",
+          "filepath": "src/models/heads/spr_head.py",
+          "start_line": 8,
+          "end_line": 29
+        },
+        {
+          "content": "        # momentum encoder\n        with torch.no_grad():\n            target_x, _ = self.target_backbone(target_x)\n            target_x, _ = self.target_neck(target_x, game_id[:,1:])",
+          "filepath": "src/trainers/spr.py",
+          "start_line": 78,
+          "end_line": 81
+        },
+        {
+          "content": "        # Transition\n        x_t, _ = self.transition(action_embed, x)",
+          "filepath": "src/models/heads/spr_head.py",
+          "start_line": 57,
+          "end_line": 58
+        },
+        {
+          "content": "    def update(self, batch, step):\n        # EMA\n        tau = self.tau_scheduler.get_value(step)\n        for online, target in zip(self.model.backbone.parameters(), self.target_backbone.parameters()):\n            target.data = tau*target.data + (1-tau)*online.data\n        for online, target in zip(self.model.neck.parameters(), self.target_neck.parameters()):\n            target.data = tau*target.data + (1-tau)*online.data",
+          "filepath": "src/trainers/spr.py",
+          "start_line": 122,
+          "end_line": 128
+        },
+        {
+          "content": "        # Remember to deepcopy PRIOR to compile/DDP, DDP seems to hate copying from already compiled models\n        self.target_backbone = copy.deepcopy(model.backbone).to(device)\n        self.target_neck = copy.deepcopy(model.neck).to(device)",
+          "filepath": "src/trainers/spr.py",
+          "start_line": 26,
+          "end_line": 28
+        }
+      ]
+    },
+    "error": null,
+    "duration_seconds": 30.10560824998538
+  },
+  {
+    "paper_id": "investigating_pre_training_objectives_for_generalization_in_vision_based_reinforcement_learning",
+    "annotation_id": "5475f170",
+    "claim_text": "IDM: Inverse Dynamics Modeling (Christiano et al., 2016)\nlearns to predict the action between consecutive observa-\ntions. Similar to BC, IDM focuses on learning task-relevant\ninformation as it seeks to understand the cause-and-effect\ndynamics within the environments (Islam et al., 2022)",
+    "section_ref": "4.4. Learning from Demonstration",
+    "ground_truth_verdict": "implemented",
+    "ground_truth_locations": [
+      {
+        "filepath": "src/trainers/idm.py",
+        "line_range": [
+          11,
+          13
+        ]
+      },
+      {
+        "filepath": "src/trainers/idm.py",
+        "line_range": [
+          56,
+          62
+        ]
+      }
+    ],
+    "prediction": {
+      "reasoning": "The content describes Inverse Dynamics Modeling (IDM), which learns to predict the action between consecutive observations. This is a concrete pre-training method that requires code implementation. I searched the repository for 'IDM' and 'inverse dynamics' and found multiple implementation files: src/trainers/idm.py (standalone IDM trainer), src/trainers/spr_idm.py (combined SPR+IDM trainer), and src/models/heads/spr_idm_head.py (IDM prediction head). The IDM trainer (lines 39-77 in idm.py) implements the core functionality: it takes current and future observations, encodes them through the backbone and neck, concatenates the embeddings, and predicts the action via cross-entropy loss. The SPR+IDM trainer (lines 84-96 in spr_idm.py) shows IDM being used as a joint objective with SPR. Both implementations match the paper's description of predicting actions between consecutive observations to learn task-relevant cause-and-effect dynamics.",
+      "verdict": "implemented",
+      "code_snippets": [
+        {
+          "content": "        # IDM prediction\n        idm_x = torch.cat((x, x_t[:,:-1,:]), dim=1)\n        idm_inp = torch.cat((idm_x, x_target), dim=2) # [n t-1 2*d]\n        idm_w1 = rearrange(self.idm_w1(idx), 'n t (d2 a) -> (n t) d2 a', d2=d*2, a=a)\n        idm_b1 = rearrange(self.idm_b1(idx), 'n t a -> (n t) a')\n        idm_w2 = rearrange(self.idm_w2(idx), 'n t (a o) -> (n t) a o', a=a, o=self.num_actions)\n        idm_b2 = rearrange(self.idm_b2(idx), 'n t o -> (n t) o')\n\n        idm_inp = rearrange(idm_inp, 'n t d2 -> (n t) 1 d2')\n        idm_pred = torch.bmm(idm_inp, idm_w1).squeeze(1) + idm_b1\n        idm_pred = F.relu(idm_pred, inplace=True)\n        idm_pred = rearrange(idm_pred, 'nt a -> nt 1 a')\n        idm_pred = torch.bmm(idm_pred, idm_w2).squeeze(1) + idm_b2\n        idm_pred = rearrange(idm_pred, '(n t) o -> n t o', t=t)\n\n        info = {'idm_pred': idm_pred}\n\n        return spr_pred, info",
+          "filepath": "src/models/heads/spr_idm_head.py",
+          "start_line": 77,
+          "end_line": 94
+        },
+        {
+          "content": "        # IDM loss\n        gt_label = rearrange(act[:,:-1], 'n t -> (n t)')\n        idm_criterion = nn.CrossEntropyLoss()\n        idm_loss = idm_criterion(idm_pred, gt_label)\n        idm_pred_cnt = (torch.argmax(idm_pred, axis=1)==gt_label).sum()\n        idm_acc = idm_pred_cnt.float() / float(n*(t-1))\n\n        # Total loss\n        loss = self.cfg.spr_weight*spr_loss + self.cfg.idm_weight*idm_loss",
+          "filepath": "src/trainers/spr_idm.py",
+          "start_line": 91,
+          "end_line": 99
+        },
+        {
+          "content": "    def compute_loss(self, batch):\n        curr_x = batch['obs']\n        future_x = batch['next_obs']\n        act = batch['act']\n        done = batch['done']\n        game_id = batch['game_id']\n        \n        n, t, f, c, h, w = curr_x.shape\n\n        # augmentation\n        curr_x = rearrange(curr_x, 'n t f c h w -> n (t f c) h w')\n        curr_x = self.aug_func(curr_x)\n        curr_x = rearrange(curr_x, 'n (t f c) h w -> n t f c h w', t=t, f=f, c=c)\n        future_x = rearrange(future_x, 'n t f c h w -> n (t f c) h w')\n        future_x = self.aug_func(future_x)\n        future_x = rearrange(future_x, 'n (t f c) h w -> n t f c h w', t=t, f=f, c=c)\n\n        x = torch.cat([curr_x, future_x], dim=0)\n        stacked_game_id = torch.cat([game_id, game_id], dim=0)\n        x, _ = self.model.backbone(x)\n        x, _ = self.model.neck(x, stacked_game_id) # game-wise spatial embedding\n        x = torch.cat(x.chunk(2), dim=2) # concatenate current and future x embeddings ([2n,t,d] -> [n,t,2d])\n        act_pred_logits, _ = self.model.head(x, game_id) # game-wise prediction head\n\n        # loss\n        act_pred_logits = rearrange(act_pred_logits, 'n t d -> (n t) d')\n        act_gt = rearrange(act, 'n t -> (n t)') # t=1\n        invalid_data = torch.any(done, dim=1) # check done validity\n        act_gt[invalid_data] = -100 # assign ignore_index to invalid ones\n        criterion = nn.CrossEntropyLoss()\n        loss = criterion(act_pred_logits, act_gt)\n        act_pred_cnt = (torch.argmax(act_pred_logits, axis=1)==act_gt).sum()\n        act_acc = act_pred_cnt.float() / float(n - invalid_data.sum().item())\n\n        # logs        \n        log_data = {'loss': loss.item(),\n                    'act_acc': act_acc.item()}\n        \n        return loss, log_data",
+          "filepath": "src/trainers/idm.py",
+          "start_line": 39,
+          "end_line": 77
+        }
+      ]
+    },
+    "error": null,
+    "duration_seconds": 62.0341852499987
+  },
+  {
+    "paper_id": "investigating_pre_training_objectives_for_generalization_in_vision_based_reinforcement_learning",
+    "annotation_id": "e7c20af5",
+    "claim_text": "Conservative Q-Learning (Kumar et al., 2020) inte-\ngrates temporal difference loss with conservative Q-learning\nloss. Its main objective is to accurately approximate the Bell-\nman target while minimizing the overestimation of actions\nthat are absent in the offline data.",
+    "section_ref": "4.5. Learning from Trajectory",
+    "ground_truth_verdict": "implemented",
+    "ground_truth_locations": [
+      {
+        "filepath": "src/trainers/cql.py",
+        "line_range": [
+          10,
+          12
+        ]
+      },
+      {
+        "filepath": "src/trainers/cql.py",
+        "line_range": [
+          128,
+          140
+        ]
+      }
+    ],
+    "prediction": {
+      "reasoning": "The content describes Conservative Q-Learning (CQL) from Kumar et al. 2020, which integrates temporal difference loss with conservative Q-learning loss. I searched the repository and found a CQL implementation in 'src/trainers/cql.py'. The file implements both components mentioned in the content: (1) Temporal difference loss: Lines 89-132 compute the KL-divergence loss which implements the distributional temporal difference learning using C51 (the Bellman target approximation). This includes computing next state Q-values, applying the Bellman operator with n-step returns (line 112-113), and computing the KL divergence between predicted and target distributions (line 131-132). (2) Conservative Q-learning loss: Lines 134-138 implement the conservative loss that penalizes overestimation by computing the difference between the log-sum-exp of all Q-values and the Q-value of the chosen action. Line 139 combines both losses as described: 'loss = kl_div + self.cql_coefficient * cql_loss'. This directly corresponds to the paper's description of integrating temporal difference loss with conservative Q-learning loss to minimize overestimation of out-of-distribution actions.",
+      "verdict": "implemented",
+      "code_snippets": [
+        {
+          "content": "        # kl-divergence KL(p||q)=plogp-plogq\n        # Here, plogp is just a constant\n        EPS = 1e-5\n        kl_div = -torch.sum(m * log_pred_q_dist, -1)\n        kl_div = (kl_div.clamp(min=EPS, max=1 / EPS)).mean()\n        \n        # cql\n        q_values = (q_dist * self.support.reshape(1,1,-1)).sum(-1)\n        chosen_action_q = q_values.gather(1, act.reshape(-1,1)).squeeze(1)\n        \n        cql_loss = (torch.logsumexp(q_values, 1) - chosen_action_q).mean()\n        loss = kl_div + self.cql_coefficient * cql_loss",
+          "filepath": "src/trainers/cql.py",
+          "start_line": 128,
+          "end_line": 139
+        },
+        {
+          "content": "        with torch.no_grad():\n            # Calculate n-th next state's q-value distribution\n            # next_target_q_dist: (n, 1, a, num_atoms)\n            # target_q_dist: (n, num_atoms)\n            nx, _ = self.target_model.backbone(nx)\n            nx, _ = self.target_model.neck(nx, game_id)\n            if self.feature_normalization:\n                nx = nx/torch.linalg.norm(nx,dim=-1).unsqueeze(2)\n            next_target_q_dist, _ = self.target_model.head(nx, game_id)\n            \n            next_target_q_dist = rearrange(next_target_q_dist, 'n t d n_a -> (n t) d n_a')\n            next_target_q =  (next_target_q_dist * self.support.reshape(1,1,-1)).sum(-1)     \n            next_act = torch.argmax(next_target_q, 1)  \n            next_act_idx = next_act.reshape(-1,1,1).repeat(1,1,self.num_atoms)\n            target_q_dist = (next_target_q_dist).gather(1, next_act_idx).squeeze(1)\n        \n            # C51 (https://arxiv.org/abs/1707.06887, Algorithm 1)\n            # Compute the projection \n            # Tz = R_n + (\u03b3^n)Z (w/ n-step return) (N, N_A)\n            gamma_n = (self.gamma ** self.n_step)\n            Tz = rtg + gamma_n * self.support.unsqueeze(0) * (1-done)\n            Tz = Tz.clamp(min=self.v_min, max=self.v_max)\n            # L2-projection\n            b = (Tz - self.v_min) / self.delta_z\n            l, u = b.floor().to(torch.int64), b.ceil().to(torch.int64)\n            l[(u > 0) * (l == u)] -= 1\n            u[(l < (self.num_atoms - 1)) * (l == u)] += 1\n\n            # Distribute probability of Tz\n            m = torch.zeros((n, self.num_atoms), device=self.device)\n            for idx in range(n):\n                # += operation do not allow to add value to same index multiple times\n                m[idx].index_add_(0, l[idx], target_q_dist[idx] * (u[idx] - b[idx]))\n                m[idx].index_add_(0, u[idx], target_q_dist[idx] * (b[idx] - l[idx]))",
+          "filepath": "src/trainers/cql.py",
+          "start_line": 93,
+          "end_line": 126
+        }
+      ]
+    },
+    "error": null,
+    "duration_seconds": 37.56139200000325
+  },
+  {
+    "paper_id": "investigating_pre_training_objectives_for_generalization_in_vision_based_reinforcement_learning",
+    "annotation_id": "d8974e2c",
+    "claim_text": "Decision Transformer (Chen et al., 2021) redefines RL\nas a sequence modeling problem. The network is trained to\npredict actions based on given states and desired cumulative\nrewards. During inference, the agent predicts the optimal\nactions needed to achieve a specified cumulative rewar",
+    "section_ref": "4.5. Learning from Trajectory",
+    "ground_truth_verdict": "implemented",
+    "ground_truth_locations": [
+      {
+        "filepath": "src/trainers/dt.py",
+        "line_range": [
+          13,
+          15
+        ]
+      },
+      {
+        "filepath": "src/trainers/dt.py",
+        "line_range": [
+          73,
+          84
+        ]
+      },
+      {
+        "filepath": "src/models/necks/dt_neck.py",
+        "line_range": [
+          45,
+          54
+        ]
+      },
+      {
+        "filepath": "src/models/necks/dt_neck.py",
+        "line_range": [
+          93,
+          102
+        ]
+      }
+    ],
+    "prediction": {
+      "reasoning": "The content describes Decision Transformer (Chen et al., 2021), which redefines RL as a sequence modeling problem where the network predicts actions based on states and desired cumulative rewards. I searched the repository for 'Decision Transformer' and found multiple relevant files. The implementation exists in: (1) src/trainers/dt.py - contains the DTTrainer class that implements the training and inference procedures; (2) src/models/necks/dt_neck.py - contains the DTNeck class which implements the transformer-based architecture that processes states, actions, and return-to-go (RTG/cumulative rewards); (3) src/common/dataset_utils.py - contains RTG computation logic (lines 218-279); (4) src/models/layers.py - contains the Transformer class used by the Decision Transformer. The key components match the description: the model takes states, actions, and RTG (cumulative rewards) as inputs, uses a transformer encoder with causal masking, and predicts actions during inference. The rollout method (lines 96-183 in dt.py) shows inference where the agent predicts optimal actions to achieve specified cumulative rewards (max_rtg). This is a genuine implementation of Decision Transformer adapted for Atari environments.",
+      "verdict": "implemented",
+      "code_snippets": [
+        {
+          "content": "    def rollout(self):\n        # rollout is only performed when\n        # (1) evaluation environment is vectorized \n        # (2) a single game is vectorized\n        # (3) number of environments == number of evaluations\n        game = self.eval_env.game[0] \n        eval_env_action_size = self.eval_env.action_size[0] \n        \n        game_id = self.eval_env.game_id # (n, )\n        game_id = torch.LongTensor(game_id).to(self.device)\n        game_id = rearrange(game_id, 'n -> n 1')       \n        \n        agent_logger = AgentLogger(\n            num_envs = self.cfg.num_eval_envs,\n            game = game\n        )\n        \n        #####################################################\n        # 1. initialize history for decision transformer\n        n, t = self.cfg.num_eval_envs, self.cfg.t_step\n        \n        obs_hist = torch.zeros((n, t, *self.cfg.obs_shape)).to(self.device)\n        rtg_hist = torch.zeros((n, t)).to(self.device)\n        act_hist = torch.zeros((n, t)).long().to(self.device)\n                \n        # get max rtg that was used in the training dataset\n        self.max_rtg_dict = self.load_rtg_dict()\n        for idx, g_id in enumerate(game_id):\n            max_rtg = self.max_rtg_dict[g_id.item()]\n            rtg_hist[idx][-1] = torch.FloatTensor([max_rtg]).to(self.device)\n        game_id = game_id.repeat(1, t)",
+          "filepath": "src/trainers/dt.py",
+          "start_line": 96,
+          "end_line": 126
+        },
+        {
+          "content": "        while True:\n            with torch.no_grad():       \n                obs_in = obs_hist / 255.0\n                act_in = act_hist\n                rtg_in = rtg_hist * self.cfg.rtg_scale\n\n                x, _ = self.model.backbone(obs_in)\n                x, _ = self.model.neck(x, act_in, rtg_in, game_id) # game-wise spatial embedding\n                act_pred, _ = self.model.head(x, game_id) # game-wise prediction head\n                act_pred = act_pred[:, -1]\n        \n            # mask the non-minimal actions\n            # In training, the action size is defined as the maximum number of actions\n            # In evaluation, the action should be limited to the available action in each env.\n            INF = 1e8\n            act_pred[:, eval_env_action_size:] = -INF\n            argmax_action = torch.argmax(act_pred, 1)\n            argmax_action = argmax_action.cpu().numpy()",
+          "filepath": "src/trainers/dt.py",
+          "start_line": 134,
+          "end_line": 151
+        },
+        {
+          "content": "        # RTG - Requires Reward and Terminal to be processed first.\n        elif filetype == 'rtg':\n            npy_filepath = Path(data_path + f'/{_game}/{filetype}_{run}_{checkpoint}_{num_samples}_{n_step}_{gamma}.npy')\n            if not os.path.exists(npy_filepath): \n                print(f'Pre-processed rtg not found. Creating one.')\n                print(f'Compute rtg with n_step:%d, gamma:%.2f' %(n_step, gamma))\n\n                # Get previously processed reward/terminal\n                rewards = np.sign(np.nan_to_num(dataset['reward'])) # nan reward exists for some reason\n                dones = dataset['terminal']\n                \n                # compute rtg based on whole trajectory\n                # this config is used in decision transformer\n                # https://arxiv.org/abs/2106.01345\n                if (n_step == 0) and (gamma == 1.0):\n                    # compute returns for each trajectory\n                    G = 0\n                    traj_start_idx = 0\n                    return_per_trajectory = []\n                    for idx in tqdm.tqdm(range(len(rewards))):\n                        reward = rewards[idx].item()\n                        terminal = dones[idx].item()\n                        \n                        G += reward\n                        if terminal == 1:\n                            return_per_trajectory.append(G)\n                            G = 0\n                            traj_start_idx = idx+1\n                \n                    # last trajectory\n                    return_per_trajectory.append(G)    \n                        \n                    # compute rtg for each interaction    \n                    rtgs = np.zeros_like(rewards)\n                    traj_idx = 0\n                    G = return_per_trajectory[traj_idx]\n                    for idx in tqdm.tqdm(range(len(rewards))):\n                        reward = rewards[idx].item()\n                        terminal = dones[idx].item()\n                        \n                        rtgs[idx] = G\n                        G -= reward\n                        \n                        if terminal == 1:\n                            traj_idx += 1\n                            G = return_per_trajectory[traj_idx]",
+          "filepath": "src/common/dataset_utils.py",
+          "start_line": 218,
+          "end_line": 263
+        },
+        {
+          "content": "    def compute_loss(self, batch):\n        ##############\n        # forward\n        x = obs = batch['obs']    \n        act = batch['act']\n        done = batch['done'].type(torch.int64)\n        rtg = batch['rtg'] * self.cfg.rtg_scale # ensure to have a small value\n        game_id = batch['game_id']\n        \n        # augmentation\n        n, t, f, c, h, w = x.shape\n        x = rearrange(x, 'n t f c h w -> n (t f c) h w')\n        x = self.aug_func(x)\n        x = rearrange(x, 'n (t f c) h w -> n t f c h w', t=t, f=f, c=c)\n\n        # online encoder\n        x, _ = self.model.backbone(x)\n        x, _ = self.model.neck(x, act, rtg, game_id) # game-wise spatial embedding\n        act_pred, _ = self.model.head(x, game_id) # game-wise prediction head\n        \n        # loss\n        loss_fn = nn.CrossEntropyLoss()\n        act_pred = rearrange(act_pred, 'n t d -> (n t) d')\n        act = rearrange(act, 'n t -> (n t)')\n        \n        loss = loss_fn(act_pred, act)\n        act_acc = torch.mean((torch.argmax(act_pred, 1) == act).float())\n        \n        ###############\n        # logs        \n        log_data = {'loss': loss.item(),\n                    'act_acc': act_acc.item()}        \n        \n        return loss, log_data",
+          "filepath": "src/trainers/dt.py",
+          "start_line": 58,
+          "end_line": 91
+        },
+        {
+          "content": "    def forward(self, x, act=None, rtg=None, idx=None):\n        \"\"\"\n        [params] x (torch.Tensor: (n, t, c, h, w))\n        [params] act (torch.Tensor: (n, t))\n        [params] rtg (torch.Tensor: (n, t))\n        [params] idx (torch.Tensor: (n, t)) idx of the spatial embedding\n        [returns] x (torch.Tensor: (n, t, d))\n        \"\"\"\n\n        n, t, c, h, w = x.shape\n        x = rearrange(x, 'n t c h w -> (n t) c h w')\n        \n        #######################\n        # spatial projection\n        if idx is None:\n            idx = torch.zeros((n, t), device=x.device).long()\n        spatial_embed = self.spatial_embed(idx) # Gamewise spatial embedding\n        spatial_embed = rearrange(spatial_embed, 'n t (c h w) -> (n t) c h w', c=c, h=h, w=w)\n        x = x * spatial_embed\n        \n        x = self.pool(x)\n        x = rearrange(x, '(n t) c 1 1 -> (n t) c', n=n, t=t)\n        x = self.spatial_norm(x)\n        x = self.mlp(x)\n        x = rearrange(x, '(n t) d -> n t d', n=n, t=t)\n        \n        #######################\n        # transformer encoding\n        if act is None:\n            act = torch.zeros((n, t), device=x.device).long()\n        if rtg is None:\n            rtg = torch.zeros((n, t), device=x.device).float()\n            \n        act = self.act_embedder(act)\n        rtg = rearrange(rtg, 'n t -> n t 1')\n        rtg = self.rtg_embedder(rtg)\n\n        # stack with inter-leaving [g1, o1, a1, g2, ..., gt, ot, at]\n        T = 3 * t\n        d = x.shape[-1]\n        _x = torch.zeros((n, T, d), device=x.device, dtype=x.dtype)\n        \n        _x[:, torch.arange(t) * 3, :] += rtg\n        _x[:, torch.arange(t) * 3 + 1, :] += x\n        _x[:, torch.arange(t) * 3 + 2, :] += act\n        \n        x = _x + self.pos_embed[:T].unsqueeze(0) \n        attn_mask = 1 - torch.ones((n, T, T), device=(x.device)).tril_()\n        x, _ = self.transformer_encoder(x, attn_mask) \n        x = self.out_norm(x) # normalization layer\n        \n        x = x[:, torch.arange(t) * 3 + 1, :]\n\n        info = {}\n        return x, info",
+          "filepath": "src/models/necks/dt_neck.py",
+          "start_line": 56,
+          "end_line": 110
+        }
+      ]
+    },
+    "error": null,
+    "duration_seconds": 101.81303066699184
+  },
+  {
+    "paper_id": "investigating_pre_training_objectives_for_generalization_in_vision_based_reinforcement_learning",
+    "annotation_id": "893e1818",
+    "claim_text": "Our backbone utilizes a modified version of the ResNet-50 architecture (He et al., 2016). It is designed to process input images $o \\in \\mathbb{R}^{C \\times H \\times W}$ and encode them into spatial feature maps $z = f(o)$, where $z \\in \\mathbb{R}^{D_z \\times H_z \\times W_z}$.",
+    "section_ref": "5.2. Model",
+    "ground_truth_verdict": "implemented",
+    "ground_truth_locations": [
+      {
+        "filepath": "src/models/backbones/resnet.py",
+        "line_range": [
+          81,
+          83
+        ]
+      },
+      {
+        "filepath": "src/models/backbones/resnet.py",
+        "line_range": [
+          137,
+          146
+        ]
+      }
+    ],
+    "prediction": {
+      "reasoning": "The paper describes a modified ResNet-50 backbone that processes input images and encodes them into spatial feature maps z = f(o). I searched the repository and found the implementation in src/models/backbones/resnet.py. This file contains a ResNet class with explicit support for ResNet-50 (lines 112-114) using the Bottleneck block architecture with [3,4,6,3] layer configuration. The implementation matches the paper's description: it's a modified ResNet-50 that takes input images and processes them through convolutional layers to produce spatial feature maps. The forward method (lines 137-148) shows the input is processed through stem, layer1, layer2, layer3, and layer4, producing output spatial feature maps with shape (n, t, c, h, w). The modifications mentioned in the file header (input channel adjustment, Group-Normalization, learnable spatial embedding) align with what the paper describes as a 'modified version' of ResNet-50. The config file at configs/model/backbone/resnet.yaml confirms resnet50 is the net_type used. Additionally, src/models/base.py shows how the backbone is used within the overall model architecture, with the encode method calling the backbone to produce feature maps.",
+      "verdict": "implemented",
+      "code_snippets": [
+        {
+          "content": "class ResNet(BaseBackbone):\n    name ='resnet'\n    def __init__(self, \n                 net_type,\n                 in_shape,\n                 action_size,\n                 norm_type,\n                 width_multiplier=1.0):\n        \n        super(ResNet, self).__init__(in_shape, action_size)\n        f, c, h, w = in_shape\n        self.in_channel = f * c\n        \n        self.conv1 = nn.Conv2d(self.in_channel, 64, kernel_size=7, \n                               stride=2, padding=3, bias=False)\n        self.norm1 = init_normalization(channels=64, norm_type=norm_type)\n        self.stem = nn.Sequential(\n            self.conv1,\n            self.norm1,\n            nn.ReLU(inplace=True),\n        )\n        \n        self.in_planes = 64\n        if net_type == 'resnet18':\n            block = BasicBlock\n            num_blocks = [2,2,2,2]\n            \n        elif net_type == 'resnet34':\n            block = BasicBlock\n            num_blocks = [3,4,6,3]\n\n        elif net_type == 'resnet50':\n            block = Bottleneck\n            num_blocks = [3,4,6,3]\n            \n        elif net_type == 'resnet101':\n            block = Bottleneck\n            num_blocks = [3,4,23,3]\n            \n        elif net_type == 'resnet152':\n            block = Bottleneck\n            num_blocks = [3,8,36,3]\n        \n        self.layer1 = self._make_layer(block, int(64*width_multiplier), num_blocks[0], stride=1, norm_type=norm_type)\n        self.layer2 = self._make_layer(block, int(128*width_multiplier), num_blocks[1], stride=2, norm_type=norm_type)\n        self.layer3 = self._make_layer(block, int(256*width_multiplier), num_blocks[2], stride=2, norm_type=norm_type)\n        self.layer4 = self._make_layer(block, int(512*width_multiplier), num_blocks[3], stride=2, norm_type=norm_type)",
+          "filepath": "src/models/backbones/resnet.py",
+          "start_line": 81,
+          "end_line": 127
+        },
+        {
+          "content": "    def encode(self, x):\n        b, b_info = self.backbone(x)\n        n, n_info = self.neck(b)\n        \n        info = {\n            'backbone': b_info,\n            'neck': n_info,\n        }\n\n        return n, info",
+          "filepath": "src/models/base.py",
+          "start_line": 12,
+          "end_line": 21
+        },
+        {
+          "content": "    def forward(self, x):\n        n, t, f, c, h, w = x.shape\n        x = rearrange(x, 'n t f c h w -> (n t) (f c) h w')\n        x = self.stem(x)\n        x = self.layer1(x)\n        x = self.layer2(x)\n        x = self.layer3(x)\n        x = self.layer4(x)\n        x = rearrange(x, '(n t) c h w -> n t c h w', t=t)\n        info = {}\n        \n        return x, info",
+          "filepath": "src/models/backbones/resnet.py",
+          "start_line": 137,
+          "end_line": 148
+        }
+      ]
+    },
+    "error": null,
+    "duration_seconds": 37.81013749999693
+  },
+  {
+    "paper_id": "investigating_pre_training_objectives_for_generalization_in_vision_based_reinforcement_learning",
+    "annotation_id": "ff93a88d",
+    "claim_text": "The dataset for Atari-PB is derived from the DQN-Replay-\nDataset (Agarwal et al., 2020).",
+    "section_ref": "5.1. Dataset",
+    "ground_truth_verdict": "implemented",
+    "ground_truth_locations": [
+      {
+        "filepath": "src/common/dataset_utils.py",
+        "line_range": [
+          134,
+          145
+        ]
+      },
+      {
+        "filepath": "src/dataloaders/__init__.py",
+        "line_range": [
+          23,
+          43
+        ]
+      }
+    ],
+    "prediction": {
+      "reasoning": "The content describes that 'The dataset for Atari-PB is derived from the DQN-Replay-Dataset (Agarwal et al., 2020)'. This is a dataset description that DOES have corresponding code implementation in the repository. I searched for references to 'DQN-Replay-Dataset' and 'Agarwal' and found multiple implementations: (1) The README.md explicitly documents that the pre-training dataset comes from DQN-Replay-Dataset at line 32, (2) The script 'scripts/download_pretrain_dataset.sh' downloads data from 'gs://atari-replay-datasets/dqn/' which is the DQN-Replay-Dataset, (3) Most importantly, 'src/common/dataset_utils.py' contains the core implementation with functions 'prepare_ataripb_dataset' and 'load_replay_dataset' that process the DQN-Replay-Dataset into the Atari-PB format, (4) The dataloader initialization in 'src/dataloaders/__init__.py' calls 'prepare_ataripb_dataset' with 'replay_dataset_path' parameter, and (5) The configuration file 'configs/dataloader/pretrain.yaml' specifies the 'replay_dataset_path' parameter. The implementation shows how the raw DQN-Replay-Dataset is loaded from .gz files and preprocessed into the Atari-PB dataset format with observations, actions, rewards, terminals, return-to-go, and game IDs.",
+      "verdict": "implemented",
+      "code_snippets": [
+        {
+          "content": "def prepare_ataripb_dataset(replay_dataset_path: Path,\n                            ataripb_dataset_path: Path,\n                            ataripb_subdir_name: str,\n                            games: List[str],\n                            runs: List[int],\n                            checkpoints: List[int],\n                            per_ckpt_size: int,\n                            n_step: int,\n                            gamma: float,\n                            minimal_action_set: bool\n                            ) -> Dict[str, Path]:\n    \"\"\"\n    Returns a dict of filepaths to Atari-PB dataset, while checking if the dataset exists.\n    If there's no pre-processed Atari-PB dataset, create one.\n\n    replay_dataset_path: Path to top directory of the dataset to sample from (e.g., DQN-Replay-Dataset).\n    ataripb_dataset_path: Path to save/load preprocessed Atari-PB dataset.\n    ataripb_subdir_name: Subdirectory name for each Atari-PB dataset (e.g., train, test, ...)\n    games: List of all games to be included in the dataset.\n    runs: List of run indexes for each game.\n    checkpoints: List of checkpoint indexes for each run.\n    per_ckpt_size: Number of transitions to be sampled from each checkpoint.\n    n_step: n steps used by the algorithm.\n    gamma: Discount factor.\n    minimal_action_set: Whether the dataset used minimal action set.\n    \"\"\"",
+          "filepath": "src/common/dataset_utils.py",
+          "start_line": 14,
+          "end_line": 39
+        },
+        {
+          "content": "    # Prepare AtariPB dataset and get filepaths\n    file_paths = prepare_ataripb_dataset(\n        replay_dataset_path=cfg['replay_dataset_path'],\n        ataripb_dataset_path=cfg['ataripb_dataset_path'],\n        ataripb_subdir_name=cfg['ataripb_subdir_name'],\n        games=cfg['games'],\n        runs=cfg['runs'],\n        checkpoints=cfg['checkpoints'],\n        per_ckpt_size=cfg['samples_per_checkpoint'],\n        n_step=cfg['n_step'],\n        gamma=cfg['gamma'],\n        minimal_action_set=cfg['minimal_action_set']\n    )",
+          "filepath": "src/dataloaders/__init__.py",
+          "start_line": 23,
+          "end_line": 35
+        },
+        {
+          "content": "games='AirRaid Amidar Asteroids Atlantis BankHeist BattleZone Berzerk Bowling Boxing Breakout Carnival Centipede ChopperCommand CrazyClimber DemonAttack DoubleDunk ElevatorAction Enduro FishingDerby Freeway Frostbite Gopher Gravitar Hero IceHockey Jamesbond Kangaroo Krull KungFuMaster MontezumaRevenge MsPacman NameThisGame Phoenix Pitfall PrivateEye Qbert RoadRunner Robotank Skiing Solaris SpaceInvaders StarGunner Tennis TimePilot Tutankham UpNDown VideoPinball WizardOfWor YarsRevenge Zaxxon Alien Assault Asterix BeamRider JourneyEscape Pong Pooyan Riverraid Seaquest Venture'\nruns='1 2'\nckpts='1 2 3 4 5 6 7 8 9 10'\nfiles='action observation reward terminal'\nfor g in ${games[@]}; do\n  mkdir -p \"${data_dir}/${g}\"\n  for f in ${files[@]}; do\n    for c in ${ckpts[@]}; do\n      for r in ${runs[@]}; do\n          if [ ! -f \"${data_dir}/${g}/${f}_${r}_${c}.gz\" ]; then\n            gsutil cp \"gs://atari-replay-datasets/dqn/${g}/${r}/replay_logs/\\$store\\$_${f}_ckpt.${c}.gz\" \"${data_dir}/${g}/${f}_${r}_${c}.gz\"\n          fi;\n      done;\n    done;\n  done;\ndone;",
+          "filepath": "scripts/download_pretrain_dataset.sh",
+          "start_line": 3,
+          "end_line": 18
+        },
+        {
+          "content": "def load_replay_dataset(data_path: Path,\n                        obs_exists: bool,\n                        game: str,\n                        run: int,\n                        checkpoint: int,\n                        num_samples: int,\n                        n_step: int,\n                        gamma: float,\n                        minimal_action_set: bool\n                        ) -> Dict[str, np.ndarray]:\n    \"\"\"\n    Load a certain checkpoint in the replay dataset and preprocess it.\n\n    data_path: Path to top directory of the dataset to sample from (e.g., DQN-Replay-Dataset).\n    obs_exists: Whether observation is already pre-processed by other instances with same num_samples.\n    game: Name of game to sample from.\n    run: Index of run to sample from.\n    checkpoint: Index of checkpoint to sample from.\n    num_samples: Number of transitions to be sampled from each checkpoint.\n    n_step: n steps used by the algorithm.\n    gamma: Discount factor.\n    minimal_action_set: Whether the dataset used minimal action set.\n    \"\"\"\n\n    dataset = {} \n    _game = ''.join(word.capitalize() for word in str(game).split('_'))\n\n    print(f\"Loading from {data_path}: {game}, run {run}, checkpoint {checkpoint}\")\n\n    def load_from_gz(filepath):\n        g = gzip.GzipFile(filename=filepath)\n        data__ = np.load(g)\n        data_ = np.copy(data__[:num_samples])\n        print(f'Using {data_.size * data_.itemsize} bytes')\n        del data__\n        return data_\n\n    for filetype in FILE_TYPES:\n        gz_filepath = Path(data_path + f'/{_game}/{filetype}_{run}_{checkpoint}.gz')",
+          "filepath": "src/common/dataset_utils.py",
+          "start_line": 134,
+          "end_line": 172
+        }
+      ]
+    },
+    "error": null,
+    "duration_seconds": 69.36354133300483
+  },
+  {
+    "paper_id": "investigating_pre_training_objectives_for_generalization_in_vision_based_reinforcement_learning",
+    "annotation_id": "d0cf1fff",
+    "claim_text": "Offline BC: In this scenario, the model undergoes fine-\ntuning through behavior cloning using 50,000 frames\nfrom expert demonstration",
+    "section_ref": "5.4. Fine-tuning",
+    "ground_truth_verdict": "implemented",
+    "ground_truth_locations": [
+      {
+        "filepath": "run_offline_bc.py",
+        "line_range": null
+      }
+    ],
+    "prediction": {
+      "reasoning": "I searched for the implementation of 'Offline BC' (behavior cloning) fine-tuning described in the paper. The content describes fine-tuning a model through behavior cloning using 50,000 frames from expert demonstrations. I found: (1) A dedicated script 'run_offline_bc.py' that handles offline BC fine-tuning, (2) A 'BCTrainer' class in 'src/trainers/bc.py' that implements the behavior cloning training logic with cross-entropy loss on action predictions, (3) Configuration files that specify the dataset parameters. The base 'configs/dataloader/offline_bc.yaml' uses checkpoint 50 with 10,000 samples per checkpoint (10,000 transitions), while 'configs/dataloader/far_ood_offline_bc.yaml' explicitly uses 50,000 samples per checkpoint, which directly matches the '50,000 frames' mentioned in the paper. The BCTrainer performs supervised learning by predicting actions from observations using the model's backbone, neck, and head components, computing cross-entropy loss between predicted and actual actions.",
+      "verdict": "implemented",
+      "code_snippets": [
+        {
+          "content": "class BCTrainer(BaseTrainer):\n    name = 'bc'\n    def __init__(self,\n                 cfg,\n                 device,\n                 train_loader,\n                 train_sampler,\n                 eval_loader,\n                 eval_sampler,\n                 eval_env,\n                 logger, \n                 aug_func,\n                 model):\n        \n        super().__init__(cfg, \n                         device, \n                         train_loader, \n                         train_sampler,\n                         eval_loader, \n                         eval_sampler, \n                         eval_env,\n                         logger, \n                         aug_func, \n                         model)  \n\n        if self.cfg.resume:\n            self.start_epoch, self.start_step = self.load_checkpoint()",
+          "filepath": "src/trainers/bc.py",
+          "start_line": 11,
+          "end_line": 37
+        },
+        {
+          "content": "checkpoints: [2]\nsamples_per_checkpoint: 50000",
+          "filepath": "configs/dataloader/far_ood_offline_bc.yaml",
+          "start_line": 5,
+          "end_line": 6
+        },
+        {
+          "content": "# trainer\n        trainer = build_trainer(cfg=cfg.trainer,\n                                device=device,\n                                train_loader=train_loader,\n                                train_sampler=train_sampler,\n                                eval_loader=eval_loader,\n                                eval_sampler=eval_sampler,\n                                eval_env=env,\n                                logger=logger,\n                                model=model)\n        \n        # train\n        trainer.train()",
+          "filepath": "run_offline_bc.py",
+          "start_line": 155,
+          "end_line": 167
+        },
+        {
+          "content": "checkpoints: [50]\nsamples_per_checkpoint: 10000",
+          "filepath": "configs/dataloader/offline_bc.yaml",
+          "start_line": 18,
+          "end_line": 19
+        },
+        {
+          "content": "def compute_loss(self, batch):\n        ##############\n        # forward\n        x = obs = batch['obs']        \n        act = batch['act']\n        game_id = batch['game_id']\n        \n        # augmentation\n        n, t, f, c, h, w = x.shape\n        x = rearrange(x, 'n t f c h w -> n (t f c) h w')\n        x = self.aug_func(x)\n        x = rearrange(x, 'n (t f c) h w -> n t f c h w', t=t, f=f, c=c)\n\n        # online encoder\n        x, _ = self.model.backbone(x)\n        x, _ = self.model.neck(x, game_id) # game-wise spatial embedding\n        act_pred, _ = self.model.head(x, game_id) # game-wise prediction head\n                \n        # loss\n        loss_fn = nn.CrossEntropyLoss()\n        act_pred = rearrange(act_pred, 'n t d -> (n t) d')\n        act = rearrange(act, 'n t -> (n t)')\n        \n        loss = loss_fn(act_pred, act)\n        act_acc = torch.mean((torch.argmax(act_pred, 1) == act).float())\n\n        ###############\n        # logs        \n        log_data = {'loss': loss.item(),\n                    'act_acc': act_acc.item()}\n        \n        return loss, log_data",
+          "filepath": "src/trainers/bc.py",
+          "start_line": 39,
+          "end_line": 70
+        }
+      ]
+    },
+    "error": null,
+    "duration_seconds": 115.90864304199931
+  },
+  {
+    "paper_id": "investigating_pre_training_objectives_for_generalization_in_vision_based_reinforcement_learning",
+    "annotation_id": "c58f2e9b",
+    "claim_text": "Online RL: In this scenario, the model is fine-tuned\nusing the Rainbow algorithm (Hessel et al., 2018), with\n50,000 interactions in each respective environment",
+    "section_ref": "5.4. Fine-tuning",
+    "ground_truth_verdict": "implemented",
+    "ground_truth_locations": [
+      {
+        "filepath": "run_online_rl.py",
+        "line_range": null
+      },
+      {
+        "filepath": "src/agents/rainbow.py",
+        "line_range": [
+          11,
+          13
+        ]
+      },
+      {
+        "filepath": "configs/online_rl.yaml",
+        "line_range": [
+          21,
+          23
+        ]
+      }
+    ],
+    "prediction": {
+      "reasoning": "The content describes fine-tuning a model using the Rainbow algorithm with 50,000 interactions. I searched the repository for: (1) run_online_rl.py - the main script for online RL training, (2) src/agents/rainbow.py - the Rainbow agent implementation, (3) configs/agent/rainbow.yaml - configuration showing num_timesteps: 50000. The implementation is present with: Rainbow agent class implementing distributional RL (C51), double DQN, prioritized experience replay (PER buffer), and n-step returns. The training loop in base.py (line 109) runs for cfg.num_timesteps steps (set to 50000 in rainbow.yaml line 4). The config at configs/online_rl.yaml specifies Rainbow as the default agent. Key Rainbow components found: distributional value distribution (mh_distributional head), double Q-learning (cfg.double in rainbow.py line 120), PER buffer (configs/agent/rainbow.yaml line 18), n-step returns (handled in training loop). While the paper cites Hessel et al. 2018, the codebase doesn't include this citation directly, but implements the Rainbow algorithm components as described in that paper.",
+      "verdict": "implemented",
+      "code_snippets": [
+        {
+          "content": "defaults:\n- _self_\n- dataloader: online_rl\n- agent: rainbow\n- env: atari\n- model: distributional\n- pretrained: load_none_freeze_b",
+          "filepath": "configs/online_rl.yaml",
+          "start_line": 19,
+          "end_line": 25
+        },
+        {
+          "content": "class RAINBOW(BaseAgent):\n    name = 'rainbow'\n    def __init__(self,\n                 cfg,\n                 device,\n                 train_env,\n                 eval_env,\n                 logger, \n                 buffer,\n                 aug_func,\n                 model):\n        \n        super().__init__(cfg, device, train_env, eval_env, logger, buffer, aug_func, model)  \n        self.target_model = copy.deepcopy(self.model).to(self.device)   \n        self.target_model.load_state_dict(self.model.state_dict())\n        for param in self.target_model.parameters():\n            param.requires_grad = False\n\n        # distributional\n        self.num_atoms = self.model.head.num_atoms\n        self.v_min = self.cfg.v_min\n        self.v_max = self.cfg.v_max\n        self.support = torch.linspace(self.v_min, self.v_max, self.num_atoms).to(self.device)\n        self.delta_z = (self.v_max - self.v_min) / (self.num_atoms - 1)",
+          "filepath": "src/agents/rainbow.py",
+          "start_line": 11,
+          "end_line": 34
+        },
+        {
+          "content": "num_timesteps: 50000 # 50k",
+          "filepath": "configs/agent/rainbow.yaml",
+          "start_line": 4,
+          "end_line": 4
+        },
+        {
+          "content": "            if self.cfg.double:\n                nox, _ = online_model.backbone(next_obs)\n                nox, _ = online_model.neck(nox, game_id)\n                next_online_q_dist, _ = online_model.head(nox, game_id)\n                next_online_q_dist = rearrange(next_online_q_dist, 'n t d n_a -> (n t) d n_a')                \n                next_online_q =  (next_online_q_dist * self.support.reshape(1,1,-1)).sum(-1)\n                next_act = torch.argmax(next_online_q, 1)\n            else:       \n                next_target_q =  (next_target_q_dist * self.support.reshape(1,1,-1)).sum(-1)     \n                next_act = torch.argmax(next_target_q, 1)",
+          "filepath": "src/agents/rainbow.py",
+          "start_line": 120,
+          "end_line": 129
+        },
+        {
+          "content": "buffer: \n    type: 'per_buffer'\n    obs_shape: ${agent.obs_shape}\n    action_size: ${agent.action_size}\n    size: 100000\n    prior_exp: 0.5 # \u03c9\n    max_n_step: 10",
+          "filepath": "configs/agent/rainbow.yaml",
+          "start_line": 17,
+          "end_line": 23
+        }
+      ]
+    },
+    "error": null,
+    "duration_seconds": 85.67120454201358
+  }
+]
