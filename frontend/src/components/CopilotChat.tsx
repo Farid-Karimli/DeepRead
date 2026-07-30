@@ -8,6 +8,8 @@ import {
 } from 'react';
 import {
     IoChatbubbleEllipsesOutline,
+    IoChevronBackOutline,
+    IoChevronForwardOutline,
     IoCloseOutline,
     IoRefreshOutline,
     IoSendOutline,
@@ -24,11 +26,25 @@ import {
 } from '../context/CopilotContext.tsx';
 import { UserContext } from '../context/UserContext.tsx';
 import { useCopilotConversation } from '../hooks/useCopilotConversation.ts';
+import { formatCopilotContent } from '../utils/formatCopilotContent.tsx';
 import './CopilotChat.css';
 
 type CopilotChatProps = {
     paperId: string;
 };
+
+type CopilotDock = 'left' | 'right';
+
+const COPILOT_DOCK_STORAGE_KEY = 'deepread-copilot-dock';
+
+function readStoredDock(): CopilotDock {
+    try {
+        const value = localStorage.getItem(COPILOT_DOCK_STORAGE_KEY);
+        return value === 'left' ? 'left' : 'right';
+    } catch {
+        return 'right';
+    }
+}
 
 function messageTime(createdAt: string): string {
     const date = new Date(createdAt);
@@ -96,7 +112,9 @@ function Message({ message }: { message: CopilotMessage }) {
                 <time dateTime={message.created_at}>{messageTime(message.created_at)}</time>
             </div>
             <div className="copilot-message__bubble">
-                <div className="copilot-message__content">{message.content}</div>
+                <div className="copilot-message__content">
+                    {isUser ? message.content : formatCopilotContent(message.content)}
+                </div>
                 {message.context_refs.length > 0 && (
                     <ContextChips refs={message.context_refs} />
                 )}
@@ -125,6 +143,7 @@ function Message({ message }: { message: CopilotMessage }) {
 
 export default function CopilotChat({ paperId }: CopilotChatProps) {
     const [isOpen, setIsOpen] = useState(false);
+    const [dock, setDock] = useState<CopilotDock>(readStoredDock);
     const [draft, setDraft] = useState('');
     const { currentUser } = useContext(UserContext);
     const { contextRefs, removeContext, clearContext } = useCopilotContext();
@@ -183,6 +202,15 @@ export default function CopilotChat({ paperId }: CopilotChatProps) {
         }
     };
 
+    const moveDock = (next: CopilotDock) => {
+        setDock(next);
+        try {
+            localStorage.setItem(COPILOT_DOCK_STORAGE_KEY, next);
+        } catch {
+            // Ignore private-mode or quota errors; position still updates for this session.
+        }
+    };
+
     const handleComposerKeyDown = (
         event: KeyboardEvent<HTMLTextAreaElement>,
     ) => {
@@ -197,7 +225,10 @@ export default function CopilotChat({ paperId }: CopilotChatProps) {
     };
 
     return (
-        <aside className="copilot-chat" aria-label="DeepRead Copilot">
+        <aside
+            className={`copilot-chat copilot-chat--${dock}`}
+            aria-label="DeepRead Copilot"
+        >
             {isOpen && (
                 <section
                     id="copilot-chat-panel"
@@ -342,39 +373,65 @@ export default function CopilotChat({ paperId }: CopilotChatProps) {
                 </section>
             )}
 
-            <button
-                type="button"
-                className="copilot-launcher"
-                onClick={() => setIsOpen((open) => !open)}
-                aria-expanded={isOpen}
-                aria-controls="copilot-chat-panel"
-                aria-label={
-                    isOpen
-                        ? 'Close Copilot'
-                        : `Open Copilot${
-                            contextRefs.length > 0
-                                ? `, ${contextRefs.length} context ${
-                                    contextRefs.length === 1 ? 'item' : 'items'
-                                } attached`
-                                : ''
-                        }`
-                }
-                title={isOpen ? 'Close Copilot' : 'Open Copilot'}
-            >
-                {isOpen ? (
-                    <IoCloseOutline aria-hidden="true" />
-                ) : (
-                    <IoChatbubbleEllipsesOutline aria-hidden="true" />
-                )}
-                {!isOpen && contextRefs.length > 0 && (
-                    <span
-                        className="copilot-launcher__badge"
-                        aria-hidden="true"
+            <div className="copilot-launcher-row">
+                {dock === 'right' && (
+                    <button
+                        type="button"
+                        className="copilot-dock-button"
+                        onClick={() => moveDock('left')}
+                        aria-label="Move Copilot to bottom left"
+                        title="Move to bottom left"
                     >
-                        {contextRefs.length > 9 ? '9+' : contextRefs.length}
-                    </span>
+                        <IoChevronBackOutline aria-hidden="true" />
+                    </button>
                 )}
-            </button>
+                <button
+                    type="button"
+                    className="copilot-launcher"
+                    onClick={() => setIsOpen((open) => !open)}
+                    aria-expanded={isOpen}
+                    aria-controls="copilot-chat-panel"
+                    aria-label={
+                        isOpen
+                            ? 'Close Copilot'
+                            : `Open Copilot${
+                                  contextRefs.length > 0
+                                      ? `, ${contextRefs.length} context ${
+                                            contextRefs.length === 1
+                                                ? 'item'
+                                                : 'items'
+                                        } attached`
+                                      : ''
+                              }`
+                    }
+                    title={isOpen ? 'Close Copilot' : 'Open Copilot'}
+                >
+                    {isOpen ? (
+                        <IoCloseOutline aria-hidden="true" />
+                    ) : (
+                        <IoChatbubbleEllipsesOutline aria-hidden="true" />
+                    )}
+                    {!isOpen && contextRefs.length > 0 && (
+                        <span
+                            className="copilot-launcher__badge"
+                            aria-hidden="true"
+                        >
+                            {contextRefs.length > 9 ? '9+' : contextRefs.length}
+                        </span>
+                    )}
+                </button>
+                {dock === 'left' && (
+                    <button
+                        type="button"
+                        className="copilot-dock-button"
+                        onClick={() => moveDock('right')}
+                        aria-label="Move Copilot to bottom right"
+                        title="Move to bottom right"
+                    >
+                        <IoChevronForwardOutline aria-hidden="true" />
+                    </button>
+                )}
+            </div>
         </aside>
     );
 }

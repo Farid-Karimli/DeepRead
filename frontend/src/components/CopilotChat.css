@@ -2,10 +2,57 @@
   --copilot-panel-width: 26rem;
   --copilot-on-accent: white;
   position: fixed;
-  right: 24px;
   bottom: 24px;
   z-index: 100;
   text-align: left;
+}
+
+.copilot-chat--right {
+  right: 24px;
+  left: auto;
+}
+
+.copilot-chat--left {
+  left: 24px;
+  right: auto;
+}
+
+.copilot-launcher-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.copilot-chat--right .copilot-launcher-row {
+  justify-content: flex-end;
+}
+
+.copilot-chat--left .copilot-launcher-row {
+  justify-content: flex-start;
+}
+
+.copilot-dock-button {
+  display: inline-flex;
+  width: 2rem;
+  height: 2rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--bg);
+  color: var(--text-h);
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  font-size: 1.1rem;
+  transition:
+    background 0.15s ease,
+    transform 0.15s ease;
+}
+
+.copilot-dock-button:hover {
+  background: var(--social-bg);
+  transform: translateY(-1px);
 }
 
 .copilot-launcher {
@@ -13,7 +60,7 @@
   display: flex;
   width: 3.5rem;
   height: 3.5rem;
-  margin-left: auto;
+  flex-shrink: 0;
   align-items: center;
   justify-content: center;
   border: 1px solid var(--accent-border);
@@ -60,6 +107,7 @@
 }
 
 .copilot-launcher:focus-visible,
+.copilot-dock-button:focus-visible,
 .copilot-panel button:focus-visible,
 .copilot-panel textarea:focus-visible {
   outline: 2px solid var(--accent);
@@ -68,7 +116,6 @@
 
 .copilot-panel {
   position: absolute;
-  right: 0;
   bottom: calc(100% + 14px);
   display: flex;
   width: min(var(--copilot-panel-width), calc(100vw - 48px));
@@ -83,6 +130,16 @@
     rgba(26, 24, 20, 0.18) 0 24px 48px -12px,
     rgba(26, 24, 20, 0.1) 0 10px 20px -10px;
   color: var(--text);
+}
+
+.copilot-chat--right .copilot-panel {
+  right: 0;
+  left: auto;
+}
+
+.copilot-chat--left .copilot-panel {
+  left: 0;
+  right: auto;
 }
 
 [data-theme='dark'] .copilot-panel {
@@ -239,6 +296,10 @@
   font-size: 0.78rem;
   line-height: 1.5;
   white-space: pre-wrap;
+}
+
+.copilot-message--assistant .copilot-message__content strong {
+  font-weight: 650;
 }
 
 .copilot-context-chips {
@@ -501,8 +562,13 @@
 }
 
 @media (max-width: 600px) {
-  .copilot-chat {
+  .copilot-chat--right {
     right: 12px;
+    bottom: 12px;
+  }
+
+  .copilot-chat--left {
+    left: 12px;
     bottom: 12px;
   }
 
@@ -527,12 +593,14 @@
 
 @media (prefers-reduced-motion: reduce) {
   .copilot-launcher,
+  .copilot-dock-button,
   .copilot-thinking span {
     animation: none;
     transition: none;
   }
 
-  .copilot-launcher:hover {
+  .copilot-launcher:hover,
+  .copilot-dock-button:hover {
     transform: none;
   }
 }
