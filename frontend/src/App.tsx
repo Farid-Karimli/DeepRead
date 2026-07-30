@@ -13,10 +13,12 @@ import {
   getGithubRepoTree,
 } from './api/main';
 
+import { logStudyEvent } from './utils/studyLog.ts';
 import type { AgentTaskResult, codeEntityMatch, codeMatchesResult, codeSectionsResult } from './api/types.ts';
 import { SidePanelProvider } from './context/SidePanelContext.tsx';
 import { UserContext, type User } from './context/UserContext.tsx';
 import { CopilotProvider } from './context/CopilotContext.tsx';
+import { StudySessionProvider } from './context/StudySessionContext.tsx';
 import CopilotChat from './components/CopilotChat.tsx';
 
 /** Celery stores the agent return value: `{ github_repo_url, code_result }`. */
@@ -220,6 +222,7 @@ function App() {
   };
 
   const clearEnvironment = () => {
+    logStudyEvent('system', 'clear_environment', {});
     setTaskId(null);
     setSelectedPaperId(null);
     setSubmitError(null);
@@ -245,6 +248,12 @@ function App() {
                   currentUser, setUser
                 }}>
                 <CopilotProvider key={selectedPaperId}>
+                  <StudySessionProvider
+                    paperId={selectedPaperId}
+                    userId={currentUser?.id}
+                    username={currentUser?.username}
+                    paperTitle={analysisResult.paper_title ?? undefined}
+                  >
                   <PaperView
                     analysisResult={analysisResult}
                     processResult={papermageResult}
@@ -255,6 +264,7 @@ function App() {
                     clearEnvironment={clearEnvironment}
                   />
                   <CopilotChat paperId={selectedPaperId} />
+                  </StudySessionProvider>
                 </CopilotProvider>
             </UserContext>
         </SidePanelProvider>

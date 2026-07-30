@@ -5,9 +5,9 @@ This mirrors the live /analyze flow without going through FastAPI/Celery:
     1. Read a local filepath or download a URL into raw bytes.
     2. Derive paper_id = sha256(raw bytes).
     3. Upload the original paper bytes to Supabase storage.
-    4. Check Redis for a cached analysis unless --force is passed.
+    4. Check Supabase for an existing paper row unless --force is passed.
     5. Extract/normalize paper text and run Agent.analyze_paper().
-    6. Write the result to Redis and update Supabase metadata.
+    6. Upsert the result to Supabase metadata.
 
 Usage (from repo root):
     cd backend
@@ -25,7 +25,7 @@ import json
 import mimetypes
 import sys
 import time
-from datetime import datetime
+from datetime import UTC, datetime
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import unquote, urlparse
@@ -90,7 +90,7 @@ def _read_input(source: str, timeout: int) -> PaperUpload:
     return PaperUpload(source=str(local_path), filename=local_path.name, raw=local_path.read_bytes())
 
 
-def _extract_metadata(result: dict) -> tuple[str | None, str | None]:
+def _extract_metadata(result: dict) -> tuple[str, str]:
     title = result.get("paper_title")
     link = result.get("github_repo_url")
     code_result = result.get("code_result")
@@ -101,8 +101,8 @@ def _extract_metadata(result: dict) -> tuple[str | None, str | None]:
         if isinstance(code_title, str):
             title = code_title
     return (
-        title if isinstance(title, str) else None,
-        link if isinstance(link, str) else None,
+        title if isinstance(title, str) else "",
+        link if isinstance(link, str) else "",
     )
 
 
@@ -124,6 +124,14 @@ def _read_input_list(path: Path) -> list[str]:
     ]
 
 
+def _unified_from_paper_record(paper_record: PaperRecord) -> dict:
+    dumped = paper_record.model_dump(mode="json")
+    return {
+        "analysis": dumped.get("analysis_result"),
+        "processed": dumped.get("papermage_result"),
+    }
+
+
 async def _analyze_one(
     source: str,
     *,
@@ -143,8 +151,7 @@ async def _analyze_one(
     print(f"[info] bytes={len(upload.raw)}")
     print(f"[info] paper_id={paper_id}")
 
-    from src.db import upsert_paper, upload_paper_to_storage
-    from src.paper_analysis_cache import cache_key_for_paper_id, get_cached_result, set_cached_result
+    from src.db import get_paper_record_by_id, upsert_paper, upload_paper_to_storage
 
     print("[step] uploading paper bytes to Supabase storage...")
     upload_paper_to_storage(
@@ -154,26 +161,15 @@ async def _analyze_one(
     )
 
     if not force:
-        cached = get_cached_result(paper_id)
-        if cached is not None:
-            analysis = cached.get("analysis")
-            processed = cached.get("processed")
-            if isinstance(analysis, dict) and isinstance(processed, dict):
-                title, link = _extract_metadata(analysis)
-                print("[step] upserting cached Supabase paper row...")
-                upsert_paper(
-                    PaperRecord(
-                        id=paper_id,
-                        paper_title=title,
-                        github_link=link,
-                        created_at=datetime.now(),
-                        analysis_result=analysis,
-                        papermage_result=processed,
-                    )
-                )
+        paper_record = get_paper_record_by_id(paper_id)
+        if paper_record is not None and paper_record.analysis_result is not None:
+            unified_result = _unified_from_paper_record(paper_record)
             out_path = _output_path(out_dir, upload.filename, paper_id)
-            out_path.write_text(json.dumps(cached, indent=2, ensure_ascii=False), encoding="utf-8")
-            print(f"[cache] hit key={cache_key_for_paper_id(paper_id)}")
+            out_path.write_text(
+                json.dumps(unified_result, indent=2, ensure_ascii=False),
+                encoding="utf-8",
+            )
+            print(f"[cache] hit supabase paper_id={paper_id}")
             print(f"[done] wrote cached result to {out_path}")
             return True
 
@@ -193,9 +189,6 @@ async def _analyze_one(
         on_event=print_event,
     )
 
-    print("[step] writing analysis result to Redis cache...")
-    set_cached_result(paper_id, result, papermage_result)
-
     title, link = _extract_metadata(result)
     print(f"[info] paper_title={title!r}")
     print(f"[info] github_repo_url={link!r}")
@@ -205,7 +198,7 @@ async def _analyze_one(
             id=paper_id,
             paper_title=title,
             github_link=link,
-            created_at=datetime.now(),
+            created_at=datetime.now(UTC),
             analysis_result=result,
             papermage_result=papermage_result,
         ),
@@ -236,6 +229,7 @@ async def _run(args: argparse.Namespace) -> int:
     print(f"[info] out_dir={args.out_dir}")
     print(f"[info] model={args.model}")
     print(f"[info] stream_events={not args.no_events}")
+    print(f"[info] force={args.force}")
 
     successes = 0
     failures = 0
@@ -292,7 +286,7 @@ def main() -> None:
     parser.add_argument(
         "--force",
         action="store_true",
-        help="Run the agent even when a Redis cached result already exists.",
+        help="Re-run Papermage + agent and upsert even when a Supabase paper row already exists.",
     )
     parser.add_argument(
         "--no-events",

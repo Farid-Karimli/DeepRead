@@ -16,7 +16,7 @@ BRAVE_ANSWERS_API_KEY = os.getenv("BRAVE_ANSWERS_API_KEY")
 COHERE_API_KEY = os.getenv("COHERE_API_KEY")
 WANDB_API_KEY = os.getenv("WANDB_API_KEY")
 WEAVE_PROJECT = os.getenv("WEAVE_PROJECT", "gardoslab/deepread")
-WEAVE_DISABLED = os.getenv("WEAVE_DISABLED", "").lower() in ("1", "true", "yes")
+WEAVE_DISABLED = os.getenv("WEAVE_DISABLED", "1").lower() in ("1", "true", "yes")
 
 # Per-user mapping memory code flag. Valid values are "off" and "recent".
 CONTENT_TO_CODE_MEMORY_MODE = "recent"

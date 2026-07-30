@@ -15,6 +15,11 @@ import uvicorn
 import asyncio
 
 from src.agent import Agent
+from src.mapping_inflight import (
+    claim_mapping_inflight,
+    get_mapping_inflight_task_id,
+    release_mapping_inflight,
+)
 from src.celery_tasks import (
     analyze_paper_task, 
     celery, 
@@ -48,7 +53,15 @@ from src.types import (
     PaperRecord,
     PaperContentBox,
     SendCopilotMessageRequest,
+    StudyLogBatchRequest,
+    StudySessionEndRequest,
+    StudySessionStartRequest,
     UserRecord,
+)
+from src.study_logging import (
+    create_study_session,
+    end_study_session,
+    log_study_event,
 )
 
 logger = logging.getLogger(__name__)
@@ -78,6 +91,46 @@ def _content_to_code_cache_key(
         sort_keys=True,
     )
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+_ACTIVE_MAPPING_TASK_STATES = frozenset({"PENDING", "STARTED", "RETRY"})
+
+
+def _resolve_inflight_mapping_task_id(cache_key: str, proposed_task_id: str) -> str:
+    """Claim inflight slot or return an existing active Celery task id for the key."""
+    if claim_mapping_inflight(cache_key, proposed_task_id):
+        return proposed_task_id
+
+    existing = get_mapping_inflight_task_id(cache_key)
+    if existing:
+        state = celery.AsyncResult(existing).state
+        if state in _ACTIVE_MAPPING_TASK_STATES:
+            return existing
+        release_mapping_inflight(cache_key, existing)
+
+    if claim_mapping_inflight(cache_key, proposed_task_id):
+        return proposed_task_id
+
+    fallback = get_mapping_inflight_task_id(cache_key)
+    return fallback or proposed_task_id
+
+
+def _enqueue_mapping_task(
+    cache_key: str,
+    task,
+    kwargs: dict,
+) -> str:
+    proposed_task_id = str(uuid4())
+    task_id = _resolve_inflight_mapping_task_id(cache_key, proposed_task_id)
+    if task_id != proposed_task_id:
+        return task_id
+
+    try:
+        task.apply_async(kwargs=kwargs, task_id=task_id)
+    except Exception:
+        release_mapping_inflight(cache_key, task_id)
+        raise
+    return task_id
 
 
 def _cors_origins() -> list[str]:
@@ -182,6 +235,57 @@ def test_claude_code():
 ###################################
 ##### Users #######################
 ###################################
+
+###################################
+##### User study event logs #######
+###################################
+
+
+@app.post("/study/sessions", status_code=201)
+def start_study_session(request: StudySessionStartRequest):
+    if get_paper_record_by_id(request.paper_id) is None:
+        raise HTTPException(status_code=404, detail="Unknown paper_id")
+    return create_study_session(
+        user_id=request.user_id,
+        paper_id=request.paper_id,
+        username=request.username,
+        paper_title=request.paper_title,
+        client_meta=request.client_meta,
+    )
+
+
+@app.post("/study/sessions/{session_id}/end")
+def close_study_session(session_id: str, request: StudySessionEndRequest):
+    if not end_study_session(
+        session_id,
+        reason=request.reason,
+        duration_ms=request.duration_ms,
+    ):
+        raise HTTPException(status_code=404, detail="Unknown study session")
+    return {"status": "ok"}
+
+
+@app.post("/study/events", status_code=202)
+def ingest_study_events(request: StudyLogBatchRequest):
+    accepted = 0
+    for event in request.events:
+        if log_study_event(
+            event.session_id,
+            group=event.group,
+            event_type=event.event_type,
+            payload={
+                **event.payload,
+                **(
+                    {"client_timestamp": event.client_timestamp.isoformat()}
+                    if event.client_timestamp
+                    else {}
+                ),
+            },
+            source="client",
+        ):
+            accepted += 1
+    return {"accepted": accepted, "total": len(request.events)}
+
 
 @app.get('/user')
 def get_user_by_username(username: str) -> dict:
@@ -299,10 +403,28 @@ def send_copilot_message(
         }
     )
 
+    if request.study_session_id:
+        log_study_event(
+            request.study_session_id,
+            group="copilot",
+            event_type="user_message_queued",
+            payload={
+                "message_id": str(user_message.id),
+                "content": request.content,
+                "context_refs": [
+                    ref.model_dump(mode="json") for ref in request.context_refs
+                ],
+                "task_id": task_id,
+            },
+            user_id=request.user_id,
+            paper_id=paper_id,
+        )
+
     try:
         copilot_chat_task.apply_async(
             args=[conversation.id, str(user_message.id)],
             task_id=task_id,
+            kwargs={"study_session_id": request.study_session_id},
         )
     except Exception as exc:
         logger.exception(
@@ -452,6 +574,7 @@ def map_content_to_code(
     box: str = Form(...),
     page_number: int = Form(...),
     user_id: int = Form(...),
+    study_session_id: str | None = Form(None),
 ):
     try:
         parsed_box = PaperContentBox.model_validate_json(box)
@@ -470,19 +593,56 @@ def map_content_to_code(
 
     if db_record:
         logger.info(f"MAP CONTENT TO CODE: Mapping already exists for cache key {cache_key}, returning...")
+        if study_session_id:
+            log_study_event(
+                study_session_id,
+                group="mapping",
+                event_type="content_to_code_cache_hit",
+                payload={
+                    "content": content,
+                    "page_number": page_number,
+                    "box": parsed_box.model_dump(mode="json"),
+                    "cache_key": cache_key,
+                    "result": db_record.outputs,
+                },
+                user_id=user_id,
+                paper_id=paper_id,
+            )
         return {"status": "SUCCESS", "result": db_record.outputs}
 
-    task = map_content_to_code_task.delay(
-        content=content,
-        repo_url=repo_url,
-        context=context,
-        cache_key=cache_key,
-        paper_id=paper_id,
-        box=parsed_box.model_dump(),
-        page_number=page_number,
-        user_id=user_id,
+    if study_session_id:
+        log_study_event(
+            study_session_id,
+            group="mapping",
+            event_type="content_to_code_request",
+            payload={
+                "content": content,
+                "context": context,
+                "repo_url": repo_url,
+                "page_number": page_number,
+                "box": parsed_box.model_dump(mode="json"),
+                "cache_key": cache_key,
+            },
+            user_id=user_id,
+            paper_id=paper_id,
+        )
+
+    task_id = _enqueue_mapping_task(
+        cache_key,
+        map_content_to_code_task,
+        kwargs={
+            "content": content,
+            "repo_url": repo_url,
+            "context": context,
+            "cache_key": cache_key,
+            "paper_id": paper_id,
+            "box": parsed_box.model_dump(),
+            "page_number": page_number,
+            "user_id": user_id,
+            "study_session_id": study_session_id,
+        },
     )
-    return {"task_id": task.id, "status": "PENDING"}
+    return {"task_id": task_id, "status": "PENDING"}
 
 @app.post("/map_code_to_content")
 def map_code_to_content(
@@ -492,6 +652,7 @@ def map_code_to_content(
     end: int = Form(...),
     filepath: str = Form(...),
     user_id: int = Form(...),
+    study_session_id: str | None = Form(None),
 ):
     cache_key = hashlib.sha256(
         f"{code}/0{paper_id}".encode("utf-8")
@@ -501,18 +662,55 @@ def map_code_to_content(
 
     if db_record:
         logger.info(f"MAP CODE TO CONTENT: Mapping already exists for cache key {cache_key}, returning...")
+        if study_session_id:
+            log_study_event(
+                study_session_id,
+                group="mapping",
+                event_type="code_to_content_cache_hit",
+                payload={
+                    "code": code,
+                    "filepath": filepath,
+                    "start": start,
+                    "end": end,
+                    "cache_key": cache_key,
+                    "result": db_record.outputs,
+                },
+                user_id=user_id,
+                paper_id=paper_id,
+            )
         return {"status": "SUCCESS", "result": db_record.outputs}
 
-    task = map_code_to_content_task.delay(
-        code=code,
-        paper_id=paper_id,
-        cache_key=cache_key, 
-        start=start,
-        end=end,
-        filepath=filepath,
-        user_id=user_id,
+    if study_session_id:
+        log_study_event(
+            study_session_id,
+            group="mapping",
+            event_type="code_to_content_request",
+            payload={
+                "code": code,
+                "filepath": filepath,
+                "start": start,
+                "end": end,
+                "cache_key": cache_key,
+            },
+            user_id=user_id,
+            paper_id=paper_id,
+        )
+
+    task_id = _enqueue_mapping_task(
+        cache_key,
+        map_code_to_content_task,
+        kwargs={
+            "code": code,
+            "paper_id": paper_id,
+            "cache_key": cache_key,
+            "start": start,
+            "end": end,
+            "filepath": filepath,
+            "user_id": user_id,
+            "study_session_id": study_session_id,
+        },
     )
-    return {"task_id": task.id}
+    return {"task_id": task_id}
 
 ##########################################
 ##### Repository Content #######################

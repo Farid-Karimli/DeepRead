@@ -20,6 +20,7 @@ import {
 import { useTheme } from '../context/ThemeContext';
 import { getShikiLanguage } from '../utils/codeLanguage';
 import type { CopilotContextRef } from '../api/types.ts';
+import { logStudyEvent, matchSourceFromHighlight } from '../utils/studyLog.ts';
 
 /** First N lines of a snippet shown in the tooltip preview, to keep it glanceable. */
 const TOOLTIP_PREVIEW_LINE_COUNT = 6;
@@ -216,6 +217,15 @@ function PdfBoundingHitTarget({
   const showAllSnippetsForSelectedFile = (codeSnippets: typeof box.code_snippets, index: number) => {
     const s = codeSnippets[index];
     if (!s) return;
+    logStudyEvent('ui', 'highlight_view_code', {
+      match_source: matchSourceFromHighlight(box),
+      hit_key: box.hitKey,
+      page: box.page,
+      filepath: s.filepath,
+      start_line: s.start_line,
+      end_line: s.end_line,
+      context_ref: box.contextRef,
+    });
     const thisFilePath = s.filepath;
     const forFile = codeSnippets.filter((t) => t.filepath === thisFilePath);
     showCode({
@@ -232,6 +242,30 @@ function PdfBoundingHitTarget({
       activeCandidateIndex: index,
     });
   };
+
+  const logHighlightEngagement = (action: string) => {
+    logStudyEvent('ui', 'highlight_interaction', {
+      action,
+      match_source: matchSourceFromHighlight(box),
+      hit_key: box.hitKey,
+      page: box.page,
+      description: box.description,
+      content_type: box.content_type,
+      context_ref: box.contextRef,
+      file_infos: box.file_infos,
+    });
+  };
+
+  const attachHighlightToChat = () => {
+    if (!box.contextRef) return;
+    addContext(box.contextRef);
+    logStudyEvent('copilot', 'context_attach', {
+      context_ref: box.contextRef,
+      source: 'paper_highlight',
+      match_source: matchSourceFromHighlight(box),
+    });
+  };
+
   const { top, left, width, height } = computeBoundingBoxStyle(
     { top: box.top, left: box.left, width: box.width, height: box.height },
     pageDimensions,
@@ -353,7 +387,7 @@ function PdfBoundingHitTarget({
               className="pdf-hit-tooltip__text-btn"
               aria-pressed={isContextAttached}
               disabled={isContextAttached}
-              onClick={() => addContext(box.contextRef!)}
+              onClick={() => attachHighlightToChat()}
             >
               {isContextAttached ? 'Added to chat' : 'Add to chat'}
             </button>
@@ -369,9 +403,11 @@ function PdfBoundingHitTarget({
         style={style}
         role="button"
         tabIndex={0}
+        onClick={() => logHighlightEngagement('click')}
         onMouseEnter={(e) => {
           if (leaveTimer.current) clearTimeout(leaveTimer.current);
           setHover(true);
+          logHighlightEngagement('hover');
           setFloating(prev => prev ?? { x: e.clientX + 12, y: e.clientY + 12 });
         }}
         onMouseLeave={() => {
@@ -432,6 +468,29 @@ function PdfUnderlineHitTarget({
         (ref) => copilotContextRefKey(ref) === copilotContextRefKey(box.contextRef!),
       )
     : false;
+
+  const logHighlightEngagement = (action: string) => {
+    logStudyEvent('ui', 'highlight_interaction', {
+      action,
+      match_source: matchSourceFromHighlight(box),
+      hit_key: box.hitKey,
+      page: box.page,
+      description: box.description,
+      content_type: box.content_type,
+      context_ref: box.contextRef,
+      variant: 'underline',
+    });
+  };
+
+  const attachHighlightToChat = () => {
+    if (!box.contextRef) return;
+    addContext(box.contextRef);
+    logStudyEvent('copilot', 'context_attach', {
+      context_ref: box.contextRef,
+      source: 'paper_highlight',
+      match_source: matchSourceFromHighlight(box),
+    });
+  };
 
   const { top, left, width, height } = computeBoundingBoxStyle(
     { top: box.top, left: box.left, width: box.width, height: box.height },
@@ -506,7 +565,7 @@ function PdfUnderlineHitTarget({
               className="pdf-hit-tooltip__text-btn"
               aria-pressed={isContextAttached}
               disabled={isContextAttached}
-              onClick={() => addContext(box.contextRef!)}
+              onClick={() => attachHighlightToChat()}
             >
               {isContextAttached ? 'Added to chat' : 'Add to chat'}
             </button>
@@ -525,9 +584,11 @@ function PdfUnderlineHitTarget({
           role="button"
           tabIndex={0}
           aria-label={box.description}
+          onClick={() => logHighlightEngagement('click')}
           onMouseEnter={(e) => {
             if (leaveTimer.current) clearTimeout(leaveTimer.current);
             setHover(true);
+            logHighlightEngagement('hover');
             setFloating((prev) => prev ?? { x: e.clientX + 12, y: e.clientY + 12 });
           }}
           onMouseLeave={() => {

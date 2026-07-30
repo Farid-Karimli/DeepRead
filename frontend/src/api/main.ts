@@ -1,4 +1,5 @@
 import type { User } from '../context/UserContext';
+import { getActiveStudySessionId } from '../utils/studyLog.ts';
 import type { 
     paperSubmitResponse, 
     paperAnalysisStatusResponse, 
@@ -113,6 +114,10 @@ const mapContentToCode = async (content: string | Blob, repoUrl: string, context
     formData.append("box", JSON.stringify(box));
     formData.append("page_number", String(pageNumber));
     formData.append("user_id", String(user_id));
+    const studySessionId = getActiveStudySessionId();
+    if (studySessionId) {
+        formData.append("study_session_id", studySessionId);
+    }
     
     const response: Response = await fetch(`${API_URL}/map_content_to_code`, {
         method: "POST",
@@ -152,7 +157,10 @@ const mapCodeToContent = async (code: string, paperId: string, start: number, en
     formData.append("end", String(end));
     formData.append("filepath", filepath);
     formData.append("user_id", String(user_id));
-    console.log(formData);
+    const studySessionId = getActiveStudySessionId();
+    if (studySessionId) {
+        formData.append("study_session_id", studySessionId);
+    }
     const response: Response = await fetch(`${API_URL}/map_code_to_content`, {
         method: "POST",
         body: formData,
@@ -210,6 +218,7 @@ const sendCopilotMessage = async (
         user_id: userId,
         content,
         context_refs: contextRefs,
+        study_session_id: getActiveStudySessionId() ?? undefined,
     };
     const response = await fetch(
         `${API_URL}/papers/${encodeURIComponent(paperId)}/conversation/messages`,

@@ -312,6 +312,7 @@ interface SendCopilotMessageRequest {
     user_id: number;
     content: string;
     context_refs: CopilotContextRef[];
+    study_session_id?: string;
 }
 
 interface SendCopilotMessageResponse {

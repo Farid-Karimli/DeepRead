@@ -23,6 +23,8 @@ import { usePDFTextSelection } from '../hooks/useTextSelection.tsx';
 import { useCeleryTaskStatus } from '../hooks/useCeleryTaskStatus.ts';
 import { UserContext } from '../context/UserContext.tsx';
 import ThemeToggle from './ThemeToggle';
+import MappingTaskBanner from './MappingTaskBanner.tsx';
+import { logStudyEvent } from '../utils/studyLog.ts';
 
 interface PaperViewProps {
     analysisResult: codeMatchesResult;
@@ -351,10 +353,12 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
 
     useEffect(() => {
         window.localStorage.setItem(MATCH_FILTER_STORAGE_KEY, matchFilter);
+        logStudyEvent('ui', 'match_filter_change', { match_filter: matchFilter });
     }, [matchFilter])
 
     useEffect(() => {
         window.localStorage.setItem(SHOW_MATCHES_FROM_CODE_STORAGE_KEY, String(showMatchesFromCode));
+        logStudyEvent('ui', 'show_matches_from_code_change', { enabled: showMatchesFromCode });
     }, [showMatchesFromCode])
 
     useEffect(() => {
@@ -394,6 +398,11 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
         if (matchTaskQuery.data?.status === "SUCCESS") {
             queryClient.invalidateQueries({queryKey: ['matches', paperId]});
             setMatchingTaskId(null);
+            setPendingSelection(null);
+        }
+        if (matchTaskQuery.data?.status === "FAILURE") {
+            setMatchingTaskId(null);
+            setPendingSelection(null);
         }
     }, [matchTaskQuery.data, paperId, queryClient])
 
@@ -426,6 +435,12 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
                 pageNumber: selectionHighlight.page,
                 user_id: currentUser?.id ?? 1,
             }
+
+            logStudyEvent('mapping', 'content_to_code_ui_submit', {
+                content: pendingSelection.text,
+                page_number: selectionHighlight.page,
+                box: selectionHighlight.box,
+            });
             
             contentToCodeMutation.mutate(matchTaskInput);
     };
@@ -465,6 +480,16 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
 
     return ( 
         <div className="paper-view-layout">
+            <MappingTaskBanner
+                visible={
+                    contentToCodeMutation.isPending || matchingTaskId !== null
+                }
+                status={matchTaskQuery.data?.status}
+                submitting={
+                    contentToCodeMutation.isPending && matchingTaskId === null
+                }
+                direction="content_to_code"
+            />
             <Group orientation="horizontal" className="paper-view-layout__group">
             <Panel defaultSize={53} minSize={15}>
             <section id="paper-viewer" className="paper-view-layout__pdf-panel">
@@ -481,6 +506,7 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
                             type="button"
                             className="outline-action-btn temp-action-btn"
                             onClick={() => {
+                                logStudyEvent('ui', 'clear_paper_highlights', {});
                                 setPaperContentMatches([]);
                             }}
                         >

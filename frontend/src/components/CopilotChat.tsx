@@ -27,6 +27,7 @@ import {
 import { UserContext } from '../context/UserContext.tsx';
 import { useCopilotConversation } from '../hooks/useCopilotConversation.ts';
 import { formatCopilotContent } from '../utils/formatCopilotContent.tsx';
+import { logStudyEvent } from '../utils/studyLog.ts';
 import './CopilotChat.css';
 
 type CopilotChatProps = {
@@ -193,6 +194,10 @@ export default function CopilotChat({ paperId }: CopilotChatProps) {
         if (!currentUser || !content || isBusy) return;
 
         try {
+            logStudyEvent('copilot', 'user_message_send', {
+                content,
+                context_refs: contextRefs,
+            });
             await sendMessage({ content, contextRefs });
             setDraft('');
             clearContext();
@@ -203,6 +208,7 @@ export default function CopilotChat({ paperId }: CopilotChatProps) {
     };
 
     const moveDock = (next: CopilotDock) => {
+        logStudyEvent('ui', 'copilot_dock_change', { dock: next });
         setDock(next);
         try {
             localStorage.setItem(COPILOT_DOCK_STORAGE_KEY, next);
@@ -388,7 +394,11 @@ export default function CopilotChat({ paperId }: CopilotChatProps) {
                 <button
                     type="button"
                     className="copilot-launcher"
-                    onClick={() => setIsOpen((open) => !open)}
+                    onClick={() => {
+                        const nextOpen = !isOpen;
+                        logStudyEvent('ui', 'copilot_panel_toggle', { open: nextOpen });
+                        setIsOpen(nextOpen);
+                    }}
                     aria-expanded={isOpen}
                     aria-controls="copilot-chat-panel"
                     aria-label={

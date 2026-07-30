@@ -19,6 +19,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { UserContext } from '../context/UserContext.tsx';
 import { useCopilotContext } from '../context/CopilotContext.tsx';
+import { logStudyEvent } from '../utils/studyLog.ts';
+import MappingTaskBanner from './MappingTaskBanner.tsx';
 
 export type ContextualPaperContentMatch = PaperContentMatch & {
     sourceMappingRef?: MappingRef;
@@ -172,6 +174,7 @@ const RepoView = ({ tree, paperId, setPaperContentMatches, showPaperPage }: Repo
 
     useEffect(() => {
         window.localStorage.setItem(CODE_MATCH_FILTER_STORAGE_KEY, codeMatchFilter);
+        logStudyEvent('ui', 'code_match_filter_change', { code_match_filter: codeMatchFilter });
     }, [codeMatchFilter]);
 
     useEffect(() => {
@@ -223,6 +226,10 @@ const RepoView = ({ tree, paperId, setPaperContentMatches, showPaperPage }: Repo
                     codeRange.endLine === range.end,
             );
         if (isOriginatingRange && codeInfo.paperPageIndex != null) {
+            logStudyEvent('navigation', 'scroll_to_paper_page', {
+                page_index: codeInfo.paperPageIndex,
+                source: 'code_match_originating',
+            });
             showPaperPage(codeInfo.paperPageIndex);
             return;
         }
@@ -314,6 +321,9 @@ const RepoView = ({ tree, paperId, setPaperContentMatches, showPaperPage }: Repo
     }
 
     const onEntryClick = (filepath: string, url: string, isFile: boolean) => {
+        logStudyEvent('navigation', isFile ? 'file_open' : 'directory_open', {
+            path: filepath,
+        });
         setScrollFocusRange(null);
         setCurrentCodeDescription(null);
         hideCode();
@@ -334,6 +344,11 @@ const RepoView = ({ tree, paperId, setPaperContentMatches, showPaperPage }: Repo
     const backButtonClick = () => {
         const parts = currentPath.split('/').filter(Boolean);
         const parentDir = parts.slice(0, -1).join('/');
+        logStudyEvent('navigation', 'repo_navigate_back', {
+            from_path: currentPath,
+            to_path: parentDir,
+            had_file_open: Boolean(currentFileContent),
+        });
         if (currentFileContent) {
             setCurrentFileContent(null);
             setScrollFocusRange(null);
@@ -386,6 +401,12 @@ const RepoView = ({ tree, paperId, setPaperContentMatches, showPaperPage }: Repo
             filepath: currentPath,
             user_id: currentUser?.id ?? 1,
         }
+        logStudyEvent('mapping', 'code_to_content_ui_submit', {
+            code: pendingCodeSelection.text,
+            filepath: currentPath,
+            start: lineRange.start,
+            end: lineRange.end,
+        });
         codeMatchingMutation.mutate(input);
     }
 
@@ -401,6 +422,7 @@ const RepoView = ({ tree, paperId, setPaperContentMatches, showPaperPage }: Repo
             label: `${currentPath}:${lineRange.start}-${lineRange.end}`,
         };
         addContext(contextRef);
+        logStudyEvent('copilot', 'context_attach', { context_ref: contextRef, source: 'code_selection' });
         setPendingCodeSelection(null);
         window.getSelection()?.removeAllRanges();
     };
@@ -409,6 +431,14 @@ const RepoView = ({ tree, paperId, setPaperContentMatches, showPaperPage }: Repo
 
     return (
         <div className="repo-tree">
+            <MappingTaskBanner
+                visible={isMapping}
+                status={codeMatchingTaskQuery.data?.status}
+                submitting={
+                    codeMatchingMutation.isPending && codeMatchingTaskId === null
+                }
+                direction="code_to_content"
+            />
             <h3 className="repo-tree__heading">Repo View</h3>
             <div className="repo-tree__header">
                 <div className="repo-tree__header-row">

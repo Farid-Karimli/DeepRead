@@ -67,7 +67,7 @@ supabase/*
 # Cloned repo checkouts and built repo maps
 backend/src/temp/
 backend/tmp/
-backend/src/agentic_localization/cache/
+study_logs/
 
 # Local editor, deploy notes, and presentations
 DeepRead_Presentation.pptx

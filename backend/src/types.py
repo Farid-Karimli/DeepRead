@@ -397,6 +397,32 @@ class SendCopilotMessageRequest(BaseModel):
     user_id: int = Field(gt=0)
     content: str = Field(min_length=1, max_length=20_000)
     context_refs: list[CopilotContextRef] = Field(default_factory=list)
+    study_session_id: str | None = None
+
+
+class StudySessionStartRequest(BaseModel):
+    user_id: int = Field(gt=0)
+    paper_id: str = Field(min_length=1)
+    username: str | None = None
+    paper_title: str | None = None
+    client_meta: dict[str, object] | None = None
+
+
+class StudyLogEvent(BaseModel):
+    session_id: str = Field(min_length=1)
+    group: Literal["ui", "navigation", "mapping", "copilot", "system"]
+    event_type: str = Field(min_length=1)
+    payload: dict[str, object] = Field(default_factory=dict)
+    client_timestamp: datetime | None = None
+
+
+class StudyLogBatchRequest(BaseModel):
+    events: list[StudyLogEvent] = Field(min_length=1, max_length=100)
+
+
+class StudySessionEndRequest(BaseModel):
+    reason: str = "client_unload"
+    duration_ms: int | None = Field(default=None, ge=0)
 
 
 class CopilotTaskResult(BaseModel):

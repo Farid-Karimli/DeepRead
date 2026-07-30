@@ -17,6 +17,7 @@ from src.types import (
     KeySectionsResult,
     PaperMappingRecord,
     PaperMageResult,
+    PaperRecord,
 )
 
 from celery import Celery
@@ -24,6 +25,7 @@ from pydantic import BaseModel
 from io import BytesIO
 
 from src.agent import Agent
+from src.study_logging import log_study_event
 from src.db import (
     ConversationConflictError,
     append_conversation_message,
@@ -37,6 +39,7 @@ from src.db import (
     upsert_paper,
 )
 from src.config import CONTENT_TO_CODE_MEMORY_MODE, REDIS_URL
+from src.mapping_inflight import release_mapping_inflight
 
 logger = logging.getLogger(__name__)
 
@@ -97,6 +100,19 @@ celery = Celery(
     broker=REDIS_URL,
     backend=REDIS_URL,
 )
+
+celery.conf.update(
+    task_track_started=True,
+    worker_prefetch_multiplier=1,
+    task_acks_late=True,
+    task_reject_on_worker_lost=True,
+    broker_connection_retry_on_startup=True,
+)
+
+_HEAVY_MAPPING_TASK_OPTS = {
+    "soft_time_limit": 20 * 60,
+    "time_limit": 25 * 60,
+}
     
 class AgentTaskResult(BaseModel):
     paper_title: str | None = None
@@ -165,11 +181,12 @@ def _mark_copilot_failed(conversation_id: int, task_id: str) -> None:
         )
 
 
-@celery.task(bind=True, name="copilot_chat")
+@celery.task(bind=True, name="copilot_chat", **_HEAVY_MAPPING_TASK_OPTS)
 def copilot_chat_task(
     self,
     conversation_id: int,
     user_message_id: str,
+    study_session_id: str | None = None,
 ) -> dict[str, object]:
     """Answer one queued user message while holding the conversation claim."""
     task_id = self.request.id
@@ -285,6 +302,25 @@ def copilot_chat_task(
             expected_version=latest.version,
         )
         set_conversation_idle(conversation_id, task_id)
+        if study_session_id:
+            log_study_event(
+                study_session_id,
+                group="copilot",
+                event_type="assistant_message_complete",
+                payload={
+                    "message_id": str(assistant_message.id),
+                    "in_reply_to": str(parsed_user_message_id),
+                    "content": assistant_message.content,
+                    "citations": [
+                        c.model_dump(mode="json") for c in assistant_message.citations
+                    ],
+                    "metadata": assistant_message.metadata.model_dump(mode="json")
+                    if assistant_message.metadata
+                    else {},
+                },
+                user_id=latest.user_id,
+                paper_id=latest.paper_id,
+            )
         return _copilot_result(
             conversation_id=conversation_id,
             user_message_id=parsed_user_message_id,
@@ -309,7 +345,7 @@ def process_pdf_task(
     processed_pdf: PaperMageResult = _papermage_process(file_raw)
     return processed_pdf
 
-@celery.task(name="analyze_paper")
+@celery.task(name="analyze_paper", **_HEAVY_MAPPING_TASK_OPTS)
 def analyze_paper_task(
     paper_content: str,
     paper_raw: bytes | BytesIO,
@@ -319,7 +355,8 @@ def analyze_paper_task(
     """
     Analyzes paper content for processing. Calls the agent to analyze the paper content and returns the result.
 
-    Results are cached in Redis under ``paper_id`` (typically SHA-256 of raw file bytes from the upload).
+    Persists results to Supabase under ``paper_id`` (typically SHA-256 of raw file bytes).
+    Callers (e.g. ``/analyze``) short-circuit on an existing Supabase paper row.
 
     Args:
         paper_content: Normalized text extracted from the paper.
@@ -329,12 +366,7 @@ def analyze_paper_task(
         A dictionary containing the analysis result.
     """
     label = original_filename or "(no filename)"
-    # cached = get_cached_result(paper_id)
-    # if cached is not None:
-    #     logger.info("paper analysis cache hit paper_id=%s file=%s", paper_id, label)
-    #     return cached
-
-    #logger.info("paper analysis cache miss paper_id=%s file=%s", paper_id, label)
+    logger.info("analyze_paper_task: starting paper_id=%s file=%s", paper_id, label)
 
     logger.info("using papermage to process pdf")
     papermage_result: PaperMageResult = _papermage_process(paper_raw)
@@ -343,36 +375,46 @@ def analyze_paper_task(
     agent = Agent()
     analysis_result: KeySectionsResult = asyncio.run(agent.analyze_paper(file_input=paper_raw, papermage_process_result=papermage_result))
 
-    title = None
-    link = None
+    title = ""
+    link = ""
     if isinstance(analysis_result, dict):
-        title = analysis_result.get("paper_title")
-        link = analysis_result.get("github_repo_url")
+        raw_title = analysis_result.get("paper_title")
+        raw_link = analysis_result.get("github_repo_url")
         code_result = analysis_result.get("code_result")
+        if isinstance(raw_title, str):
+            title = raw_title
+        if isinstance(raw_link, str):
+            link = raw_link
         if not link and isinstance(code_result, dict):
-            link = code_result.get("github_repo_url")
+            code_link = code_result.get("github_repo_url")
+            if isinstance(code_link, str):
+                link = code_link
         if not title and isinstance(code_result, dict):
-            ct = code_result.get("paper_title")
-            if isinstance(ct, str):
-                title = ct
+            code_title = code_result.get("paper_title")
+            if isinstance(code_title, str):
+                title = code_title
 
     unified_result = {
         "analysis": analysis_result,
-        "processed": papermage_result # Save the CANONICAL papermage result
+        "processed": papermage_result,  # Save the CANONICAL papermage result
     }
 
     upsert_paper(
-        paper_id=paper_id,
-        paper_title=title if isinstance(title, str) else None,
-        github_link=link if isinstance(link, str) else None,
-        analysis_result=analysis_result,
-        papermage_result=papermage_result, # Save the CANONICAL papermage result
+        paper_record=PaperRecord(
+            id=paper_id,
+            paper_title=title,
+            github_link=link,
+            created_at=datetime.now(UTC),
+            analysis_result=analysis_result,
+            papermage_result=papermage_result,
+        ),
     )
 
     return unified_result
 
-@celery.task(name='map_content_to_code')
+@celery.task(name="map_content_to_code", bind=True, **_HEAVY_MAPPING_TASK_OPTS)
 def map_content_to_code_task(
+    self,
     content: str | bytes | BytesIO,
     repo_url: str,
     context: str,
@@ -381,57 +423,79 @@ def map_content_to_code_task(
     box: dict,
     page_number: int,
     user_id: int,
+    study_session_id: str | None = None,
 ):
-    if not isinstance(content, str):
-        raise TypeError(
-            "map_content_to_code_task expects str paper content; "
-            "use the agentic localization pipeline via text selections."
+    task_id = self.request.id or ""
+    try:
+        if not isinstance(content, str):
+            raise TypeError(
+                "map_content_to_code_task expects str paper content; "
+                "use the agentic localization pipeline via text selections."
+            )
+
+        pipeline = _new_content_to_code_pipeline()
+        memory_snapshot = _retrieve_content_to_code_memory(
+            paper_id=paper_id,
+            user_id=user_id,
         )
+        memory_hints = (
+            [hint.model_dump(mode="json") for hint in memory_snapshot.hints]
+            if memory_snapshot.hints
+            else None
+        )
+        map_kwargs: dict = {
+            "content": content,
+            "repo_url": repo_url,
+            "context": context,
+        }
+        if memory_hints:
+            map_kwargs["memory_hints"] = memory_hints
+        result = asyncio.run(pipeline.map_content_to_code(**map_kwargs))
+        result["memory_snapshot"] = memory_snapshot.model_dump(mode="json")
 
-    pipeline = _new_content_to_code_pipeline()
-    memory_snapshot = _retrieve_content_to_code_memory(
-        paper_id=paper_id,
-        user_id=user_id,
-    )
-    memory_hints = (
-        [hint.model_dump(mode="json") for hint in memory_snapshot.hints]
-        if memory_snapshot.hints
-        else None
-    )
-    map_kwargs: dict = {
-        "content": content,
-        "repo_url": repo_url,
-        "context": context,
-    }
-    if memory_hints:
-        map_kwargs["memory_hints"] = memory_hints
-    result = asyncio.run(pipeline.map_content_to_code(**map_kwargs))
-    result["memory_snapshot"] = memory_snapshot.model_dump(mode="json")
+        record = PaperMappingRecord(
+            mapping_type="content_to_code",
+            cache_key=cache_key,
+            inputs=ContentToCodeInputs(
+                content=content,
+                repo_url=repo_url,
+                context=context,
+                box=box,
+                page_number=page_number,
+            ),
+            outputs=ContentToCodeResult(
+                code_snippets=result.get("code_snippets") or [],
+                reasoning=result.get("reasoning"),
+                verdict=result.get("verdict"),
+                memory_snapshot=memory_snapshot,
+            ),
+            paper_id=paper_id,
+            created_by=user_id,
+        )
+        upsert_mapping_result(record)
+        if study_session_id:
+            log_study_event(
+                study_session_id,
+                group="mapping",
+                event_type="content_to_code_complete",
+                payload={
+                    "cache_key": cache_key,
+                    "content": content,
+                    "page_number": page_number,
+                    "verdict": result.get("verdict"),
+                    "reasoning": result.get("reasoning"),
+                    "code_snippets": result.get("code_snippets") or [],
+                },
+                user_id=user_id,
+                paper_id=paper_id,
+            )
+        return result
+    finally:
+        release_mapping_inflight(cache_key, task_id)
 
-    record = PaperMappingRecord(
-        mapping_type="content_to_code",
-        cache_key=cache_key,
-        inputs=ContentToCodeInputs(
-            content=content,
-            repo_url=repo_url,
-            context=context,
-            box=box,
-            page_number=page_number,
-        ),
-        outputs=ContentToCodeResult(
-            code_snippets=result.get('code_snippets') or [],
-            reasoning=result.get("reasoning"), 
-            verdict=result.get("verdict"),
-            memory_snapshot=memory_snapshot,
-        ),
-        paper_id=paper_id,
-        created_by=user_id,
-    )
-    upsert_mapping_result(record)
-    return result
-
-@celery.task(name='map_code_to_content')
+@celery.task(name="map_code_to_content", bind=True, **_HEAVY_MAPPING_TASK_OPTS)
 def map_code_to_content_task(
+    self,
     code: str,
     paper_id: str,
     cache_key: str,
@@ -439,29 +503,56 @@ def map_code_to_content_task(
     end: int,
     filepath: str,
     user_id: int,
+    study_session_id: str | None = None,
 ):
-    agent = Agent()
-    paper_record = get_paper_record_by_id(paper_id)
-    if paper_record is None:
-        raise ValueError(f"No paper record found for id {paper_id}.")
+    task_id = self.request.id or ""
+    try:
+        agent = Agent()
+        paper_record = get_paper_record_by_id(paper_id)
+        if paper_record is None:
+            raise ValueError(f"No paper record found for id {paper_id}.")
 
-    result = asyncio.run(agent.map_code_to_content(
-        code=code,
-        paper_record=paper_record
-    ))
+        result = asyncio.run(
+            agent.map_code_to_content(
+                code=code,
+                paper_record=paper_record,
+            )
+        )
 
-    outputs = CodeToContentResult.model_validate(result) if isinstance(result, dict) else CodeToContentResult(
-        verdict="Verdict not found",
-        reasoning="Reasoning not found",
-        matches=[],
-    )
-    record = PaperMappingRecord(
-        mapping_type="code_to_content",
-        cache_key=cache_key,
-        paper_id=paper_id, 
-        inputs=CodeToContentInputs(code=code, start=start, end=end, filepath=filepath),
-        outputs=outputs,
-        created_by=user_id,
-    )
-    upsert_mapping_result(record)
-    return result
+        outputs = (
+            CodeToContentResult.model_validate(result)
+            if isinstance(result, dict)
+            else CodeToContentResult(
+                verdict="Verdict not found",
+                reasoning="Reasoning not found",
+                matches=[],
+            )
+        )
+        record = PaperMappingRecord(
+            mapping_type="code_to_content",
+            cache_key=cache_key,
+            paper_id=paper_id,
+            inputs=CodeToContentInputs(code=code, start=start, end=end, filepath=filepath),
+            outputs=outputs,
+            created_by=user_id,
+        )
+        upsert_mapping_result(record)
+        if study_session_id:
+            log_study_event(
+                study_session_id,
+                group="mapping",
+                event_type="code_to_content_complete",
+                payload={
+                    "cache_key": cache_key,
+                    "code": code,
+                    "filepath": filepath,
+                    "start": start,
+                    "end": end,
+                    "result": outputs.model_dump(mode="json"),
+                },
+                user_id=user_id,
+                paper_id=paper_id,
+            )
+        return result
+    finally:
+        release_mapping_inflight(cache_key, task_id)
