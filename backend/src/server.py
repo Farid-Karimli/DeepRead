@@ -1,5 +1,6 @@
 import hashlib
 import io
+import json
 import logging
 import os
 from datetime import UTC, datetime
@@ -53,6 +54,30 @@ from src.types import (
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
+
+
+def _content_to_code_cache_key(
+    *,
+    paper_id: str,
+    user_id: int,
+    content: str,
+    repo_url: str,
+    context: str,
+) -> str:
+    """Scope cached user mappings so one user's result cannot satisfy another's."""
+    payload = json.dumps(
+        {
+            "paper_id": paper_id,
+            "user_id": user_id,
+            "content": content,
+            "repo_url": repo_url,
+            "context": context,
+        },
+        ensure_ascii=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    )
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
 def _cors_origins() -> list[str]:
@@ -433,9 +458,13 @@ def map_content_to_code(
     except ValidationError as exc:
         raise HTTPException(status_code=422, detail=f"Invalid box payload: {exc}")
 
-    cache_key = hashlib.sha256(
-        f"{content}/0{repo_url}/0{context}".encode("utf-8")
-    ).hexdigest()
+    cache_key = _content_to_code_cache_key(
+        paper_id=paper_id,
+        user_id=user_id,
+        content=content,
+        repo_url=repo_url,
+        context=context,
+    )
 
     db_record = get_mapping_by_cache_key(cache_key=cache_key)
 

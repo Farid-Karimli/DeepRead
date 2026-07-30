@@ -53,6 +53,133 @@ type overlayProps = {
   boxes: Array<BoundingBoxWithTooltip>;
 };
 
+type AiOverlapRegion = BoundingBoxType & {
+  overlapKey: string;
+};
+
+function isAiDrivenBox(box: BoundingBoxWithTooltip): boolean {
+  return (
+    box.contextRef?.type === 'mapping' &&
+    box.contextRef.mapping_type === 'initial_analysis'
+  );
+}
+
+/**
+ * Return disjoint rectangles covered by at least two AI matches. Splitting the
+ * page into boundary-aligned cells avoids stacking pairwise intersection
+ * markers (and accidentally making triple-overlap regions progressively darker).
+ */
+function findAiOverlapRegions(
+  pageIndex: number,
+  boxes: Array<BoundingBoxWithTooltip>,
+): AiOverlapRegion[] {
+  const aiBoxes = boxes.filter(
+    (box) =>
+      box.page === pageIndex &&
+      isAiDrivenBox(box) &&
+      box.width > 0 &&
+      box.height > 0,
+  );
+  if (aiBoxes.length < 2) {
+    return [];
+  }
+
+  const xBoundaries = Array.from(
+    new Set(aiBoxes.flatMap((box) => [box.left, box.left + box.width])),
+  ).sort((a, b) => a - b);
+  const regions: AiOverlapRegion[] = [];
+
+  for (let xIndex = 0; xIndex < xBoundaries.length - 1; xIndex += 1) {
+    const left = xBoundaries[xIndex];
+    const right = xBoundaries[xIndex + 1];
+    if (right <= left) continue;
+
+    const xMidpoint = left + (right - left) / 2;
+    const boxesInStrip = aiBoxes.filter(
+      (box) => xMidpoint > box.left && xMidpoint < box.left + box.width,
+    );
+    if (boxesInStrip.length < 2) continue;
+
+    const yBoundaries = Array.from(
+      new Set(boxesInStrip.flatMap((box) => [box.top, box.top + box.height])),
+    ).sort((a, b) => a - b);
+    const stripIntervals: Array<{ top: number; bottom: number }> = [];
+
+    for (let yIndex = 0; yIndex < yBoundaries.length - 1; yIndex += 1) {
+      const top = yBoundaries[yIndex];
+      const bottom = yBoundaries[yIndex + 1];
+      if (bottom <= top) continue;
+
+      const yMidpoint = top + (bottom - top) / 2;
+      const overlapCount = boxesInStrip.filter(
+        (box) => yMidpoint > box.top && yMidpoint < box.top + box.height,
+      ).length;
+      if (overlapCount < 2) continue;
+
+      const previous = stripIntervals.at(-1);
+      if (previous?.bottom === top) {
+        previous.bottom = bottom;
+      } else {
+        stripIntervals.push({ top, bottom });
+      }
+    }
+
+    for (const interval of stripIntervals) {
+      const previousStrip = regions.find(
+        (region) =>
+          region.left + region.width === left &&
+          region.top === interval.top &&
+          region.top + region.height === interval.bottom,
+      );
+      if (previousStrip) {
+        previousStrip.width = right - previousStrip.left;
+        continue;
+      }
+
+      regions.push({
+        page: pageIndex,
+        top: interval.top,
+        left,
+        width: right - left,
+        height: interval.bottom - interval.top,
+        overlapKey: `${left}:${interval.top}:${right}:${interval.bottom}`,
+      });
+    }
+  }
+
+  return regions;
+}
+
+function PdfAiOverlapMarker({
+  region,
+  pageIndex,
+}: {
+  region: AiOverlapRegion;
+  pageIndex: number;
+}) {
+  const { pageDimensions } = React.useContext(DocumentContext);
+  const { rotation, scale } = React.useContext(TransformContext);
+
+  if (region.page !== pageIndex) {
+    return null;
+  }
+
+  const { top, left, width, height } = computeBoundingBoxStyle(
+    region,
+    pageDimensions,
+    rotation,
+    scale,
+  );
+
+  return (
+    <div
+      className="pdf-ai-overlap-marker"
+      style={{ position: 'absolute', top, left, width, height, zIndex: 3 }}
+      aria-hidden="true"
+    />
+  );
+}
+
 /**
  * Invisible hit target on top of the page overlay. `HighlightOverlay` only uses BoundingBox
  * props for SVG mask geometry — it does not mount DOM nodes, so there is nothing to hover
@@ -95,6 +222,7 @@ function PdfBoundingHitTarget({
       filePath: thisFilePath,
       codeRanges: forFile.map((t) => ({ startLine: t.start_line, endLine: t.end_line })),
       scrollToRange: { startLine: s.start_line, endLine: s.end_line },
+      paperPageIndex: box.page,
       description: box.description || '',
       candidates: codeSnippets.map((snippet) => ({
         filePath: snippet.filepath,
@@ -156,10 +284,12 @@ function PdfBoundingHitTarget({
           setFloating(null);
         }}
       >
-        {/* <div className="pdf-hit-tooltip__description">
-          {box.content_type ? `[${box.content_type}] ` : ''}
-          {box.description}
-        </div> */}
+        {box.description && (
+          <div className="pdf-hit-tooltip__description">
+            <span className="pdf-hit-tooltip__description-label">Why this matches</span>
+            {box.description}
+          </div>
+        )}
         {box.code_snippets.length > 0 && (
           <div className="pdf-hit-tooltip__path">{box.file_infos[codeIndex]}</div>
         )}
@@ -444,6 +574,7 @@ export const HighlightOverlayDemo: React.FunctionComponent<overlayProps> = ({
 }) => {
   const overlayBoxes = boxes.filter((box) => box.variant !== 'underline');
   const underlineBoxes = boxes.filter((box) => box.variant === 'underline');
+  const aiOverlapRegions = findAiOverlapRegions(pageIndex, overlayBoxes);
 
   return (
     <>
@@ -454,6 +585,13 @@ export const HighlightOverlayDemo: React.FunctionComponent<overlayProps> = ({
       )}
       {overlayBoxes.map((box) => (
         <PdfBoundingHitTarget key={`hit-${box.hitKey}`} box={box} pageIndex={pageIndex} />
+      ))}
+      {aiOverlapRegions.map((region) => (
+        <PdfAiOverlapMarker
+          key={`ai-overlap-${region.overlapKey}`}
+          region={region}
+          pageIndex={pageIndex}
+        />
       ))}
       {underlineBoxes.map((box) => (
         <PdfUnderlineHitTarget key={`underline-${box.hitKey}`} box={box} pageIndex={pageIndex} />

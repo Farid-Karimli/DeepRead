@@ -19,6 +19,9 @@ interface codeEntityMatch {
     content_type: ContentEntityType;
     content: string;
     section_id?: string | null;
+    /** Canonical explanation of why the paper entity corresponds to the code. */
+    reasoning?: string;
+    /** Legacy explanation field retained for cached analyses. */
     description?: string;
     code_snippets: codeSnippet[];
 }

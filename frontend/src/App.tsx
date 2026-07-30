@@ -37,6 +37,7 @@ function migrateLegacySectionsToMatches(
     content_type: 'section' as const,
     content: section.section_description || section.section_header || '',
     section_id: section.section_id,
+    reasoning: section.paper_section_description,
     description: section.section_description,
     code_snippets: section.code_snippets ?? [],
   }));

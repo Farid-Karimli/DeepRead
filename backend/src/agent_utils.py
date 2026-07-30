@@ -89,12 +89,25 @@ _MATCH_ITEM_SCHEMA = {
         "content_type": {"type": "string", "enum": _CONTENT_TYPE_ENUM},
         "content": {"type": "string"},
         "section_id": {"type": "string"},
+        "reasoning": {
+            "type": "string",
+            "description": (
+                "A concise explanation of how the paper content corresponds "
+                "to the selected code."
+            ),
+        },
         "code_snippets": {
             "type": "array",
             "items": _CODE_SNIPPET_SCHEMA,
         },
     },
-    "required": ["entity_id", "content_type", "content", "code_snippets"],
+    "required": [
+        "entity_id",
+        "content_type",
+        "content",
+        "reasoning",
+        "code_snippets",
+    ],
 }
 
 code_matches_schema = {
@@ -395,13 +408,20 @@ def normalize_code_mapping_result(raw: dict | None) -> dict | None:
         if not isinstance(entity_id, str):
             continue
         normalized = _normalize_section_to_code_shape(item)
-        matches.append({
+        match = {
             "entity_id": entity_id,
             "content_type": item.get("content_type") or "section",
             "content": item.get("content") or item.get("section_content") or "",
             "section_id": item.get("section_id") if item.get("section_id") != entity_id else entity_id,
             "code_snippets": normalized.get("code_snippets") or [],
-        })
+        }
+        reasoning = item.get("reasoning")
+        description = item.get("description") or item.get("section_description")
+        if isinstance(reasoning, str) and reasoning:
+            match["reasoning"] = reasoning
+        if isinstance(description, str) and description:
+            match["description"] = description
+        matches.append(match)
     paper_title = raw.get("paper_title")
     result = {"matches": matches}
     if isinstance(paper_title, str):
@@ -438,6 +458,13 @@ def _normalize_match_to_code_shape(item: dict) -> dict:
         "content": content,
         "code_snippets": snippets,
     }
+    reasoning = item.get("reasoning")
+    description = item.get("description") or item.get("section_description")
+    if isinstance(reasoning, str) and reasoning:
+        out["reasoning"] = reasoning
+    if isinstance(description, str) and description:
+        # Retain the legacy field for cached analyses and older API consumers.
+        out["description"] = description
     if isinstance(section_id, str) and section_id:
         out["section_id"] = section_id
     return out

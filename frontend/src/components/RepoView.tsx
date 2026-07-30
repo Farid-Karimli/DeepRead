@@ -29,7 +29,8 @@ interface RepoViewProps {
     paperId: string;
     code?: string,
     filepath?: string,
-    setPaperContentMatches: (matches: ContextualPaperContentMatch[]) => void
+    setPaperContentMatches: (matches: ContextualPaperContentMatch[]) => void;
+    showPaperPage: (pageIndex: number) => void;
 }
 
 const CONTENT_MATCH_VERDICT_TO_COLOR: Record<string, string> = {
@@ -70,7 +71,49 @@ const readStoredCodeMatchFilter = (): CodeMatchFilter => {
     return DEFAULT_CODE_MATCH_FILTER;
 };
 
-const RepoView = ({ tree, paperId, setPaperContentMatches }: RepoViewProps) => {
+/**
+ * File/range controls for the open match. Keeping these beside the code viewer
+ * makes the reasoning read first and the snippet choices act as view controls.
+ */
+function CandidateSnippetPills() {
+    const { codeInfo, selectCandidate } = useSidePanel();
+    const candidates = codeInfo?.candidates ?? [];
+
+    if (candidates.length < 2) {
+        return null;
+    }
+
+    return (
+        <div
+            className="candidate-pill-list candidate-pill-list--match-detail"
+            role="tablist"
+            aria-label="Matched code snippets"
+        >
+            {candidates.map((candidate, index) => {
+                const basename = candidate.filePath.split('/').pop() ?? candidate.filePath;
+                const isActive = index === codeInfo?.activeCandidateIndex;
+                const sameFileAsPrev =
+                    index > 0 && candidates[index - 1].filePath === candidate.filePath;
+
+                return (
+                    <button
+                        key={`${candidate.filePath}-${candidate.startLine}-${candidate.endLine}-${index}`}
+                        type="button"
+                        role="tab"
+                        aria-selected={isActive}
+                        title={candidate.filePath}
+                        className={`candidate-pill-list__pill${isActive ? ' candidate-pill-list__pill--active' : ''}${sameFileAsPrev ? ' candidate-pill-list__pill--grouped' : ''}`}
+                        onClick={() => selectCandidate(index)}
+                    >
+                        {basename}:{candidate.startLine}-{candidate.endLine}
+                    </button>
+                );
+            })}
+        </div>
+    );
+}
+
+const RepoView = ({ tree, paperId, setPaperContentMatches, showPaperPage }: RepoViewProps) => {
     const {currentUser} = useContext(UserContext);
     const { addContext } = useCopilotContext();
     const [currentPath, setCurrentPath] = useState(() => "");
@@ -172,6 +215,18 @@ const RepoView = ({ tree, paperId, setPaperContentMatches }: RepoViewProps) => {
     usePDFTextSelection(codeViewerRef, setPendingCodeSelection);
 
     const handleShowInPaper = (range: { start: number; end: number }) => {
+        const isOriginatingRange =
+            codeInfo?.filePath === currentPath &&
+            codeInfo.codeRanges.some(
+                (codeRange) =>
+                    codeRange.startLine === range.start &&
+                    codeRange.endLine === range.end,
+            );
+        if (isOriginatingRange && codeInfo.paperPageIndex != null) {
+            showPaperPage(codeInfo.paperPageIndex);
+            return;
+        }
+
         const match = (codeToContentMatchesQuery.data ?? []).find(
             (m: codeToContentMatch) => m.inputs.start === range.start && m.inputs.end === range.end,
         );
@@ -417,6 +472,7 @@ const RepoView = ({ tree, paperId, setPaperContentMatches }: RepoViewProps) => {
                     </div>
                 )}
             </div>
+            <CandidateSnippetPills />
             {currentFileContent ? <CodeViewer
                 ref={codeViewerRef}
                 code={currentFileContent}

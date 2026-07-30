@@ -22,7 +22,6 @@ import { captureSelectionHighlightsFromRange } from '../utils/selectionRangeToPa
 import { usePDFTextSelection } from '../hooks/useTextSelection.tsx';
 import { useCeleryTaskStatus } from '../hooks/useCeleryTaskStatus.ts';
 import { UserContext } from '../context/UserContext.tsx';
-import { useSidePanel } from '../context/SidePanelContext.tsx';
 import ThemeToggle from './ThemeToggle';
 
 interface PaperViewProps {
@@ -176,7 +175,10 @@ function PdfPageList({
                     hitKey: `p${box.page}-h${i}`,
                     file_infos: analyzedMatch.code_snippets.map((snippet) => `${snippet.filepath}:${snippet.start_line}-${snippet.end_line}`),
                     code_snippets: analyzedMatch.code_snippets,
-                    description: analyzedMatch.description || analyzedMatch.content,
+                    description:
+                        analyzedMatch.reasoning?.trim() ||
+                        analyzedMatch.description?.trim() ||
+                        'No correspondence explanation is available for this cached match.',
                     content_type: analyzedMatch.content_type,
                     color: CODE_MATCH_VERDICT_TO_COLOR.ai,
                     contextRef: {
@@ -309,43 +311,6 @@ function PdfPageList({
                     </Overlay>
                     </PageWrapper>
             ))}
-        </div>
-    );
-}
-
-/**
- * Flat segmented pill list for jumping directly between all snippet candidates of the
- * currently open match. Adjacent pills sharing a filepath are visually grouped. Renders
- * nothing when there's nothing to switch between.
- */
-function CandidateSnippetPills() {
-    const { codeInfo, selectCandidate } = useSidePanel();
-    const candidates = codeInfo?.candidates ?? [];
-
-    if (candidates.length < 2) {
-        return null;
-    }
-
-    return (
-        <div className="candidate-pill-list" role="tablist" aria-label="Matched code snippets">
-            {candidates.map((candidate, index) => {
-                const basename = candidate.filePath.split('/').pop() ?? candidate.filePath;
-                const isActive = index === codeInfo?.activeCandidateIndex;
-                const sameFileAsPrev = index > 0 && candidates[index - 1].filePath === candidate.filePath;
-                return (
-                    <button
-                        key={`${candidate.filePath}-${candidate.startLine}-${candidate.endLine}-${index}`}
-                        type="button"
-                        role="tab"
-                        aria-selected={isActive}
-                        title={candidate.filePath}
-                        className={`candidate-pill-list__pill${isActive ? ' candidate-pill-list__pill--active' : ''}${sameFileAsPrev ? ' candidate-pill-list__pill--grouped' : ''}`}
-                        onClick={() => selectCandidate(index)}
-                    >
-                        {basename}:{candidate.startLine}-{candidate.endLine}
-                    </button>
-                );
-            })}
         </div>
     );
 }
@@ -597,14 +562,16 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
             <Panel defaultSize={47} minSize={15}>
             {tree && (
                 <aside className="paper-view-layout__code-panel">
-                    <div className="paper-view-layout__code-toolbar">
-                        {/* <button type="button" className="outline-action-btn" onClick={hideCode}>
-                            Close
-                        </button> */}
-                        <CandidateSnippetPills />
-                    </div>
                     <div className="paper-view-layout__code-scroll">
-                        {<RepoView tree={tree} paperId={paperId} setPaperContentMatches={setPaperContentMatches} />}
+                        {<RepoView
+                            tree={tree}
+                            paperId={paperId}
+                            setPaperContentMatches={setPaperContentMatches}
+                            showPaperPage={(pageIndex) => {
+                                const page = pdfScrollableRef.current?.children.item(pageIndex);
+                                page?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }}
+                        />}
                     </div>
                 </aside>
             )}

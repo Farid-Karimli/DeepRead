@@ -36,6 +36,8 @@ class CodeEntityMatch(BaseModel):
     content_type: Literal["section", "sentence", "equation"] = "section"
     content: str = ""
     section_id: str | None = None
+    reasoning: str | None = None
+    # Retained for cached analyses produced before reasoning became canonical.
     description: str | None = None
     code_snippets: list[CodeSnippet] = Field(default_factory=list)
 
@@ -78,6 +80,7 @@ class KeySectionsCodeResult(BaseModel):
                 or item.get("section_description")
                 or "",
                 "section_id": section_id,
+                "reasoning": item.get("reasoning"),
                 "description": item.get("section_description") or item.get("description"),
                 "code_snippets": item.get("code_snippets") or [],
             })
@@ -198,12 +201,46 @@ class CodeToContentResult(BaseModel):
         return data
 
 
+class ContentToCodeMemoryHint(BaseModel):
+    """One prior content-to-code interaction."""
+
+    source_cache_key: str
+    source_content: str
+    verdict: str
+    reasoning: str
+    paths: list[str] = Field(default_factory=list)
+    folders: list[str] = Field(default_factory=list)
+
+
+class ContentToCodeMemorySnapshot(BaseModel):
+    """The exact prior-mapping context used for one content-to-code request."""
+
+    strategy: Literal["off", "recent"]
+    version: Literal["v1"] = "v1"
+    hints: list[ContentToCodeMemoryHint] = Field(default_factory=list)
+
+
 class ContentToCodeResult(BaseModel):
     reasoning: str
     verdict: str
     code_snippets: list[CodeSnippet] = Field(
         default_factory=list
     )  # top-k snippets after rerank, ordered by relevance (empty if none found)
+    memory_snapshot: ContentToCodeMemorySnapshot | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def discard_unknown_memory_snapshots(cls, data):
+        if not isinstance(data, dict):
+            return data
+        data = dict(data)
+        snapshot = data.get("memory_snapshot")
+        if isinstance(snapshot, dict) and snapshot.get("strategy") not in {
+            "off",
+            "recent",
+        }:
+            data["memory_snapshot"] = None
+        return data
 
 
 class ContentToCodeInputs(BaseModel):

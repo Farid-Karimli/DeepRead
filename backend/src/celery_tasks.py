@@ -9,6 +9,7 @@ from src.types import (
     CodeToContentInputs,
     CodeToContentResult,
     ContentToCodeInputs,
+    ContentToCodeMemorySnapshot,
     ContentToCodeResult,
     ConversationRecord,
     CopilotMessage,
@@ -28,13 +29,14 @@ from src.db import (
     append_conversation_message,
     get_conversation_by_id,
     get_paper_record_by_id,
+    get_recent_content_to_code_matches_by_paper_and_user,
     set_conversation_failed,
     set_conversation_idle,
     update_conversation_summary,
     upsert_mapping_result,
     upsert_paper,
 )
-from src.config import REDIS_URL
+from src.config import CONTENT_TO_CODE_MEMORY_MODE, REDIS_URL
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +53,36 @@ def _new_copilot_agent():
     from src.copilot_agent import CopilotAgent
 
     return CopilotAgent()
+
+
+def _retrieve_content_to_code_memory(
+    *,
+    paper_id: str,
+    user_id: int,
+) -> ContentToCodeMemorySnapshot:
+    """Load the user's last three interactions; mapping agents stay DB-agnostic."""
+    if CONTENT_TO_CODE_MEMORY_MODE != "recent":
+        return ContentToCodeMemorySnapshot(strategy="off")
+
+    try:
+        from src.content_to_code_memory import retrieve_recent_prior_matches
+
+        prior_matches = get_recent_content_to_code_matches_by_paper_and_user(
+            paper_id,
+            user_id,
+        )
+        snapshot = retrieve_recent_prior_matches(
+            prior_matches=prior_matches,
+        )
+        return snapshot
+    except Exception:
+        # Mapping remains available if the experimental retrieval path fails.
+        logger.exception(
+            "content_to_code memory retrieval failed paper_id=%s user_id=%s",
+            paper_id,
+            user_id,
+        )
+        return ContentToCodeMemorySnapshot(strategy="recent")
 
 
 celery = Celery(
@@ -344,11 +376,29 @@ def map_content_to_code_task(
     user_id: int,
 ):
     agent = Agent()
-    result = asyncio.run(agent.map_content_to_code(
-        content=content,
-        repo_url=repo_url,
-        context=context
-    ))
+    memory_snapshot = _retrieve_content_to_code_memory(
+        paper_id=paper_id,
+        user_id=user_id,
+    ) if isinstance(content, str) else ContentToCodeMemorySnapshot(strategy="off")
+    memory_hints = (
+        [hint.model_dump(mode="json") for hint in memory_snapshot.hints]
+        if memory_snapshot.hints
+        else None
+    )
+    if memory_hints:
+        result = asyncio.run(agent.map_content_to_code(
+            content=content,
+            repo_url=repo_url,
+            context=context,
+            memory_hints=memory_hints,
+        ))
+    else:
+        result = asyncio.run(agent.map_content_to_code(
+            content=content,
+            repo_url=repo_url,
+            context=context,
+        ))
+    result["memory_snapshot"] = memory_snapshot.model_dump(mode="json")
 
     record = PaperMappingRecord(
         mapping_type="content_to_code",
@@ -364,6 +414,7 @@ def map_content_to_code_task(
             code_snippets=result.get('code_snippets') or [],
             reasoning=result.get("reasoning"), 
             verdict=result.get("verdict"),
+            memory_snapshot=memory_snapshot,
         ),
         paper_id=paper_id,
         created_by=user_id,

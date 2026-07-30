@@ -6,19 +6,42 @@ This project is developed at Boston University.
 
 ## Get Started
 
-You need an Anthropic API key and a Supabase project (`SUPABASE_URL`, `SUPABASE_KEY`) for paper storage and mapping cache.
+You need an Anthropic API key and a Supabase project (`SUPABASE_URL`,
+`SUPABASE_SECRET_KEY`) for paper storage and mapping cache.
 
-**Docker**
+**Docker Compose (single VM)**
+
+Install Docker Engine with the Compose plugin on a Linux VM. The stack runs the
+frontend/reverse proxy, FastAPI server, Celery worker, and Redis on that VM and
+publishes only one port. Anthropic and Supabase remain external managed
+services, so their credentials are required.
 
 ```bash
 git clone https://github.com/Farid-Karimli/DeepRead.git
 cd DeepRead
 cp env.docker.example .env
-# Edit .env: ANTHROPIC_API_KEY, SUPABASE_URL, SUPABASE_KEY
-docker compose up --build
+# Edit .env: ANTHROPIC_API_KEY, SUPABASE_URL, and SUPABASE_SECRET_KEY
+docker compose up --build -d
+docker compose ps
 ```
 
-Open http://localhost:8080 for the UI and http://localhost:8000 for the API. Compose starts Redis, the FastAPI server, a Celery worker, and the built frontend.
+Open `http://VM_IP:8080`. API requests use the same public origin under
+`/api`, while the API and Redis ports remain private to the VM's Docker
+network. To use another public port, change `APP_PORT` in `.env`; also allow
+that TCP port in the VM firewall/security group.
+
+Useful operations:
+
+```bash
+docker compose logs -f
+docker compose restart
+git pull && docker compose up --build -d
+docker compose down
+```
+
+`docker compose down` preserves the Redis and worker cache volumes. Add `-v`
+only when you intentionally want to erase them. Apply the SQL migrations in
+`supabase/migrations/` to the configured Supabase project before first use.
 
 **Local development**
 
@@ -67,4 +90,4 @@ Optimize for model cost and performance.
 
 ### UI
 
-- Copilot Chat in the bottom right corner of the page: Ask further questions about the paper, code, or matches.
+- [IN PROGRESS] Copilot Chat in the bottom right corner of the page: Ask further questions about the paper, code, or matches.

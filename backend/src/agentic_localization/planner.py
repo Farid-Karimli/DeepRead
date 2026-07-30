@@ -75,6 +75,7 @@ class Planner:
         repo_map: RepoMap,
         content: str,
         context: str = "",
+        memory_hints: list[dict] | None = None,
     ) -> dict[str, Any]:
         """LLM step: file + anchor hypotheses from the minimal map (no line spans)."""
         started_at = time.perf_counter()
@@ -86,6 +87,7 @@ class Planner:
             context=context,
             repo_map_blob=blob,
             max_candidates=self.max_candidates,
+            memory_hints=memory_hints,
         )
         logger.info(
             "get_candidates: chars=%d files=%d blob_tokens=~%d model=%s",
@@ -188,6 +190,7 @@ class Planner:
         repo_url: str,
         context: str = "",
         top_k: int = 5,
+        memory_hints: list[dict] | None = None,
     ) -> dict:
         """Generate candidates, resolve anchors, return eval-shaped prediction."""
         started_at = time.perf_counter()
@@ -195,7 +198,12 @@ class Planner:
         local_code_path = clone_repo_to_temp_dir(repo_url)
         repo_map = load_or_build(local_code_path, repo_url=repo_url, cache_dir=self.cache_dir)
 
-        gen = await self.get_candidates(repo_map, content, context)
+        gen = await self.get_candidates(
+            repo_map,
+            content,
+            context,
+            memory_hints=memory_hints,
+        )
         snippets, resolve_metrics = self.resolve_anchors(
             gen["candidates"], repo_map, local_code_path, top_k=top_k
         )
@@ -265,9 +273,14 @@ class Planner:
         repo_url: str,
         context: str = "",
         top_k: int = 5,
+        memory_hints: list[dict] | None = None,
     ) -> dict:
         return await self.localize(
-            content=content, repo_url=repo_url, context=context, top_k=top_k
+            content=content,
+            repo_url=repo_url,
+            context=context,
+            top_k=top_k,
+            memory_hints=memory_hints,
         )
 
     def _resolve_candidates(

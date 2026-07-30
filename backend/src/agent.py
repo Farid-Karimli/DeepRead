@@ -253,7 +253,8 @@ class Agent:
         content: str | bytes,
         repo_url: str,
         context: str,
-        top_k: int = 5
+        top_k: int = 5,
+        memory_hints: list[dict] | None = None,
     ) -> ContentToCodeResult:
         """
             Maps a small piece of content to relevant code snippets. 
@@ -274,7 +275,12 @@ class Agent:
             content_input = image_file
 
         local_code_path = clone_repo_to_temp_dir(repo_url)
-        prompt = build_single_content_to_code_mapping_prompt(content=content_input, repo_path=local_code_path, context=context)
+        prompt = build_single_content_to_code_mapping_prompt(
+            content=content_input,
+            repo_path=local_code_path,
+            context=context,
+            memory_hints=memory_hints,
+        )
         logger.info(
             "map_content_to_code: prompt prepared chars=%d cwd=%s tools=%s",
             len(prompt),
@@ -538,10 +544,8 @@ if __name__ == "__main__":
         
     with open(f"./papers/pretraining-rl.pdf", 'rb') as paper_file:
         paper_raw = paper_file.read()
-    
+
     final_result = asyncio.run(agent.analyze_paper(file_input=paper_raw, papermage_process_result=papermage_result))
         
     with open(f"./pretraining-rl.analyze_paper.final-result.json", 'w') as f:
         json.dump(final_result, f, indent=4)
-
-    

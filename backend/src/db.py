@@ -199,6 +199,39 @@ def get_content_to_code_matches_by_paper_id(paper_id: str) -> list[PaperMappingR
         logger.exception("Supabase get_content_to_code_matches failed paper_id=%s", paper_id)
         return []
 
+
+def get_recent_content_to_code_matches_by_paper_and_user(
+    paper_id: str,
+    user_id: int,
+    limit: int = 3,
+) -> list[PaperMappingRecord]:
+    """Return the user's latest mappings oldest-to-newest."""
+    if not is_configured() or limit <= 0:
+        return []
+    try:
+        response = (
+            get_supabase_client()
+            .table("mappings")
+            .select("*")
+            .eq("paper_id", paper_id)
+            .eq("mapping_type", "content_to_code")
+            .eq("created_by", user_id)
+            .order("created_at", desc=True)
+            .limit(limit)
+            .execute()
+        )
+        records = [PaperMappingRecord.model_validate(row) for row in response.data]
+        return list(reversed(records))
+    except Exception:
+        logger.exception(
+            "Supabase get recent content_to_code matches failed "
+            "paper_id=%s user_id=%s",
+            paper_id,
+            user_id,
+        )
+        return []
+
+
 def get_code_to_content_matches_by_paper_id_and_filepath(paper_id: str, current_path: str) -> list[PaperMappingRecord]:
     if not is_configured():
         return []

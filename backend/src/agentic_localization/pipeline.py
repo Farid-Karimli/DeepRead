@@ -63,6 +63,7 @@ class PlanResolvePipeline:
         repo_url: str,
         context: str = "",
         top_k: int = 5,
+        memory_hints: list[dict] | None = None,
     ) -> dict:
         if not isinstance(content, str):
             raise TypeError("PlanResolvePipeline only supports str content")
@@ -73,6 +74,7 @@ class PlanResolvePipeline:
                 repo_url=repo_url,
                 context=context,
                 top_k=top_k,
+                memory_hints=memory_hints,
             )
 
         started_at = time.perf_counter()
@@ -81,7 +83,12 @@ class PlanResolvePipeline:
             local_code_path, repo_url=repo_url, cache_dir=self.cache_dir
         )
 
-        gen = await self.planner.get_candidates(repo_map, content, context)
+        gen = await self.planner.get_candidates(
+            repo_map,
+            content,
+            context,
+            memory_hints=memory_hints,
+        )
         snippets = await self.resolver.resolve(
             content=content,
             context=context,

@@ -1,6 +1,6 @@
 FROM node:22-alpine AS build
 
-RUN corepack enable && corepack prepare pnpm@9 --activate
+RUN corepack enable && corepack prepare pnpm@9.15.9 --activate
 
 WORKDIR /app
 
@@ -9,10 +9,13 @@ RUN pnpm install --frozen-lockfile
 
 COPY . .
 
-# Browser calls this URL (host port mapped in docker-compose)
-ARG VITE_API_URL=https://server-871113564150.us-east1.run.app
+# Nginx proxies this same-origin path to the private API container.
+ARG VITE_API_URL=/api
 ENV VITE_API_URL=$VITE_API_URL
 
+# Vite transpiles the application for production. The repository's separate
+# `tsc -b` check currently also type-checks legacy source shipped by
+# @allenai/pdf-components, so keep that check outside the image build.
 RUN pnpm exec vite build
 
 FROM nginx:1.27-alpine

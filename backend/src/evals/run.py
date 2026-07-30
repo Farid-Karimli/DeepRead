@@ -11,6 +11,7 @@ for later evaluation.
 
 Usage:
     python -m src.evals.run [--limit N] [--output PATH] [--paper INDEX]
+        [--memory off|recent]
 """
 
 import argparse
@@ -24,7 +25,9 @@ from tqdm import tqdm
 
 from src.agent import Agent
 from src.agentic_localization.pipeline import PlanResolvePipeline, PipelineKind
+from src.evals.memory import EvaluationMemory
 from src.observability import attributes, init_weave, is_active, op
+from src.types import ContentToCodeMemorySnapshot
 from src.utils import delete_temp_dir, normalize_github_repo_url
 
 DEFAULT_ANNOTATIONS_PATH = os.path.join(
@@ -51,6 +54,7 @@ async def run_annotation(
     paper: dict,
     annotation: dict,
     repo_url: str,
+    memory_snapshot: ContentToCodeMemorySnapshot | None = None,
 ) -> dict:
     record = {
         "paper_id": paper.get("paper_id"),
@@ -62,6 +66,11 @@ async def run_annotation(
         "prediction": None,
         "tool_trace": None,
         "process_metrics": None,
+        "memory_snapshot": (
+            memory_snapshot.model_dump(mode="json")
+            if memory_snapshot is not None
+            else None
+        ),
         "error": None,
         "duration_seconds": None,
     }
@@ -77,11 +86,16 @@ async def run_annotation(
                 "model": getattr(agent, "model", None),
             }
         ):
-            prediction = await agent.map_content_to_code(
-                content=annotation.get("claim_text", ""),
-                repo_url=repo_url,
-                context=build_context(paper, annotation),
-            )
+            kwargs = {
+                "content": annotation.get("claim_text", ""),
+                "repo_url": repo_url,
+                "context": build_context(paper, annotation),
+            }
+            if memory_snapshot and memory_snapshot.hints:
+                kwargs["memory_hints"] = [
+                    hint.model_dump(mode="json") for hint in memory_snapshot.hints
+                ]
+            prediction = await agent.map_content_to_code(**kwargs)
         # Lift process instrumentation out of the prediction payload so
         # evaluate.py keeps seeing a clean ContentToCodeResult-shaped dict.
         if isinstance(prediction, dict):
@@ -104,6 +118,7 @@ async def run(
     model: str = "sonnet",
     paper_index: int | None = None,
     pipeline: PipelineKind | None = None,
+    memory_mode: str = "off",
 ) -> None:
     init_weave()
     print(f"Weave tracing active={is_active()}")
@@ -136,13 +151,35 @@ async def run(
         agent = PlanResolvePipeline(model=model, kind=pipeline)
     else:
         agent = Agent(model=model)
+    memory = EvaluationMemory() if memory_mode == "recent" else None
     results = []
     processed_repo_urls = set()
 
     try:
         for paper, annotation, repo_url in tqdm(tasks, desc="Running agent on annotations"):
-            record = await run_annotation(agent, paper, annotation, repo_url)
+            paper_id = paper.get("paper_id", "")
+            claim_text = annotation.get("claim_text", "")
+            context = build_context(paper, annotation)
+            memory_snapshot = (
+                memory.retrieve(paper_id) if memory is not None else None
+            )
+            record = await run_annotation(
+                agent,
+                paper,
+                annotation,
+                repo_url,
+                memory_snapshot=memory_snapshot,
+            )
             results.append(record)
+            if memory is not None:
+                memory.remember(
+                    paper_id=paper_id,
+                    annotation_id=annotation.get("annotation_id", ""),
+                    content=claim_text,
+                    context=context,
+                    repo_url=repo_url,
+                    prediction=record.get("prediction"),
+                )
             processed_repo_urls.add(repo_url)
             # Checkpoint after each annotation so a long run isn't lost on interrupt.
             os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
@@ -196,6 +233,12 @@ def main() -> None:
         default=None,
         help="Two-agent pipeline: planner_only | planner_menu | planner_crawl",
     )
+    parser.add_argument(
+        "--memory",
+        choices=["off", "recent"],
+        default="off",
+        help="Include the last three interactions from the same paper",
+    )
     args = parser.parse_args()
     pipeline = args.pipeline
     if pipeline is None and args.planner:
@@ -209,6 +252,7 @@ def main() -> None:
             args.model,
             args.paper,
             pipeline=pipeline,
+            memory_mode=args.memory,
         )
     )
 

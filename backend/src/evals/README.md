@@ -13,10 +13,15 @@
     python -m src.evals.run --output out.json  # custom output path
     python -m src.evals.run --paper 2          # only run annotations for the 2nd paper (1-indexed)
     python -m src.evals.run --planner          # two-agent localization instead of the baseline agent
+    python -m src.evals.run --paper 1 --pipeline planner_crawl --memory recent
   ```
   `--planner` swaps in `src.agentic_localization.planner.Planner`, which picks a file
   and anchor symbol from a serialized repo map with no tool calls. It emits the same
   prediction shape, so everything below applies to it unchanged.
+
+  `--memory recent` processes annotations in their existing paper order. Each
+  prediction (never ground truth) enters an in-memory per-paper store. The last
+  three interactions are supplied to later calls from oldest to newest.
 3. Evaluate agent performance:
   ```{bash}
     cd backend
