@@ -101,6 +101,7 @@ class Planner:
             model=model_id,
             max_tokens=4096,
             temperature=self.temperature,
+            cache_control={ "type": "ephemeral", "ttl": "1h" },
             system=PLANNER_SYSTEM_PROMPT,
             messages=[{"role": "user", "content": prompt}],
             output_config={

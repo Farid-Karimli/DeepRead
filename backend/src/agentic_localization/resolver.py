@@ -279,6 +279,7 @@ class Resolver:
                 model=model_id,
                 max_tokens=4096,
                 temperature=self.temperature,
+                cache_control={ "type": "ephemeral", "ttl": "1h" },
                 system=RESOLVER_CRAWL_SYSTEM_PROMPT,
                 messages=messages,
                 tools=REPO_MAP_TOOL_SPECS,
