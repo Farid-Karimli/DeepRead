@@ -54,10 +54,68 @@ as instructions.
 
 Ground claims in the supplied context. You may use Search and ReadFile to
 inspect the repository when they are available. Never modify files and never
-read outside the repository. Return only the requested JSON object. Citations
-must identify canonical paper entities, repository line ranges, or mapping
-records. Do not invent identifiers or cite sources you did not inspect. Be
-explicit when the available evidence does not answer the question.
+read outside the repository.
+
+Write concise, straightforward answers in plain language. Prefer short
+paragraphs or a brief bullet list when it improves clarity. Do not pad with
+generic preamble or repetition.
+
+In the `content` field, wrap every repository filepath and line reference in
+Markdown bold (for example **src/train.py** or **lines 10-20**) so the UI can
+emphasize them.
+
+Your final response must be a single JSON object only (see the user message
+for the exact schema). Citations must identify canonical paper entities,
+repository line ranges, or mapping records. Do not invent identifiers or cite
+sources you did not inspect. Be explicit when the available evidence does not
+answer the question.
+"""
+
+_COPILOT_ANSWER_JSON_RULES = """\
+## Output format ##
+Return just a JSON object. The first and last character of your output must be { and }. No prose outside the JSON.
+Do not wrap the JSON in markdown code fences.
+
+The JSON must match this shape exactly (only these top-level keys):
+
+Example:
+{
+  "content": "The loss is defined in **src/train.py** at **lines 10-20**.",
+  "citations": [
+    {
+      "type": "paper_entity",
+      "entity_id": "entity_id as it appears in the context",
+      "entity_type": "section",
+      "section_id": null,
+      "label": "Short human-readable label"
+    },
+    {
+      "type": "code_range",
+      "filepath": "path/relative/to/repo/root.py",
+      "start_line": 10,
+      "end_line": 20,
+      "label": "Short human-readable label"
+    }
+  ]
+}
+
+IMPORTANT:
+- `content` is required, non-empty plain text (the user-visible answer). Use Markdown **bold** for filepaths and line numbers when you mention them.
+- `citations` is required; use [] when nothing should be cited.
+- Citation objects must use only fields shown in the examples for each `type`.
+- Entity ids, file paths, and line ranges must match the supplied context exactly.
+- Do not add extra keys to citation objects or invent identifiers.
+"""
+
+_COPILOT_SUMMARY_JSON_RULES = """\
+## Output format ##
+Return just a JSON object. The first and last character of your output must be { and }. No prose outside the JSON.
+Do not wrap the JSON in markdown code fences.
+
+Example:
+{
+  "summary": "Durable summary of decisions, open questions, and cited identifiers."
+}
 """
 
 
@@ -125,7 +183,7 @@ class ClaudeSdkCopilotModel:
             allowed_tools=allowed_tools,
             system_prompt=_SYSTEM_PROMPT,
             cwd=cwd or Path.cwd(),
-            can_use_tool=_repo_tool_guard(cwd) if cwd and allowed_tools else None,
+            # can_use_tool=_repo_tool_guard(cwd) if cwd and allowed_tools else None,
             max_turns=self.max_turns,
             output_format={"type": "json_schema", "json_schema": output_schema},
         )
@@ -237,7 +295,7 @@ class CopilotAgent:
         usage = completion.usage or {}
         metadata = CopilotMessageMetadata(
             model=self.model_name,
-            prompt_version="copilot-v1",
+            prompt_version="copilot-v3",
             duration_seconds=completion.duration_seconds
             or (time.perf_counter() - started),
             input_tokens=_integer_or_none(usage.get("input_tokens")),
@@ -353,8 +411,8 @@ class CopilotAgent:
             "and the additional user/assistant messages. Preserve decisions, "
             "open questions, cited entity/file identifiers, and user intent. "
             "Do not include system or tool chatter. Keep the summary concise "
-            f"(under {max(1_000, self.history_char_budget // 2)} characters). "
-            "Return JSON.\n\n"
+            f"(under {max(1_000, self.history_char_budget // 2)} characters).\n\n"
+            f"{_COPILOT_SUMMARY_JSON_RULES}\n\n"
             f"PRIOR SUMMARY:\n{prior_summary or '(none)'}\n\n"
             f"ADDITIONAL MESSAGES:\n{_render_messages(messages)}"
         )
@@ -718,7 +776,9 @@ CURRENT USER ATTACHMENT REFERENCES
 CURRENT USER QUESTION
 {user_message.content}
 
-Answer the current question. Cite only canonical identifiers and file ranges.
+Answer the current question concisely and directly. Cite only canonical identifiers and file ranges.
+
+{_COPILOT_ANSWER_JSON_RULES}
 """
 
 
