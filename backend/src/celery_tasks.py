@@ -55,6 +55,13 @@ def _new_copilot_agent():
     return CopilotAgent()
 
 
+def _new_content_to_code_pipeline():
+    """Planner + guided-crawl resolver for single-entity content→code mapping."""
+    from src.agentic_localization.pipeline import PlanResolvePipeline
+
+    return PlanResolvePipeline(kind="planner_crawl")
+
+
 def _retrieve_content_to_code_memory(
     *,
     paper_id: str,
@@ -375,29 +382,30 @@ def map_content_to_code_task(
     page_number: int,
     user_id: int,
 ):
-    agent = Agent()
+    if not isinstance(content, str):
+        raise TypeError(
+            "map_content_to_code_task expects str paper content; "
+            "use the agentic localization pipeline via text selections."
+        )
+
+    pipeline = _new_content_to_code_pipeline()
     memory_snapshot = _retrieve_content_to_code_memory(
         paper_id=paper_id,
         user_id=user_id,
-    ) if isinstance(content, str) else ContentToCodeMemorySnapshot(strategy="off")
+    )
     memory_hints = (
         [hint.model_dump(mode="json") for hint in memory_snapshot.hints]
         if memory_snapshot.hints
         else None
     )
+    map_kwargs: dict = {
+        "content": content,
+        "repo_url": repo_url,
+        "context": context,
+    }
     if memory_hints:
-        result = asyncio.run(agent.map_content_to_code(
-            content=content,
-            repo_url=repo_url,
-            context=context,
-            memory_hints=memory_hints,
-        ))
-    else:
-        result = asyncio.run(agent.map_content_to_code(
-            content=content,
-            repo_url=repo_url,
-            context=context,
-        ))
+        map_kwargs["memory_hints"] = memory_hints
+    result = asyncio.run(pipeline.map_content_to_code(**map_kwargs))
     result["memory_snapshot"] = memory_snapshot.model_dump(mode="json")
 
     record = PaperMappingRecord(

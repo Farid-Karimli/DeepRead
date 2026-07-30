@@ -19,7 +19,7 @@ TASK_KWARGS = {
 }
 
 
-def _agent() -> SimpleNamespace:
+def _pipeline() -> SimpleNamespace:
     return SimpleNamespace(
         map_content_to_code=AsyncMock(
             return_value={
@@ -41,10 +41,14 @@ def _agent() -> SimpleNamespace:
 def test_content_to_code_worker_off_path_does_not_retrieve_memory(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    agent = _agent()
+    agent = _pipeline()
     persisted = Mock()
     monkeypatch.setattr(celery_tasks, "CONTENT_TO_CODE_MEMORY_MODE", "off")
-    monkeypatch.setattr(celery_tasks, "Agent", lambda: agent)
+    monkeypatch.setattr(
+        celery_tasks,
+        "_new_content_to_code_pipeline",
+        lambda: agent,
+    )
     monkeypatch.setattr(
         celery_tasks,
         "get_recent_content_to_code_matches_by_paper_and_user",
@@ -96,7 +100,7 @@ def test_content_to_code_memory_retrieval_failure_records_recent_empty_snapshot(
 def test_content_to_code_worker_passes_and_persists_exact_recent_snapshot(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    agent = _agent()
+    agent = _pipeline()
     snapshot = ContentToCodeMemorySnapshot.model_validate(
         {
             "strategy": "recent",
@@ -116,7 +120,11 @@ def test_content_to_code_worker_passes_and_persists_exact_recent_snapshot(
     retrieve = Mock(return_value=snapshot)
     persisted = Mock()
     monkeypatch.setattr(celery_tasks, "CONTENT_TO_CODE_MEMORY_MODE", "recent")
-    monkeypatch.setattr(celery_tasks, "Agent", lambda: agent)
+    monkeypatch.setattr(
+        celery_tasks,
+        "_new_content_to_code_pipeline",
+        lambda: agent,
+    )
     monkeypatch.setattr(celery_tasks, "_retrieve_content_to_code_memory", retrieve)
     monkeypatch.setattr(celery_tasks, "upsert_mapping_result", persisted)
 
