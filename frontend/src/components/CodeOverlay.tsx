@@ -20,6 +20,7 @@ import {
 import { useTheme } from '../context/ThemeContext';
 import { getShikiLanguage } from '../utils/codeLanguage';
 import type { CopilotContextRef } from '../api/types.ts';
+import { buildCodeInfoFromSnippets } from '../utils/codeInfoFromSnippets.ts';
 import { logStudyEvent, matchSourceFromHighlight } from '../utils/studyLog.ts';
 
 /** First N lines of a snippet shown in the tooltip preview, to keep it glanceable. */
@@ -226,21 +227,14 @@ function PdfBoundingHitTarget({
       end_line: s.end_line,
       context_ref: box.contextRef,
     });
-    const thisFilePath = s.filepath;
-    const forFile = codeSnippets.filter((t) => t.filepath === thisFilePath);
-    showCode({
-      filePath: thisFilePath,
-      codeRanges: forFile.map((t) => ({ startLine: t.start_line, endLine: t.end_line })),
-      scrollToRange: { startLine: s.start_line, endLine: s.end_line },
-      paperPageIndex: box.page,
+    const codeInfo = buildCodeInfoFromSnippets(codeSnippets, {
       description: box.description || '',
-      candidates: codeSnippets.map((snippet) => ({
-        filePath: snippet.filepath,
-        startLine: snippet.start_line,
-        endLine: snippet.end_line,
-      })),
-      activeCandidateIndex: index,
+      paperPageIndex: box.page,
+      activeIndex: index,
     });
+    if (codeInfo) {
+      showCode(codeInfo);
+    }
   };
 
   const logHighlightEngagement = (action: string) => {
@@ -318,12 +312,6 @@ function PdfBoundingHitTarget({
           setFloating(null);
         }}
       >
-        {box.description && (
-          <div className="pdf-hit-tooltip__description">
-            <span className="pdf-hit-tooltip__description-label">Why this matches</span>
-            {box.description}
-          </div>
-        )}
         {box.code_snippets.length > 0 && (
           <div className="pdf-hit-tooltip__path">{box.file_infos[codeIndex]}</div>
         )}

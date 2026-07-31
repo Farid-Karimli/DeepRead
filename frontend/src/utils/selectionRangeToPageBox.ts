@@ -121,3 +121,31 @@ export function captureSelectionHighlightsFromRange(range: Range): SelectionPage
     }
     return highlights;
 }
+
+function unionNormalizedBoxes(boxes: NormalizedPageBox[]): NormalizedPageBox {
+    let l = Infinity;
+    let t = Infinity;
+    let r = -Infinity;
+    let b = -Infinity;
+    for (const box of boxes) {
+        l = Math.min(l, box.l);
+        t = Math.min(t, box.t);
+        r = Math.max(r, box.l + box.w);
+        b = Math.max(b, box.t + box.h);
+    }
+    return { l, t, w: r - l, h: b - t };
+}
+
+/** One page + box covering the full selection (union of line rects on that page). */
+export function captureSelectionPrimaryPageBox(range: Range): SelectionPageBox | null {
+    const highlights = captureSelectionHighlightsFromRange(range);
+    if (highlights.length === 0) {
+        return null;
+    }
+    const page = highlights[0].page;
+    const onPage = highlights.filter((h) => h.page === page);
+    return {
+        page,
+        box: onPage.length === 1 ? onPage[0].box : unionNormalizedBoxes(onPage.map((h) => h.box)),
+    };
+}

@@ -33,13 +33,11 @@ export function usePDFTextSelection(
 
             const commonAncestor = range.getBoundingClientRect();
 
-            setSelection(
-                {
-                    text, 
-                    rect: commonAncestor,
-                    range,
-                }
-            )
+            setSelection({
+                text,
+                rect: commonAncestor,
+                range: range.cloneRange(),
+            });
 
         }
 

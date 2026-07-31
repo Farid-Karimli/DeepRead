@@ -21,6 +21,7 @@ import { UserContext } from '../context/UserContext.tsx';
 import { useCopilotContext } from '../context/CopilotContext.tsx';
 import { logStudyEvent } from '../utils/studyLog.ts';
 import MappingTaskBanner from './MappingTaskBanner.tsx';
+import { boldFilepathsInText } from '../utils/boldFilepathsInText.tsx';
 
 export type ContextualPaperContentMatch = PaperContentMatch & {
     sourceMappingRef?: MappingRef;
@@ -122,6 +123,7 @@ const RepoView = ({ tree, paperId, setPaperContentMatches, showPaperPage }: Repo
     const [currentFileContent, setCurrentFileContent] = useState<string | null>(null);
     const [scrollFocusRange, setScrollFocusRange] = useState<{ start: number; end: number } | null>(null);
     const { codeInfo, hideCode } = useSidePanel();
+    const descriptionFilepaths = codeInfo?.candidates?.map((c) => c.filePath) ?? [];
     const codeViewerRef = useRef<HTMLDivElement>(null);
     const codeMatchFilterRef = useRef<HTMLDivElement>(null);
     const [isCodeMatchFilterOpen, setIsCodeMatchFilterOpen] = useState(false);
@@ -466,7 +468,9 @@ const RepoView = ({ tree, paperId, setPaperContentMatches, showPaperPage }: Repo
                     </div>
                 </div>
                 {currentCodeDescription && (
-                    <div className="repo-tree__description">{currentCodeDescription}</div>
+                    <div className="repo-tree__description">
+                        {boldFilepathsInText(currentCodeDescription, descriptionFilepaths)}
+                    </div>
                 )}
                 {currentFileContent && (
                     <div className="match-filter" ref={codeMatchFilterRef}>
