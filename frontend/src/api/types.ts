@@ -23,6 +23,7 @@ interface codeEntityMatch {
     reasoning?: string;
     /** Legacy explanation field retained for cached analyses. */
     description?: string;
+    verdict?: string;
     code_snippets: codeSnippet[];
 }
 
