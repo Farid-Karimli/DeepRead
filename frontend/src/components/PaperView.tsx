@@ -8,7 +8,7 @@ import {
     RENDER_TYPE,
     TransformContext,
 } from '@allenai/pdf-components';
-import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { IoChevronDown } from 'react-icons/io5';
 import { Group, Panel, Separator } from "react-resizable-panels";
 import { useQuery, useMutation, useQueryClient} from '@tanstack/react-query';
@@ -18,12 +18,18 @@ import type { codeMatchesResult, githubRepoTreeResponse, processPDFResult, paper
 import { resolvePaperMageEntity } from '../utils/resolvePaperMageEntity.ts';
 import { HighlightOverlayDemo, type BoundingBoxWithTooltip } from './CodeOverlay.tsx';
 import RepoView, { type ContextualPaperContentMatch } from './RepoView.tsx';
-import { captureSelectionHighlightsFromRange } from '../utils/selectionRangeToPageBox.ts';
+import { captureSelectionPrimaryPageBox } from '../utils/selectionRangeToPageBox.ts';
 import { usePDFTextSelection } from '../hooks/useTextSelection.tsx';
 import { useCeleryTaskStatus } from '../hooks/useCeleryTaskStatus.ts';
 import { UserContext } from '../context/UserContext.tsx';
 import ThemeToggle from './ThemeToggle';
 import MappingTaskBanner from './MappingTaskBanner.tsx';
+import { useSidePanel } from '../context/SidePanelContext.tsx';
+import {
+    buildCodeInfoFromSnippets,
+    extractSnippetsFromMapResult,
+    reasoningFromMapResult,
+} from '../utils/codeInfoFromSnippets.ts';
 import { logStudyEvent } from '../utils/studyLog.ts';
 
 interface PaperViewProps {
@@ -322,8 +328,10 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
     const pdfScrollableRef = useRef<HTMLDivElement>(null);
 
     const {currentUser} = useContext(UserContext);
+    const { showCode } = useSidePanel();
 
     const [matchingTaskId, setMatchingTaskId] = useState<string | null>(null);
+    const lastContentToCodePageRef = useRef<number | null>(null);
     const [paperContentMatches, setPaperContentMatches] = useState<ContextualPaperContentMatch[]>([]);
     const [contentToCodeMatches, setContentToCodeMatches] = useState<paperContentToCodeMatch[]>([]);
     const [isMatchFilterOpen, setIsMatchFilterOpen] = useState(false);
@@ -374,6 +382,19 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
 
     
 
+    const openCodePanelForMappingResult = useCallback((result: unknown) => {
+        const snippets = extractSnippetsFromMapResult(result);
+        if (snippets.length === 0) return;
+        const codeInfo = buildCodeInfoFromSnippets(snippets, {
+            description: reasoningFromMapResult(result),
+            paperPageIndex: lastContentToCodePageRef.current ?? undefined,
+            activeIndex: 0,
+        });
+        if (codeInfo) {
+            showCode(codeInfo);
+        }
+    }, [showCode]);
+
     // This submits a user's selection to the server for Celery task
     const contentToCodeMutation = useMutation({
         mutationFn: ({content, repoUrl, context, paperId, box, pageNumber, user_id}: ContentToCodeInput) => 
@@ -381,6 +402,7 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
         onSuccess: (response) => {
             if (response.status === "SUCCESS") {
                 queryClient.invalidateQueries({queryKey: ["matches", paperId]})
+                openCodePanelForMappingResult(response.result);
             } else if (response.status === "PENDING" && response.task_id) {
                 setMatchingTaskId(response.task_id);
             }
@@ -396,6 +418,7 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
 
     useEffect(() => {
         if (matchTaskQuery.data?.status === "SUCCESS") {
+            openCodePanelForMappingResult(matchTaskQuery.data.result);
             queryClient.invalidateQueries({queryKey: ['matches', paperId]});
             setMatchingTaskId(null);
             setPendingSelection(null);
@@ -404,7 +427,7 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
             setMatchingTaskId(null);
             setPendingSelection(null);
         }
-    }, [matchTaskQuery.data, paperId, queryClient])
+    }, [matchTaskQuery.data, paperId, queryClient, openCodePanelForMappingResult])
 
     const isMapping =
         contentToCodeMutation.isPending ||
@@ -414,7 +437,7 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
             // Block any additional match requests if one is already ongoing
             if (!pendingSelection || matchingTaskId !== null) return; 
 
-            const selectionHighlight = captureSelectionHighlightsFromRange(pendingSelection.range)[0];
+            const selectionHighlight = captureSelectionPrimaryPageBox(pendingSelection.range);
             if (!selectionHighlight) {
                 console.warn('No selection highlight captured');
                 return;
@@ -425,6 +448,8 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
                 console.warn('No context found');
                 selectionContext = "";
             }
+
+            lastContentToCodePageRef.current = selectionHighlight.page;
 
             const matchTaskInput: ContentToCodeInput = {
                 content: pendingSelection.text,
@@ -615,6 +640,7 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
               <button
                 type="button"
                 className="pdf-selection-popover__btn pdf-selection-popover__btn--primary"
+                onMouseDown={(event) => event.preventDefault()}
                 onClick={submitPendingSelection}
                 disabled={isMapping}
               >
