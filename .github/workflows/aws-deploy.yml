@@ -1,0 +1,22 @@
+name: Deploy to AWS
+
+# Each component of the application is deployed on AWS ECS Fargate.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+    AWS_REGION: us-east-1
+    AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+    AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+jobs:
+    deploy-backend:
+        ...
+    deploy-frontend:
+
+    deploy-celery:
+    
+    
