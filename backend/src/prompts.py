@@ -328,6 +328,14 @@ def build_planner_prompt(
         - "not_implemented": the content should have code, but this repository has none.
         - "not_applicable": the content is not the kind of thing that maps to code.
 
+        ## Verdict consistency ##
+        `reasoning` and `verdict` must agree. If your reasoning concludes the repository
+        lacks a genuine implementation — including when the map only shows a related file
+        or class but not the specific component or computation described (e.g. you write
+        "would likely", "should be", or you cannot point to a symbol that performs the
+        work) — set `verdict` to "not_implemented" and `candidates` to [].
+        Never return "implemented" based on speculation or absence.
+
         ## Output Format ##
         Return just a JSON object. The first and last character of your output must be {{ and }}.
         No prose outside the JSON.

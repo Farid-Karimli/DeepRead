@@ -16,6 +16,7 @@ from src.utils import clone_repo_to_temp_dir
 from .planner import Planner
 from .repo_map import DEFAULT_CACHE_DIR, load_or_build
 from .resolver import Resolver
+from .utils import planner_verdict_skips_resolve
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -89,19 +90,24 @@ class PlanResolvePipeline:
             context,
             memory_hints=memory_hints,
         )
-        snippets = await self.resolver.resolve(
-            content=content,
-            context=context,
-            candidates=gen,
-            repo_map=repo_map,
-            repo_root=Path(local_code_path),
-        )
-        if top_k and len(snippets) > top_k:
-            snippets = snippets[:top_k]
+        verdict = (gen.get("verdict") or "").strip()
+        if planner_verdict_skips_resolve(verdict):
+            logger.info("pipeline: skipping resolver verdict=%s", verdict)
+            snippets = []
+        else:
+            snippets = await self.resolver.resolve(
+                content=content,
+                context=context,
+                candidates=gen,
+                repo_map=repo_map,
+                repo_root=Path(local_code_path),
+            )
+            if top_k and len(snippets) > top_k:
+                snippets = snippets[:top_k]
 
         final = ContentToCodeResult(
             reasoning=gen.get("reasoning") or "",
-            verdict=gen.get("verdict") or "",
+            verdict=verdict,
             code_snippets=snippets,
         )
 

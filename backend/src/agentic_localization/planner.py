@@ -27,7 +27,7 @@ from src.utils import clone_repo_to_temp_dir
 
 from .repo_map import DEFAULT_CACHE_DIR, estimate_tokens, load_or_build, render_minimal_view
 from .schema import FileRecord, RepoMap, SymbolRecord
-from .utils import resolve_model
+from .utils import planner_verdict_skips_resolve, resolve_model
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -205,13 +205,25 @@ class Planner:
             context,
             memory_hints=memory_hints,
         )
-        snippets, resolve_metrics = self.resolve_anchors(
-            gen["candidates"], repo_map, local_code_path, top_k=top_k
-        )
+        verdict = (gen.get("verdict") or "").strip()
+        if planner_verdict_skips_resolve(verdict):
+            logger.info("localize: skipping resolve_anchors verdict=%s", verdict)
+            snippets = []
+            resolve_metrics = {
+                "duration_s": 0.0,
+                "num_snippets": 0,
+                "num_unresolved_files": 0,
+                "num_unresolved_anchors": 0,
+                "skipped": True,
+            }
+        else:
+            snippets, resolve_metrics = self.resolve_anchors(
+                gen["candidates"], repo_map, local_code_path, top_k=top_k
+            )
 
         final = ContentToCodeResult(
             reasoning=gen["reasoning"],
-            verdict=gen["verdict"],
+            verdict=verdict,
             code_snippets=snippets,
         )
 

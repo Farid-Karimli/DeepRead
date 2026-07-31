@@ -14,6 +14,14 @@ def resolve_model(model: str) -> str:
         return MODEL_ALIASES[key]
     return model
 
+
+TERMINAL_PLANNER_VERDICTS = frozenset({"not_implemented", "not_applicable"})
+
+
+def planner_verdict_skips_resolve(verdict: str | None) -> bool:
+    """Planner outcomes that should not invoke the resolver (no line-level search)."""
+    return (verdict or "").strip() in TERMINAL_PLANNER_VERDICTS
+
 class TreeSitterCodeChunk(BaseModel):
     language: str
     file_path: str
