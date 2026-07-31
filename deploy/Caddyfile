@@ -1,0 +1,30 @@
+# Host reverse proxy for a single-VM Docker Compose deployment.
+#
+# Prerequisites:
+#   - DNS A record(s) for deepread.study (and www) → this VM's public IPv4
+#   - docker compose running with APP_PORT=8080 (default in env.docker.example)
+#   - Firewall allows TCP 80 and 443 to this host
+#
+# Install (Debian/Ubuntu example):
+#   sudo apt install -y debian-keyring debian-archive-keyring apt-transport-https
+#   curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+#   curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | sudo tee /etc/apt/sources.list.d/caddy-stable.list
+#   sudo apt update && sudo apt install caddy
+#   sudo cp deploy/Caddyfile /etc/caddy/Caddyfile
+#   sudo systemctl reload caddy
+#
+# Caddy obtains and renews Let's Encrypt certificates automatically. Port 80
+# serves HTTP (ACME + redirect to HTTPS); port 443 serves HTTPS.
+
+deepread.study, www.deepread.study {
+	request_body {
+		max_size 100MB
+	}
+
+	reverse_proxy 127.0.0.1:8080 {
+		transport http {
+			read_timeout 5m
+			write_timeout 5m
+		}
+	}
+}

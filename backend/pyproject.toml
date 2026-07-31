@@ -25,6 +25,7 @@ dependencies = [
     "tree-sitter>=0.26.0",
     "sentence-transformers>=2.2.2",
     "huggingface-hub<0.26",
+    "treesitter-chunker>=2.2.23",
 ]
 authors = [
     { name = "DeepRead Team" }
