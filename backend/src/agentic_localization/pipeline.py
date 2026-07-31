@@ -16,7 +16,7 @@ from src.utils import clone_repo_to_temp_dir
 from .planner import Planner
 from .repo_map import DEFAULT_CACHE_DIR, load_or_build
 from .resolver import Resolver
-from .utils import planner_verdict_skips_resolve
+from .utils import finalize_resolver_verdict, planner_verdict_skips_resolve
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -90,24 +90,43 @@ class PlanResolvePipeline:
             context,
             memory_hints=memory_hints,
         )
-        verdict = (gen.get("verdict") or "").strip()
-        if planner_verdict_skips_resolve(verdict):
-            logger.info("pipeline: skipping resolver verdict=%s", verdict)
+        planner_verdict = (gen.get("verdict") or "").strip()
+        if planner_verdict_skips_resolve(planner_verdict):
+            logger.info("pipeline: skipping resolver verdict=%s", planner_verdict)
+            final_verdict = planner_verdict
+            final_reasoning = gen.get("reasoning") or ""
+            snippets = []
+        elif not (gen.get("candidates") or []):
+            logger.info("pipeline: skipping resolver (no planner candidates)")
+            final_verdict, final_reasoning = finalize_resolver_verdict(
+                snippets=[],
+                model_verdict="not_implemented",
+                model_reasoning=gen.get("reasoning"),
+            )
             snippets = []
         else:
-            snippets = await self.resolver.resolve(
+            resolved = await self.resolver.resolve(
                 content=content,
                 context=context,
                 candidates=gen,
                 repo_map=repo_map,
                 repo_root=Path(local_code_path),
             )
+            snippets = resolved["code_snippets"]
             if top_k and len(snippets) > top_k:
                 snippets = snippets[:top_k]
+            final_verdict = resolved["verdict"]
+            final_reasoning = resolved["reasoning"]
+            if len(snippets) == 0:
+                final_verdict, final_reasoning = finalize_resolver_verdict(
+                    snippets=[],
+                    model_verdict=resolved["verdict"],
+                    model_reasoning=resolved["reasoning"],
+                )
 
         final = ContentToCodeResult(
-            reasoning=gen.get("reasoning") or "",
-            verdict=verdict,
+            reasoning=final_reasoning,
+            verdict=final_verdict,
             code_snippets=snippets,
         )
 
