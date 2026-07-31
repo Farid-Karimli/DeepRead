@@ -14,6 +14,51 @@ def resolve_model(model: str) -> str:
         return MODEL_ALIASES[key]
     return model
 
+
+TERMINAL_PLANNER_VERDICTS = frozenset({"not_implemented", "not_applicable"})
+
+RESOLVER_VERDICTS = frozenset({"implemented", "not_implemented", "not_applicable"})
+
+
+def planner_verdict_skips_resolve(verdict: str | None) -> bool:
+    """Planner outcomes that should not invoke the resolver (no line-level search)."""
+    return (verdict or "").strip() in TERMINAL_PLANNER_VERDICTS
+
+
+def finalize_resolver_verdict(
+    *,
+    snippets: list,
+    model_verdict: str | None,
+    model_reasoning: str | None,
+) -> tuple[str, str]:
+    """
+    Resolver is authoritative: confirmed snippets imply implemented; none imply
+    not_implemented unless the model explicitly chose not_applicable.
+    """
+    reasoning = (model_reasoning or "").strip()
+    model_v = (model_verdict or "").strip()
+    if model_v not in RESOLVER_VERDICTS:
+        model_v = ""
+
+    if len(snippets) == 0:
+        if model_v == "not_applicable":
+            return (
+                "not_applicable",
+                reasoning or "This content does not map to code in this repository.",
+            )
+        return (
+            "not_implemented",
+            reasoning
+            or "No code in this repository implements the described content.",
+        )
+
+    if model_v == "not_applicable":
+        return "not_applicable", reasoning
+    return (
+        "implemented",
+        reasoning or "Located code that implements the described content.",
+    )
+
 class TreeSitterCodeChunk(BaseModel):
     language: str
     file_path: str

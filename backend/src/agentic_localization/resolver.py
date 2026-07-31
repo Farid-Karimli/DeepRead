@@ -3,6 +3,7 @@ import json
 import logging
 import time
 from pathlib import Path
+from typing import TypedDict
 
 from anthropic import AsyncAnthropic
 
@@ -16,7 +17,7 @@ from src.utils import clone_repo_to_temp_dir
 from .schema import CandidateSpan, RepoMap
 from .repo_map import DEFAULT_CACHE_DIR, estimate_tokens, load_or_build
 from .repo_map_tools import REPO_MAP_TOOL_SPECS, RepoMapToolRunner
-from .utils import resolve_model
+from .utils import finalize_resolver_verdict, resolve_model
 from .planner import Planner, _usage_dict
 
 logger = logging.getLogger(__name__)
@@ -38,6 +39,25 @@ RESOLVER_CRAWL_SYSTEM_PROMPT = (
 )
 
 CRAWL_MAX_TOOL_TURNS = 12
+
+
+class ResolverResult(TypedDict):
+    verdict: str
+    reasoning: str
+    code_snippets: list[CodeSnippet]
+
+
+def _pack_resolver_result(parsed: dict, snippets: list[CodeSnippet]) -> ResolverResult:
+    verdict, reasoning = finalize_resolver_verdict(
+        snippets=snippets,
+        model_verdict=parsed.get("verdict"),
+        model_reasoning=parsed.get("reasoning"),
+    )
+    return {
+        "verdict": verdict,
+        "reasoning": reasoning,
+        "code_snippets": snippets,
+    }
 
 
 def _read_span(path: Path, span: CandidateSpan) -> str:
@@ -235,7 +255,7 @@ class Resolver:
 
         snippets = self.resolve_spans(symbols, repo_map=repo_map, repo_root=repo_root)
         self._log_prediction_summary(snippets)
-        return snippets
+        return _pack_resolver_result(parsed, snippets)
 
     @op(name="resolver_resolve_crawl")
     async def _resolve_guided_crawl(
@@ -308,8 +328,11 @@ class Resolver:
             {
                 "role": "user",
                 "content": (
-                    "Return your final localization as JSON only: reasoning plus symbols "
-                    "(filepath, name, spans indices from lookup_symbol)."
+                    "Return your final localization as JSON only: reasoning, verdict "
+                    "(implemented | not_implemented | not_applicable), and symbols "
+                    "(filepath, name, span indices from lookup_symbol). "
+                    "Use not_implemented with empty symbols when investigation found no "
+                    "genuine implementation."
                 ),
             }
         )
@@ -364,7 +387,7 @@ class Resolver:
 
         snippets = self.resolve_spans(symbols, repo_map=repo_map, repo_root=repo_root)
         self._log_prediction_summary(snippets)
-        return snippets
+        return _pack_resolver_result(parsed, snippets)
 
     def _log_prediction_summary(self, snippets: list[CodeSnippet]) -> None:
         log_summary(
@@ -396,7 +419,7 @@ if __name__ == "__main__":
     )
 
     resolver = Resolver()
-    snippets = asyncio.run(
+    print(asyncio.run(
         resolver.resolve(
             content=annotation["claim_text"],
             context=f"Paper title: {paper.get('title', '')}\nSection: {annotation.get('section_ref', '')}",
@@ -404,5 +427,4 @@ if __name__ == "__main__":
             repo_map=repo_map,
             repo_root=Path(local_code_path),
         )
-    )
-    print(snippets)
+    ))

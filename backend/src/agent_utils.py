@@ -185,6 +185,10 @@ resolver_schema = {
     "type": "object",
     "properties": {
         "reasoning": {"type": "string"},
+        "verdict": {
+            "type": "string",
+            "enum": ["implemented", "not_implemented", "not_applicable"],
+        },
         "symbols": {
             "type": "array",
             "items": {
@@ -201,7 +205,7 @@ resolver_schema = {
             },
         },
     },
-    "required": ["reasoning", "symbols"],
+    "required": ["reasoning", "verdict", "symbols"],
     "additionalProperties": False,
 }
 

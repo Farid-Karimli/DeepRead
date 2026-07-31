@@ -328,6 +328,14 @@ def build_planner_prompt(
         - "not_implemented": the content should have code, but this repository has none.
         - "not_applicable": the content is not the kind of thing that maps to code.
 
+        ## Verdict consistency ##
+        `reasoning` and `verdict` must agree. If your reasoning concludes the repository
+        lacks a genuine implementation — including when the map only shows a related file
+        or class but not the specific component or computation described (e.g. you write
+        "would likely", "should be", or you cannot point to a symbol that performs the
+        work) — set `verdict` to "not_implemented" and `candidates` to [].
+        Never return "implemented" based on speculation or absence.
+
         ## Output Format ##
         Return just a JSON object. The first and last character of your output must be {{ and }}.
         No prose outside the JSON.
@@ -386,11 +394,15 @@ def build_resolver_menu_prompt(
         ## End Candidates ##  
 
         ## Procedure ##
-        1. Decide whether the entire symbol contains the computations/claims described in the content.
-        Try to cover as much ground as you can. 
-        2. Return up to {max_snippets} candidates, most likely first. Additional
-        candidates are for genuine alternatives, not padding — a single confident answer
-        is better than five guesses.
+        1. Investigate whether the candidates actually implement the content (read span text).
+        2. Set `verdict` to your final answer — you are authoritative, not the Planner.
+        3. Return up to {max_snippets} symbols only when `verdict` is "implemented".
+        Additional symbols are for genuine alternatives, not padding.
+
+        ## Verdicts ##
+        - "implemented": you confirmed code that genuinely implements the content; `symbols` must be non-empty.
+        - "not_implemented": the content should have code here, but nothing in the candidates (or repo) implements it; `symbols` must be [].
+        - "not_applicable": the content does not map to code; `symbols` must be [].
 
         ## Anchor rules ##
         - `filepath` must be copied exactly as it appears in the map, including directory.
@@ -408,7 +420,8 @@ def build_resolver_menu_prompt(
         No prose outside the JSON.
 
         {{
-            "reasoning": "Which symbols and spans you chose and why, and what you rejected.",
+            "reasoning": "What you inspected, what you rejected, and why you chose the verdict.",
+            "verdict": "implemented" | "not_implemented" | "not_applicable",
             "symbols": [
                 {{
                     "filepath": "path exactly as it appears in the map",
@@ -420,8 +433,7 @@ def build_resolver_menu_prompt(
             ]
         }}
 
-        When the verdict is "not_implemented" or "not_applicable", "candidates" must be an
-        empty list.
+        When `verdict` is "not_implemented" or "not_applicable", `symbols` must be [].
     """
 
 def build_resolver_crawl_prompt(
@@ -455,12 +467,19 @@ def build_resolver_crawl_prompt(
         ## Procedure ##
         1. For each promising planner candidate, call lookup_symbol with the same filepath
         and anchor_symbol, then read_lines around the symbol or a candidate_span.
-        2. Pick up to {max_snippets} symbol+span answers (span indices from lookup_symbol).
-        3. When you are ready, you will be asked for final JSON (reasoning + symbols).
+        2. Decide your final `verdict` from what you read in the repository (you are authoritative).
+        3. If and only if `verdict` is "implemented", return up to {max_snippets} symbol+span answers.
+
+        ## Verdicts ##
+        - "implemented": confirmed implementing code; `symbols` non-empty.
+        - "not_implemented": should exist in this repo but does not; `symbols` [].
+        - "not_applicable": not mappable to code; `symbols` [].
 
         ## Final JSON rules ##
+        - Include `reasoning`, `verdict`, and `symbols`.
         - `filepath` and `name` must match the repo map (use lookup_symbol results).
         - `spans` lists candidate_span indices; use -1 for the whole symbol when no blocks exist.
+        - When `verdict` is not "implemented", `symbols` must be [].
     """
 
 def build_code_to_content_mapping_prompt(
