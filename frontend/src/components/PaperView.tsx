@@ -15,6 +15,7 @@ import { useQuery, useMutation, useQueryClient} from '@tanstack/react-query';
 
 import { mapContentToCode, getContentToCodeMatches } from '../api/main.ts';
 import type { codeMatchesResult, githubRepoTreeResponse, processPDFResult, paperContentToCodeMatch, paperContentBox } from '../api/types.ts';
+import { isPlausiblePaperMageHighlightBox } from '../utils/paperMageHighlightBox.ts';
 import { resolvePaperMageEntity } from '../utils/resolvePaperMageEntity.ts';
 import { HighlightOverlayDemo, type BoundingBoxWithTooltip } from './CodeOverlay.tsx';
 import RepoView, { type ContextualPaperContentMatch } from './RepoView.tsx';
@@ -153,8 +154,21 @@ function PdfPageList({
             for (let i = 0; i < aiMatches.length; i++) {
                 const analyzedMatch = aiMatches[i];
 
-                if (analyzedMatch.code_snippets.length === 0) {
-                    console.warn("No code snippets listed for match", analyzedMatch);
+                const codeSnippets = analyzedMatch.code_snippets ?? [];
+                const description =
+                    analyzedMatch.reasoning?.trim() ||
+                    analyzedMatch.description?.trim() ||
+                    '';
+                const verdict =
+                    analyzedMatch.verdict === 'not_implemented' ||
+                    analyzedMatch.verdict === 'implemented'
+                        ? analyzedMatch.verdict
+                        : codeSnippets.length === 0
+                          ? 'not_implemented'
+                          : 'implemented';
+
+                if (codeSnippets.length === 0 && !description) {
+                    console.warn('No code snippets or reasoning for match', analyzedMatch);
                     continue;
                 }
 
@@ -165,6 +179,14 @@ function PdfPageList({
                 }
 
                 const box = resolved.box;
+                if (!isPlausiblePaperMageHighlightBox(box)) {
+                    console.warn(
+                        'Skipping AI PDF highlight: PaperMage box out of plausible range',
+                        analyzedMatch.entity_id,
+                        box,
+                    );
+                    continue;
+                }
                 if (cancelled) return;
                 const page = await pdfDocProxy.getPage(box.page + 1);
                 if (cancelled) return;
@@ -172,8 +194,8 @@ function PdfPageList({
 
                 const scaleX = pageDimensions.width / viewport.width;
                 const scaleY = pageDimensions.height / viewport.height;
-                const primarySnippet = analyzedMatch.code_snippets[0];
-    
+                const primarySnippet = codeSnippets[0];
+
                 boxes.push({
                     page:   box.page,
                     top:    box.t   * viewport.height * scaleY,
@@ -181,21 +203,24 @@ function PdfPageList({
                     width:  box.w   * viewport.width * scaleX,
                     height: box.h   * viewport.height * scaleY,
                     hitKey: `p${box.page}-h${i}`,
-                    file_infos: analyzedMatch.code_snippets.map((snippet) => `${snippet.filepath}:${snippet.start_line}-${snippet.end_line}`),
-                    code_snippets: analyzedMatch.code_snippets,
+                    file_infos: codeSnippets.map((snippet) => `${snippet.filepath}:${snippet.start_line}-${snippet.end_line}`),
+                    code_snippets: codeSnippets,
                     description:
-                        analyzedMatch.reasoning?.trim() ||
-                        analyzedMatch.description?.trim() ||
+                        description ||
                         'No correspondence explanation is available for this cached match.',
                     content_type: analyzedMatch.content_type,
-                    color: CODE_MATCH_VERDICT_TO_COLOR.ai,
+                    verdict,
+                    color:
+                        verdict === 'not_implemented'
+                            ? CODE_MATCH_VERDICT_TO_COLOR.not_implemented
+                            : CODE_MATCH_VERDICT_TO_COLOR.ai,
                     contextRef: {
                         type: 'mapping',
                         mapping_type: 'initial_analysis',
                         entity_id: analyzedMatch.entity_id,
-                        filepath: primarySnippet.filepath,
-                        start_line: primarySnippet.start_line,
-                        end_line: primarySnippet.end_line,
+                        filepath: primarySnippet?.filepath ?? null,
+                        start_line: primarySnippet?.start_line ?? null,
+                        end_line: primarySnippet?.end_line ?? null,
                         label: `AI match for ${analyzedMatch.entity_id}`,
                     },
                 })
@@ -266,6 +291,7 @@ function PdfPageList({
                     ),
                     code_snippets: codeSnippets,
                     description: codeMatch.outputs.reasoning,
+                    verdict: codeMatch.outputs.verdict,
                     variant: 'overlay',
                     color: CODE_MATCH_VERDICT_TO_COLOR[codeMatch.outputs.verdict] ?? CODE_MATCH_VERDICT_TO_COLOR.not_implemented,
                     contextRef: codeMatch.cache_key
@@ -477,14 +503,33 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
     const hasRealFile = paperFile instanceof File && paperFile.size > 0;
 
     // Match visibility filter: 'my'/'others' split persisted user matches by creator.
-    const showAiMatches = matchFilter === 'all' || matchFilter === 'ai';
+    const showAiMatches =
+        matchFilter === 'all' || matchFilter === 'ai' || matchFilter === 'not_implemented';
     const showMyMatches = matchFilter === 'all' || matchFilter === 'my';
     const showFailedMatches = matchFilter === 'all' || matchFilter === 'not_implemented';
 
-    const filteredAnalysisResult = useMemo(
-        () => (showAiMatches ? analysisResult : { ...analysisResult, matches: [] }),
-        [showAiMatches, analysisResult],
-    );
+    const filteredAnalysisResult = useMemo(() => {
+        const allMatches = analysisResult.matches ?? [];
+        if (matchFilter === 'not_implemented') {
+            return {
+                ...analysisResult,
+                matches: allMatches.filter((match) => {
+                    const snippets = match.code_snippets ?? [];
+                    const verdict =
+                        match.verdict === 'not_implemented' || match.verdict === 'implemented'
+                            ? match.verdict
+                            : snippets.length === 0
+                              ? 'not_implemented'
+                              : 'implemented';
+                    return verdict === 'not_implemented';
+                }),
+            };
+        }
+        if (!showAiMatches) {
+            return { ...analysisResult, matches: [] };
+        }
+        return analysisResult;
+    }, [matchFilter, showAiMatches, analysisResult]);
     const filteredPaperContentMatches = useMemo(
         () => (showMatchesFromCode ? paperContentMatches : []),
         [showMatchesFromCode, paperContentMatches],

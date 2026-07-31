@@ -48,6 +48,7 @@ export type BoundingBoxWithTooltip = BoundingBoxType & {
   content_type?: string;
   /** Canonical reference attached to the next Copilot message on request. */
   contextRef?: CopilotContextRef;
+  verdict?: string;
 };
 
 type overlayProps = {
@@ -312,6 +313,12 @@ function PdfBoundingHitTarget({
           setFloating(null);
         }}
       >
+        {box.verdict === 'not_implemented' && box.description?.trim() && (
+          <div className="pdf-hit-tooltip__description">
+            {box.content_type ? `[${box.content_type}] ` : ''}
+            {box.description}
+          </div>
+        )}
         {box.code_snippets.length > 0 && (
           <div className="pdf-hit-tooltip__path">{box.file_infos[codeIndex]}</div>
         )}
