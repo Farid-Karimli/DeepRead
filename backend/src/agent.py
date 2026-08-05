@@ -21,6 +21,7 @@ from src.agent_utils import (
     single_code_map_schema,
     normalize_identify_result,
     normalize_code_mapping_result,
+    hydrate_code_snippet_filepaths,
     _merge_entities_into_matches, 
     _parse_json_result, 
     EventCallback
@@ -234,6 +235,7 @@ class Agent:
                     parsed_result = None
 
         parsed_result = normalize_code_mapping_result(parsed_result)
+        parsed_result = hydrate_code_snippet_filepaths(parsed_result, code_path)
         matching_results = parsed_result.get("matches") if isinstance(parsed_result, dict) else None
         process_metrics = trace.summarize()
         log_summary("process_metrics", process_metrics)
@@ -356,6 +358,7 @@ class Agent:
             final.code_snippets = [code_snippets[index] for index in ranked_indices[:top_k]]
 
         result = final.model_dump()
+        hydrate_code_snippet_filepaths(result, local_code_path)
         result["tool_trace"] = trace.to_list()
         result["process_metrics"] = process_metrics
         log_summary("process_metrics", process_metrics)
@@ -510,6 +513,10 @@ class Agent:
         code_result = await self.map_key_sections_to_code(entities=entities, code_path=repo_local_dir, on_event=on_event, limit=100)
         if code_result is None:
             raise ValueError("No code result found.")
+
+        # Stage-2 hydration: models often return absolute checkout paths; GitHub
+        # API fetches require paths relative to the repository root.
+        hydrate_code_snippet_filepaths(code_result, repo_local_dir)
         
         logger.info("analyze_paper: code mapping completed duration=%.2fs", time.perf_counter() - code_mapping_started_at)
 

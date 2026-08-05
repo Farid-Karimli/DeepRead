@@ -6,9 +6,11 @@ import pytest
 from src.agent_utils import (
     _merge_entities_into_matches,
     code_matches_schema,
+    hydrate_code_snippet_filepaths,
     normalize_code_mapping_result,
     normalize_code_result_for_frontend,
     normalize_identify_result,
+    to_repo_relative_filepath,
 )
 from src.papermage_compat import (
     filter_noise_spans_from_papermage,
@@ -265,6 +267,75 @@ def test_merge_entities_into_matches():
     assert row["description"] == "Architecture choice"
     assert row["section_id"] == "sec_2"
     assert len(row["code_snippets"]) == 1
+
+
+def test_to_repo_relative_filepath_strips_checkout_prefix(tmp_path: Path):
+    repo = tmp_path / "repo"
+    nested = repo / "src" / "train.py"
+    nested.parent.mkdir(parents=True)
+    nested.write_text("x = 1\n", encoding="utf-8")
+
+    absolute = str(nested)
+    assert to_repo_relative_filepath(absolute, repo) == "src/train.py"
+    assert to_repo_relative_filepath("./src/train.py", repo) == "src/train.py"
+    assert to_repo_relative_filepath("src/train.py", repo) == "src/train.py"
+
+
+def test_to_repo_relative_filepath_unrelated_absolute_prefix(tmp_path: Path):
+    repo = tmp_path / "checkout"
+    target = repo / "models" / "resnet.py"
+    target.parent.mkdir(parents=True)
+    target.write_text("pass\n", encoding="utf-8")
+
+    # Simulate a developer's local clone path that isn't the temp checkout.
+    foreign = Path("/Users/someone/Desktop/Programming/intervention/models/resnet.py")
+    assert to_repo_relative_filepath(str(foreign), repo) == "models/resnet.py"
+
+
+def test_hydrate_code_snippet_filepaths(tmp_path: Path):
+    repo = tmp_path / "repo"
+    file_a = repo / "lib" / "a.py"
+    file_a.parent.mkdir(parents=True)
+    file_a.write_text("a = 1\n", encoding="utf-8")
+
+    code_result = {
+        "paper_title": "Intervention",
+        "matches": [
+            {
+                "entity_id": "sen_1",
+                "content_type": "sentence",
+                "content": "We train the model.",
+                "code_snippets": [
+                    {
+                        "content": "a = 1",
+                        "filepath": str(file_a),
+                        "start_line": 1,
+                        "end_line": 1,
+                    },
+                    {
+                        "content": "b = 2",
+                        "filepath": "./lib/b.py",
+                        "start_line": 2,
+                        "end_line": 3,
+                    },
+                ],
+            }
+        ],
+        "code_snippets": [
+            {
+                "content": "a = 1",
+                "filepath": str(file_a),
+                "start_line": 1,
+                "end_line": 1,
+            }
+        ],
+    }
+
+    out = hydrate_code_snippet_filepaths(code_result, repo)
+    assert out is code_result
+    assert out["matches"][0]["code_snippets"][0]["filepath"] == "lib/a.py"
+    assert out["matches"][0]["code_snippets"][1]["filepath"] == "lib/b.py"
+    assert out["code_snippets"][0]["filepath"] == "lib/a.py"
 
 
 def test_hydrate_entity_contents():

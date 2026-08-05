@@ -117,7 +117,7 @@ def build_map_key_sections_to_code_prompt(
                     "code_snippets": [
                         {{
                             "content": "print('Hello, world!')",
-                            "filepath": "path/to/code/file.py",
+                            "filepath": "path/relative/to/repo/root.py",
                             "start_line": 10,
                             "end_line": 20
                         }},
@@ -128,6 +128,8 @@ def build_map_key_sections_to_code_prompt(
 
         IMPORTANT: Make sure that the entity ids and content in your output match the entity ids and content in the provided context EXACTLY.
         Do not make up entity ids and do not add descriptive text to the entity content.
+        IMPORTANT: Every code_snippets.filepath must be relative to the repository root
+        (e.g. "src/train.py"). Never return absolute local filesystem paths.
         """
 
 def build_memory_hint_section(memory_hints: list[dict] | None) -> str:
