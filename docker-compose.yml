@@ -35,6 +35,9 @@ services:
     init: true
     environment:
       <<: *backend-environment
+      STUDY_LOG_DIR: /app/study_logs
+    volumes:
+      - ${STUDY_LOG_HOST_DIR:-./study_logs}:/app/study_logs
     expose:
       - "8000"
     depends_on:

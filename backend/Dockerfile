@@ -5,6 +5,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     ca-certificates \
     git \
+    util-linux \
     libglib2.0-0 \
     libgl1 \
     libgomp1 \
@@ -25,6 +26,7 @@ ENV PYTHONUNBUFFERED=1 \
 RUN pip install --no-cache-dir uv==0.11.6
 
 COPY pyproject.toml uv.lock README.md ./
+COPY docker-entrypoint.sh /docker-entrypoint.sh
 COPY src ./src
 
 # The source tree is imported as `src`; the pyproject's historical package
@@ -49,11 +51,12 @@ RUN groupadd --system --gid 10001 app \
         /app/temp \
         /app/tmp \
         /app/src/temp \
-        /app/src/agentic_localization/cache
-
-USER app
+        /app/src/agentic_localization/cache \
+    && chmod +x /docker-entrypoint.sh
 
 EXPOSE 8000
+
+ENTRYPOINT ["/docker-entrypoint.sh"]
 
 # Default: API server (override in Compose for the Celery worker)
 CMD ["python", "-m", "uvicorn", "src.server:app", "--host", "0.0.0.0", "--port", "8000"]
