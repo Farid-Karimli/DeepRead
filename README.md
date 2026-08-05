@@ -39,6 +39,12 @@ git pull && docker compose up --build -d
 docker compose down
 ```
 
+User-study interaction logs (JSONL under `STUDY_LOG_DIR`) are written by the
+API container to a host directory, default `./study_logs` next to
+`docker-compose.yml` (`STUDY_LOG_HOST_DIR` in `.env`). After participants use
+the app, inspect or copy that folder on the VM; it is not removed by image
+rebuilds.
+
 `docker compose down` preserves the Redis and worker cache volumes. Add `-v`
 only when you intentionally want to erase them. Apply the SQL migrations in
 `supabase/migrations/` to the configured Supabase project before first use.

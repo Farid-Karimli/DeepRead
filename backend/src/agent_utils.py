@@ -14,7 +14,7 @@ from bs4 import BeautifulSoup
 
 
 from typing import Callable
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from claude_agent_sdk.types import StreamEvent
 
 from src.config import ANTHROPIC_API_KEY
@@ -477,6 +477,77 @@ def _normalize_match_to_code_shape(item: dict) -> dict:
 def normalize_code_result_for_frontend(raw: dict | None) -> dict | None:
     """Prefer matches[]; migrate legacy sections[] for API/frontend consumers."""
     return normalize_code_mapping_result(raw)
+
+
+def to_repo_relative_filepath(filepath: str, repo_root: str | Path) -> str:
+    """Convert an absolute or cwd-prefixed path into a repo-relative posix path.
+
+    Stage-2 models often emit absolute checkout paths (the agent cwd). Those break
+    GitHub content fetches, which require paths relative to the repository root.
+    """
+    if not isinstance(filepath, str):
+        return ""
+    raw = filepath.replace("\\", "/").strip()
+    if not raw:
+        return raw
+
+    root = Path(repo_root).resolve()
+    candidate = Path(filepath)
+
+    if candidate.is_absolute():
+        try:
+            return candidate.resolve().relative_to(root).as_posix()
+        except (ValueError, OSError):
+            pass
+
+        root_posix = root.as_posix().rstrip("/")
+        if raw.startswith(root_posix + "/"):
+            return raw[len(root_posix) + 1 :]
+
+        # Unrelated absolute prefix (e.g. a developer's local clone): keep the
+        # longest suffix that still resolves under the checkout.
+        parts = list(PurePosixPath(raw).parts)
+        start = 1 if parts and parts[0] == "/" else 0
+        for i in range(start, len(parts)):
+            rel = PurePosixPath(*parts[i:])
+            if rel.parts and (root / Path(rel)).exists():
+                return rel.as_posix()
+
+        return raw.lstrip("/")
+
+    while raw.startswith("./"):
+        raw = raw[2:]
+    return PurePosixPath(raw).as_posix().lstrip("/")
+
+
+def hydrate_code_snippet_filepaths(
+    code_result: dict | None,
+    repo_root: str | Path,
+) -> dict | None:
+    """Rewrite snippet filepaths in a stage-2 mapping result to be repo-relative.
+
+    Mutates ``code_result`` in place when it is a dict. Handles both the
+    analyze_paper shape (``matches[].code_snippets``) and the single-content
+    shape (top-level ``code_snippets``).
+    """
+    if not isinstance(code_result, dict):
+        return code_result
+
+    def _hydrate_list(snippets: object) -> None:
+        if not isinstance(snippets, list):
+            return
+        for snip in snippets:
+            if isinstance(snip, dict) and isinstance(snip.get("filepath"), str):
+                snip["filepath"] = to_repo_relative_filepath(snip["filepath"], repo_root)
+
+    matches = code_result.get("matches")
+    if isinstance(matches, list):
+        for match in matches:
+            if isinstance(match, dict):
+                _hydrate_list(match.get("code_snippets"))
+
+    _hydrate_list(code_result.get("code_snippets"))
+    return code_result
 
 
 def _merge_entities_into_matches(
