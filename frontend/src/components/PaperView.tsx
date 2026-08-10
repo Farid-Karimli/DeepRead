@@ -32,6 +32,7 @@ import {
     reasoningFromMapResult,
 } from '../utils/codeInfoFromSnippets.ts';
 import { logStudyEvent } from '../utils/studyLog.ts';
+import { useShowMatchesFromOthers } from '../utils/matchVisibility.ts';
 
 interface PaperViewProps {
     analysisResult: codeMatchesResult;
@@ -62,7 +63,7 @@ const CODE_MATCH_VERDICT_TO_COLOR: Record<string, string> = {
 /** User code→paper mapping underlines in the PDF. */
 const CODE_TO_CONTENT_HIGHLIGHT_COLOR = "rgba(192, 132, 252, 1)";
 
-type MatchFilter = 'all' | 'hide' | 'ai' | 'my' | 'others' | 'not_implemented';
+type MatchFilter = 'all' | 'hide' | 'ai' | 'my' | 'not_implemented';
 
 const MATCH_FILTER_STORAGE_KEY = 'deepread.matchFilter';
 const SHOW_MATCHES_FROM_CODE_STORAGE_KEY = 'deepread.showMatchesFromCode';
@@ -73,7 +74,6 @@ const MATCH_FILTER_OPTIONS: { value: MatchFilter; label: string }[] = [
     { value: 'hide', label: 'Hide all matches' },
     { value: 'ai', label: 'Show AI matches' },
     { value: 'my', label: 'Show matches by me' },
-    { value: 'others', label: 'Show matches by others' },
     { value: 'not_implemented', label: 'Show failed matches'}
 ];
 
@@ -85,7 +85,6 @@ const readStoredMatchFilter = (): MatchFilter => {
         stored === 'hide' ||
         stored === 'ai' ||
         stored === 'my' ||
-        stored === 'others' ||
         stored === 'not_implemented'
     ) {
         return stored;
@@ -363,6 +362,7 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
     const [isMatchFilterOpen, setIsMatchFilterOpen] = useState(false);
     const [matchFilter, setMatchFilter] = useState<MatchFilter>(readStoredMatchFilter);
     const [showMatchesFromCode, setShowMatchesFromCode] = useState(readStoredShowMatchesFromCode);
+    const [showMatchesFromOthers, setShowMatchesFromOthers] = useShowMatchesFromOthers();
     const matchFilterRef = useRef<HTMLDivElement>(null);
 
     const queryClient = useQueryClient();
@@ -394,6 +394,7 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
         window.localStorage.setItem(SHOW_MATCHES_FROM_CODE_STORAGE_KEY, String(showMatchesFromCode));
         logStudyEvent('ui', 'show_matches_from_code_change', { enabled: showMatchesFromCode });
     }, [showMatchesFromCode])
+
 
     useEffect(() => {
         if (!isMatchFilterOpen) return;
@@ -502,7 +503,9 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
 
     const hasRealFile = paperFile instanceof File && paperFile.size > 0;
 
-    // Match visibility filter: 'my'/'others' split persisted user matches by creator.
+    // Match visibility filter: applies to AI + the current user's matches. Matches by
+    // other users are governed by the independent showMatchesFromOthers toggle, except
+    // under 'hide', which suppresses everything.
     const showAiMatches =
         matchFilter === 'all' || matchFilter === 'ai' || matchFilter === 'not_implemented';
     const showMyMatches = matchFilter === 'all' || matchFilter === 'my';
@@ -531,21 +534,23 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
         return analysisResult;
     }, [matchFilter, showAiMatches, analysisResult]);
     const filteredPaperContentMatches = useMemo(
-        () => (showMatchesFromCode ? paperContentMatches : []),
-        [showMatchesFromCode, paperContentMatches],
+        () => (matchFilter !== 'hide' && showMatchesFromCode ? paperContentMatches : []),
+        [matchFilter, showMatchesFromCode, paperContentMatches],
     );
     const filteredContentToCodeMatches = useMemo(
         () => contentToCodeMatches.filter((match) => {
+            if (matchFilter === 'hide') return false;
+
             const isMyMatch = currentUser != null && match.created_by === currentUser.id;
-            if (matchFilter === 'my') return isMyMatch;
-            if (matchFilter === 'others') return !isMyMatch;
+            if (!isMyMatch) return showMatchesFromOthers;
+            if (matchFilter === 'my') return true;
 
             const failed = match.outputs.verdict === 'not_implemented';
-            if (matchFilter === 'hide' || matchFilter === 'ai') return false;
+            if (matchFilter === 'ai') return false;
             if (failed) return showFailedMatches;
             return showMyMatches;
         }),
-        [contentToCodeMatches, currentUser, matchFilter, showMyMatches, showFailedMatches],
+        [contentToCodeMatches, currentUser, matchFilter, showMatchesFromOthers, showMyMatches, showFailedMatches],
     );
 
     return ( 
@@ -618,6 +623,14 @@ export default function PaperView({ analysisResult, processResult, clearEnvironm
                                             onChange={(event) => setShowMatchesFromCode(event.target.checked)}
                                         />
                                         Show matches from code
+                                    </label>
+                                    <label className="match-filter__checkbox">
+                                        <input
+                                            type="checkbox"
+                                            checked={showMatchesFromOthers}
+                                            onChange={(event) => setShowMatchesFromOthers(event.target.checked)}
+                                        />
+                                        Show matches by others
                                     </label>
                                 </div>
                             )}
