@@ -22,6 +22,7 @@ import { useCopilotContext } from '../context/CopilotContext.tsx';
 import { logStudyEvent } from '../utils/studyLog.ts';
 import MappingTaskBanner from './MappingTaskBanner.tsx';
 import { boldFilepathsInText } from '../utils/boldFilepathsInText.tsx';
+import { useShowMatchesFromOthers } from '../utils/matchVisibility.ts';
 
 export type ContextualPaperContentMatch = PaperContentMatch & {
     sourceMappingRef?: MappingRef;
@@ -42,7 +43,7 @@ const CONTENT_MATCH_VERDICT_TO_COLOR: Record<string, string> = {
     "not_applicable": "rgba(168, 168, 168, 0.6)",
 }
 
-type CodeMatchFilter = 'all' | 'hide' | 'my' | 'others' | 'described' | 'not_described' | 'not_applicable';
+type CodeMatchFilter = 'all' | 'hide' | 'my' | 'described' | 'not_described' | 'not_applicable';
 
 const CODE_MATCH_FILTER_STORAGE_KEY = 'deepread.codeMatchFilter';
 const DEFAULT_CODE_MATCH_FILTER: CodeMatchFilter = 'all';
@@ -51,7 +52,6 @@ const CODE_MATCH_FILTER_OPTIONS: { value: CodeMatchFilter; label: string }[] = [
     { value: 'all', label: 'Show all code matches' },
     { value: 'hide', label: 'Hide code matches' },
     { value: 'my', label: 'Show matches by me' },
-    { value: 'others', label: 'Show matches by others' },
     { value: 'described', label: 'Show described matches' },
     { value: 'not_described', label: 'Show not described matches' },
     { value: 'not_applicable', label: 'Show not applicable matches' },
@@ -64,7 +64,6 @@ const readStoredCodeMatchFilter = (): CodeMatchFilter => {
         stored === 'all' ||
         stored === 'hide' ||
         stored === 'my' ||
-        stored === 'others' ||
         stored === 'described' ||
         stored === 'not_described' ||
         stored === 'not_applicable'
@@ -128,6 +127,7 @@ const RepoView = ({ tree, paperId, setPaperContentMatches, showPaperPage }: Repo
     const codeMatchFilterRef = useRef<HTMLDivElement>(null);
     const [isCodeMatchFilterOpen, setIsCodeMatchFilterOpen] = useState(false);
     const [codeMatchFilter, setCodeMatchFilter] = useState<CodeMatchFilter>(readStoredCodeMatchFilter);
+    const [showMatchesFromOthers, setShowMatchesFromOthers] = useShowMatchesFromOthers();
 
     const [currentCodeDescription, setCurrentCodeDescription] = useState<string | null>(null);
 
@@ -179,6 +179,7 @@ const RepoView = ({ tree, paperId, setPaperContentMatches, showPaperPage }: Repo
         logStudyEvent('ui', 'code_match_filter_change', { code_match_filter: codeMatchFilter });
     }, [codeMatchFilter]);
 
+
     useEffect(() => {
         if (!isCodeMatchFilterOpen) return;
         const handleClickOutside = (event: MouseEvent) => {
@@ -194,11 +195,11 @@ const RepoView = ({ tree, paperId, setPaperContentMatches, showPaperPage }: Repo
         // Matches from the DB for this code file
         const fromDB = (codeToContentMatchesQuery.data ?? [])
             .filter((match: codeToContentMatch) => {
-                const isMyMatch = currentUser != null && match.created_by === currentUser.id;
                 if (codeMatchFilter === 'hide') return false;
-                if (codeMatchFilter === 'all') return true;
-                if (codeMatchFilter === 'my') return isMyMatch;
-                if (codeMatchFilter === 'others') return !isMyMatch;
+
+                const isMyMatch = currentUser != null && match.created_by === currentUser.id;
+                if (!isMyMatch) return showMatchesFromOthers;
+                if (codeMatchFilter === 'all' || codeMatchFilter === 'my') return true;
                 return match.outputs.verdict === codeMatchFilter;
             })
             .map((match: codeToContentMatch) => ({
@@ -215,7 +216,7 @@ const RepoView = ({ tree, paperId, setPaperContentMatches, showPaperPage }: Repo
         })) : [];
 
         return dedupeRanges([...fromDB, ...fromUser]);
-    }, [codeToContentMatchesQuery.data, codeInfo, currentPath, codeMatchFilter, currentUser]);
+    }, [codeToContentMatchesQuery.data, codeInfo, currentPath, codeMatchFilter, showMatchesFromOthers, currentUser]);
 
     usePDFTextSelection(codeViewerRef, setPendingCodeSelection);
 
@@ -501,6 +502,15 @@ const RepoView = ({ tree, paperId, setPaperContentMatches, showPaperPage }: Repo
                                         {option.label}
                                     </button>
                                 ))}
+                                <div className="match-filter__separator" role="separator" />
+                                <label className="match-filter__checkbox">
+                                    <input
+                                        type="checkbox"
+                                        checked={showMatchesFromOthers}
+                                        onChange={(event) => setShowMatchesFromOthers(event.target.checked)}
+                                    />
+                                    Show matches by others
+                                </label>
                             </div>
                         )}
                     </div>
